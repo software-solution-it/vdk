@@ -1,0 +1,49 @@
+BEGIN:VCALENDAR
+PRODID:-//Google Inc//Google Calendar 70.9054//EN
+VERSION:2.0
+CALSCALE:GREGORIAN
+METHOD:REQUEST
+BEGIN:VTIMEZONE
+TZID:America/Sao_Paulo
+X-LIC-LOCATION:America/Sao_Paulo
+BEGIN:STANDARD
+TZOFFSETFROM:-0300
+TZOFFSETTO:-0300
+TZNAME:GMT-3
+DTSTART:19700101T000000
+END:STANDARD
+END:VTIMEZONE
+BEGIN:VEVENT
+DTSTART;TZID=America/Sao_Paulo:20240805T140000
+DTEND;TZID=America/Sao_Paulo:20240805T150000
+DTSTAMP:20240802T163231Z
+ORGANIZER;CN=Robson Osni:mailto:robson.osni@softsnov.com
+UID:7cn5r2iot9b6bh1vj7co906515@google.com
+ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE
+ ;CN=Robson Osni;X-NUM-GUESTS=0:mailto:robson.osni@softsnov.com
+ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=
+ TRUE;CN=jaianmenezes@softsnov.com;X-NUM-GUESTS=0:mailto:jaianmenezes@softsn
+ ov.com
+ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=
+ TRUE;CN=gustavo.santos@softsnov.com;X-NUM-GUESTS=0:mailto:gustavo.santos@so
+ ftsnov.com
+ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=
+ TRUE;CN=di_rangel@hotmail.com;X-NUM-GUESTS=0:mailto:di_rangel@hotmail.com
+X-GOOGLE-CONFERENCE:https://meet.google.com/vsm-vgxs-ewj
+X-MICROSOFT-CDO-OWNERAPPTID:-1259231855
+CREATED:20240802T163227Z
+DESCRIPTION:-::~:~::~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~
+ :~:~:~:~:~:~:~:~::~:~::-\nJunte-se com o Google Meet: https://meet.google.c
+ om/vsm-vgxs-ewj\nEm alternativa\, ligue: (BR) +55 51 4560-7697 PIN: 8397170
+ 66#\nMais números de telemóvel: https://tel.meet/vsm-vgxs-ewj?pin=362673494
+ 7106&hs=7\n\nSaiba mais sobre o Meet em: https://support.google.com/a/users
+ /answer/9282720\n\nNão edite esta secção.\n-::~:~::~:~:~:~:~:~:~:~:~:~:~:~:
+ ~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~::~:~::-
+LAST-MODIFIED:20240802T163227Z
+LOCATION:
+SEQUENCE:0
+STATUS:CONFIRMED
+SUMMARY:SoftSnov & Diego - Refinamento
+TRANSP:OPAQUE
+END:VEVENT
+END:VCALENDAR

@@ -1,0 +1,50 @@
+BEGIN:VCALENDAR
+PRODID:-//Google Inc//Google Calendar 70.9054//EN
+VERSION:2.0
+CALSCALE:GREGORIAN
+METHOD:REQUEST
+BEGIN:VTIMEZONE
+TZID:America/Sao_Paulo
+X-LIC-LOCATION:America/Sao_Paulo
+BEGIN:STANDARD
+TZOFFSETFROM:-0300
+TZOFFSETTO:-0300
+TZNAME:GMT-3
+DTSTART:19700101T000000
+END:STANDARD
+END:VTIMEZONE
+BEGIN:VEVENT
+DTSTART;TZID=America/Sao_Paulo:20240827T160000
+DTEND;TZID=America/Sao_Paulo:20240827T163000
+DTSTAMP:20240827T143617Z
+ORGANIZER;CN=Robson Osni:mailto:robson.osni@softsnov.com
+UID:1b3ms81ve1k69rmi53veslqgqg@google.com
+ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=
+ TRUE;CN=wainerfortes.adv@gmail.com;X-NUM-GUESTS=0:mailto:wainerfortes.adv@g
+ mail.com
+ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE
+ ;CN=Robson Osni;X-NUM-GUESTS=0:mailto:robson.osni@softsnov.com
+ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=
+ TRUE;CN=jaianmenezes@softsnov.com;X-NUM-GUESTS=0:mailto:jaianmenezes@softsn
+ ov.com
+ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=
+ TRUE;CN=gustavo.santos@softsnov.com;X-NUM-GUESTS=0:mailto:gustavo.santos@so
+ ftsnov.com
+X-GOOGLE-CONFERENCE:https://meet.google.com/fdc-cuyh-uhz
+X-MICROSOFT-CDO-OWNERAPPTID:278436204
+CREATED:20240827T143616Z
+DESCRIPTION:-::~:~::~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~
+ :~:~:~:~:~:~:~:~::~:~::-\nJunte-se com o Google Meet: https://meet.google.c
+ om/fdc-cuyh-uhz\nEm alternativa\, ligue: (BR) +55 41 4560-9875 PIN: 6374210
+ 00#\nMais números de telemóvel: https://tel.meet/fdc-cuyh-uhz?pin=923310745
+ 1894&hs=7\n\nSaiba mais sobre o Meet em: https://support.google.com/a/users
+ /answer/9282720\n\nNão edite esta secção.\n-::~:~::~:~:~:~:~:~:~:~:~:~:~:~:
+ ~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~::~:~::-
+LAST-MODIFIED:20240827T143616Z
+LOCATION:
+SEQUENCE:0
+STATUS:CONFIRMED
+SUMMARY:SoftSnov & Wainer - Alinhamento
+TRANSP:OPAQUE
+END:VEVENT
+END:VCALENDAR

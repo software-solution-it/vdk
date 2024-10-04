@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  php:
+    build: .  # Usa o Dockerfile na raiz do projeto
+    container_name: email_sync_php
+    volumes:
+      - ./:/app   # Mapeie a raiz do projeto
+    command: php -S 0.0.0.0:4300 -t app  # Inicie o servidor PHP
+    ports:
+      - "4300:4300"  # Exponha a porta 8000 para acesso externo
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"  # Porta padrão do RabbitMQ
+      - "15672:15672"  # Porta para a interface de gerenciamento
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+
+  composer:
+    image: composer:latest
+    container_name: email_sync_composer
+    volumes:
+      - ./:/app   # Mapeie a raiz do projeto
+    working_dir: /app
+    command: install --ignore-platform-reqs  # Comando para instalar as dependências do Composer

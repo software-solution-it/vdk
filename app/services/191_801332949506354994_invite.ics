@@ -1,0 +1,44 @@
+BEGIN:VCALENDAR
+PRODID:-//Google Inc//Google Calendar 70.9054//EN
+VERSION:2.0
+CALSCALE:GREGORIAN
+METHOD:REQUEST
+BEGIN:VTIMEZONE
+TZID:America/Sao_Paulo
+X-LIC-LOCATION:America/Sao_Paulo
+BEGIN:STANDARD
+TZOFFSETFROM:-0300
+TZOFFSETTO:-0300
+TZNAME:GMT-3
+DTSTART:19700101T000000
+END:STANDARD
+END:VTIMEZONE
+BEGIN:VEVENT
+DTSTART;TZID=America/Sao_Paulo:20240716T193000
+DTEND;TZID=America/Sao_Paulo:20240716T201500
+DTSTAMP:20240716T191106Z
+ORGANIZER;CN=Jaian Menezes:mailto:jaianmenezes@softsnov.com
+UID:44e9eun1ho750gm0j3d42ulhv5@google.com
+ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE
+ ;CN=Jaian Menezes;X-NUM-GUESTS=0:mailto:jaianmenezes@softsnov.com
+ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=
+ TRUE;CN=gustavo.santos@softsnov.com;X-NUM-GUESTS=0:mailto:gustavo.santos@so
+ ftsnov.com
+X-GOOGLE-CONFERENCE:https://meet.google.com/kmq-auhh-wbr
+X-MICROSOFT-CDO-OWNERAPPTID:1470830748
+CREATED:20240716T191105Z
+DESCRIPTION:-::~:~::~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~
+ :~:~:~:~:~:~:~:~::~:~::-\nJunte-se com o Google Meet: https://meet.google.c
+ om/kmq-auhh-wbr\nEm alternativa\, ligue: (BR) +55 11 4935-3281 PIN: 4704988
+ 45#\nMais números de telemóvel: https://tel.meet/kmq-auhh-wbr?pin=573536731
+ 3822&hs=7\n\nSaiba mais sobre o Meet em: https://support.google.com/a/users
+ /answer/9282720\n\nNão edite esta secção.\n-::~:~::~:~:~:~:~:~:~:~:~:~:~:~:
+ ~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~::~:~::-
+LAST-MODIFIED:20240716T191105Z
+LOCATION:
+SEQUENCE:0
+STATUS:CONFIRMED
+SUMMARY:DataFi
+TRANSP:OPAQUE
+END:VEVENT
+END:VCALENDAR

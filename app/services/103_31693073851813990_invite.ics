@@ -1,0 +1,36 @@
+BEGIN:VCALENDAR
+PRODID:-//Google Inc//Google Calendar 70.9054//EN
+VERSION:2.0
+CALSCALE:GREGORIAN
+METHOD:CANCEL
+BEGIN:VEVENT
+DTSTART:20240812T140000Z
+DTEND:20240812T150000Z
+DTSTAMP:20240812T135439Z
+ORGANIZER;CN=Robson Osni:mailto:robson.osni@softsnov.com
+UID:5nl4b14p7bin8t2iuq5eoepinp@google.com
+ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;CN=Robson
+  Osni;X-NUM-GUESTS=0:mailto:robson.osni@softsnov.com
+ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;CN=ja
+ ianmenezes@softsnov.com;X-NUM-GUESTS=0:mailto:jaianmenezes@softsnov.com
+ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;CN=gu
+ stavo.santos@softsnov.com;X-NUM-GUESTS=0:mailto:gustavo.santos@softsnov.com
+ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;CN=di
+ _rangel@hotmail.com;X-NUM-GUESTS=0:mailto:di_rangel@hotmail.com
+X-GOOGLE-CONFERENCE:https://meet.google.com/mqe-wfei-egs
+CREATED:20240807T185850Z
+DESCRIPTION:-::~:~::~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~
+ :~:~:~:~:~:~:~:~::~:~::-\nJoin with Google Meet: https://meet.google.com/mq
+ e-wfei-egs\nOr dial: (BR) +55 21 4560-7670 PIN: 692095665#\nMore phone numb
+ ers: https://tel.meet/mqe-wfei-egs?pin=8369484192465&hs=7\n\nLearn more abo
+ ut Meet at: https://support.google.com/a/users/answer/9282720\n\nPlease do 
+ not edit this section.\n-::~:~::~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~
+ :~:~:~:~:~:~:~:~:~:~:~:~:~:~::~:~::-
+LAST-MODIFIED:20240812T135437Z
+LOCATION:
+SEQUENCE:2
+STATUS:CANCELLED
+SUMMARY:SoftSnov & Diego - Refinamento
+TRANSP:OPAQUE
+END:VEVENT
+END:VCALENDAR

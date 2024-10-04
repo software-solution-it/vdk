@@ -1,0 +1,52 @@
+BEGIN:VCALENDAR
+PRODID:-//Google Inc//Google Calendar 70.9054//EN
+VERSION:2.0
+CALSCALE:GREGORIAN
+METHOD:REQUEST
+BEGIN:VTIMEZONE
+TZID:America/Sao_Paulo
+X-LIC-LOCATION:America/Sao_Paulo
+BEGIN:STANDARD
+TZOFFSETFROM:-0300
+TZOFFSETTO:-0300
+TZNAME:GMT-3
+DTSTART:19700101T000000
+END:STANDARD
+END:VTIMEZONE
+BEGIN:VEVENT
+DTSTART;TZID=America/Sao_Paulo:20240712T130000
+DTEND;TZID=America/Sao_Paulo:20240712T140000
+DTSTAMP:20240712T123437Z
+ORGANIZER;CN=robson.osni@softsnov.com:mailto:robson.osni@softsnov.com
+UID:7tf7bq1mdrqt4aeoc7f5ikf0m0@google.com
+ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE
+ ;CN=robson.osni@softsnov.com;X-NUM-GUESTS=0:mailto:robson.osni@softsnov.com
+ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=
+ TRUE;CN=jonasgabrielatalaia@gmail.com;X-NUM-GUESTS=0:mailto:jonasgabrielata
+ laia@gmail.com
+ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=
+ TRUE;CN=lizzidanielly@gmail.com;X-NUM-GUESTS=0:mailto:lizzidanielly@gmail.c
+ om
+ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE
+ ;CN=Jaian Menezes;X-NUM-GUESTS=0:mailto:jaianmenezes@softsnov.com
+ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=
+ TRUE;CN=gustavo.santos@softsnov.com;X-NUM-GUESTS=0:mailto:gustavo.santos@so
+ ftsnov.com
+X-GOOGLE-CONFERENCE:https://meet.google.com/igg-mvsx-hob
+X-MICROSOFT-CDO-OWNERAPPTID:-645507734
+CREATED:20240710T235728Z
+DESCRIPTION:-::~:~::~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~
+ :~:~:~:~:~:~:~:~::~:~::-\nJunte-se com o Google Meet: https://meet.google.c
+ om/igg-mvsx-hob\nEm alternativa\, ligue: (BR) +55 21 4560-7290 PIN: 2983497
+ 93#\nMais números de telemóvel: https://tel.meet/igg-mvsx-hob?pin=499349689
+ 0251&hs=7\n\nSaiba mais sobre o Meet em: https://support.google.com/a/users
+ /answer/9282720\n\nNão edite esta secção.\n-::~:~::~:~:~:~:~:~:~:~:~:~:~:~:
+ ~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~::~:~::-
+LAST-MODIFIED:20240712T123435Z
+LOCATION:
+SEQUENCE:0
+STATUS:CONFIRMED
+SUMMARY:Softsnov & Jonas
+TRANSP:OPAQUE
+END:VEVENT
+END:VCALENDAR

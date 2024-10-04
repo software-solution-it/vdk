@@ -1,0 +1,46 @@
+BEGIN:VCALENDAR
+PRODID:-//Google Inc//Google Calendar 70.9054//EN
+VERSION:2.0
+CALSCALE:GREGORIAN
+METHOD:REQUEST
+BEGIN:VTIMEZONE
+TZID:America/Sao_Paulo
+X-LIC-LOCATION:America/Sao_Paulo
+BEGIN:STANDARD
+TZOFFSETFROM:-0300
+TZOFFSETTO:-0300
+TZNAME:GMT-3
+DTSTART:19700101T000000
+END:STANDARD
+END:VTIMEZONE
+BEGIN:VEVENT
+DTSTART;TZID=America/Sao_Paulo:20240910T170000
+DTEND;TZID=America/Sao_Paulo:20240910T174500
+DTSTAMP:20240902T150018Z
+ORGANIZER;CN=Jaian Menezes:mailto:jaianmenezes@softsnov.com
+UID:091i1u20298ngpn5ljoc87a7ov@google.com
+ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE
+ ;CN=Jaian Menezes;X-NUM-GUESTS=0:mailto:jaianmenezes@softsnov.com
+ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=
+ TRUE;CN=gustavo.santos@softsnov.com;X-NUM-GUESTS=0:mailto:gustavo.santos@so
+ ftsnov.com
+ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=
+ TRUE;CN=caio@nearx.com.br;X-NUM-GUESTS=0:mailto:caio@nearx.com.br
+X-GOOGLE-CONFERENCE:https://meet.google.com/rfz-tcds-ugs
+X-MICROSOFT-CDO-OWNERAPPTID:-307767664
+CREATED:20240902T150017Z
+DESCRIPTION:-::~:~::~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~
+ :~:~:~:~:~:~:~:~::~:~::-\nJunte-se com o Google Meet: https://meet.google.c
+ om/rfz-tcds-ugs\nEm alternativa\, ligue: (BR) +55 11 4560-4387 PIN: 7402547
+ 78#\nMais números de telemóvel: https://tel.meet/rfz-tcds-ugs?pin=948352595
+ 7056&hs=7\n\nSaiba mais sobre o Meet em: https://support.google.com/a/users
+ /answer/9282720\n\nNão edite esta secção.\n-::~:~::~:~:~:~:~:~:~:~:~:~:~:~:
+ ~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~::~:~::-
+LAST-MODIFIED:20240902T150017Z
+LOCATION:
+SEQUENCE:0
+STATUS:CONFIRMED
+SUMMARY:POC / VPN - Gustavo\, Caio & Jaian
+TRANSP:OPAQUE
+END:VEVENT
+END:VCALENDAR
