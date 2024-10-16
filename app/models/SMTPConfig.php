@@ -1,5 +1,6 @@
 <?php
-
+namespace App\Models;
+use PDO;
 class SMTPConfig {
     private $conn;
     private $table = "smtp_config";

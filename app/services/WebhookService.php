@@ -1,36 +1,53 @@
 <?php
+namespace App\Services;
+
+use GuzzleHttp\Client;
+use App\Models\Webhook;
 
 class WebhookService {
     private $webhookModel;
+    private $client;
 
-    public function __construct($webhookModel) {
-        $this->webhookModel = $webhookModel;
+    public function __construct($db) {
+        $this->webhookModel = new Webhook($db);
+        $this->client = new Client();
+    }
+
+    public function triggerEvent($event, $user_id) {
+        $webhooks = $this->webhookModel->getWebhooksByUserId($user_id);
+
+        foreach ($webhooks as $webhook) {
+            $success = $this->sendWebhook($webhook['url'], $event, $webhook['secret']);
+            
+            $eventData = [
+                'webhook_id' => $webhook['id'],
+                'event_type' => $event['type'],
+                'payload' => json_encode($event),
+                'status' => $success ? 'sent' : 'failed'
+            ];
+            $this->webhookModel->registerEvent($eventData);
+        }
+    }
+
+    private function sendWebhook($url, $event, $token) {
+        try {
+            $response = $this->client->post($url, [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $token,
+                    'Content-Type' => 'application/json'
+                ],
+                'json' => $event,
+                'verify' => true 
+            ]);
+
+            return $response->getStatusCode() === 200;
+        } catch (\Exception $e) {
+            error_log("Erro ao enviar webhook para $url: " . $e->getMessage());
+            return false;
+        }
     }
 
     public function registerWebhook($data) {
         return $this->webhookModel->register($data);
-    }
-
-    public function triggerWebhook($event) {
-        $webhooks = $this->webhookModel->getWebhooks();
-
-        foreach ($webhooks as $webhook) {
-            $this->sendWebhook($webhook['url'], $event, $webhook['token']);
-        }
-
-        return true;
-    }
-
-    private function sendWebhook($url, $event, $token) {
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Authorization: Bearer ' . $token,
-            'Content-Type: application/json'
-        ]);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['event' => $event]));
-        curl_exec($ch);
-        curl_close($ch);
     }
 }

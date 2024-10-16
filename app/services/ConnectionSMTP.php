@@ -1,9 +1,9 @@
 <?php
-
+namespace App\Services;
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
-class ConnectionTesterSmtp {
+class ConnectionSMTP {
     public function testSMTPConnection($smtp_host, $smtp_port, $smtp_username, $smtp_password, $encryption) {
         $mail = new PHPMailer(true);
 

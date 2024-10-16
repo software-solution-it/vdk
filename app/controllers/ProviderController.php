@@ -1,7 +1,8 @@
 <?php
+namespace App\Controllers;
 
-include_once __DIR__ . '/../config/database.php';
-include_once __DIR__ . '/../services/ProviderService.php';
+use App\Services\ProviderService;
+use App\Config\Database;
 
 class ProviderController {
     private $providerService;

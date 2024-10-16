@@ -1,8 +1,9 @@
 <?php
+namespace App\Controllers;
 
-include_once '../config/database.php';
-include_once '../models/Webhook.php';
-include_once '../services/WebhookService.php';
+use App\Models\Webhook;
+use App\Services\WebhookService;
+use App\Config\Database;
 
 class WebhookController {
     private $webhookService;
@@ -16,11 +17,17 @@ class WebhookController {
     public function registerWebhook() {
         $data = json_decode(file_get_contents("php://input"));
 
-        if (!empty($data->user_id) && !empty($data->url) && !empty($data->token)) {
+        if (!empty($data->user_id) && !empty($data->url) && !empty($data->secret)) {
+            if (strpos($data->url, 'https://') !== 0) {
+                http_response_code(400);
+                echo json_encode(['message' => 'URL must be HTTPS']);
+                return;
+            }
+
             $webhookData = [
                 'user_id' => $data->user_id,
                 'url' => $data->url,
-                'token' => $data->token
+                'secret' => $data->secret
             ];
 
             if ($this->webhookService->registerWebhook($webhookData)) {

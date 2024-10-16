@@ -1,5 +1,5 @@
 <?php
-
+namespace App\Helpers;
 class PasswordHasher {
     public static function hash($password) {
         return password_hash($password, PASSWORD_BCRYPT);

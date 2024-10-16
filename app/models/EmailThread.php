@@ -1,5 +1,6 @@
 <?php
-
+namespace App\Models;
+use PDO;
 class EmailThread {
     private $conn;
     private $table = "email_threads";

@@ -2,20 +2,20 @@ version: '3.8'
 
 services:
   php:
-    build: .  # Usa o Dockerfile na raiz do projeto
+    build: .  
     container_name: email_sync_php
     volumes:
-      - ./:/app   # Mapeie a raiz do projeto
-    command: php -S 0.0.0.0:4300 -t app  # Inicie o servidor PHP
+      - ./:/app   
+    command: php -S 0.0.0.0:4300 -t app  
     ports:
-      - "4300:4300"  # Exponha a porta 8000 para acesso externo
+      - "4300:4300"  
 
   rabbitmq:
     image: rabbitmq:3-management
     container_name: rabbitmq
     ports:
-      - "5672:5672"  # Porta padrão do RabbitMQ
-      - "15672:15672"  # Porta para a interface de gerenciamento
+      - "5672:5672"  
+      - "15672:15672"  
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
@@ -24,6 +24,20 @@ services:
     image: composer:latest
     container_name: email_sync_composer
     volumes:
-      - ./:/app   # Mapeie a raiz do projeto
+      - ./:/app   
     working_dir: /app
-    command: install --ignore-platform-reqs  # Comando para instalar as dependências do Composer
+    command: install --ignore-platform-reqs
+
+  consumer-supervisor:
+    image: ubuntu:latest
+    container_name: consumer_supervisor
+    volumes:
+      - ./:/app
+      - /var/log/supervisor:/var/log/supervisor  # Para armazenar logs
+    working_dir: /app
+    environment:
+      - DEBIAN_FRONTEND=noninteractive
+    command: /bin/bash -c "apt-get update && apt-get install -y supervisor && /app/scripts/run_supervisor.sh"
+    depends_on:
+      - php
+      - rabbitmq

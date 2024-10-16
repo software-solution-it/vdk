@@ -1,8 +1,9 @@
 <?php
+namespace App\Controllers;
 
-include_once __DIR__ . '/../services/SMTPService.php';
-include_once __DIR__ . '/../config/database.php';
-include_once __DIR__ . '/../models/SMTPConfig.php';
+use App\Services\SMTPService;
+use App\Models\SMTPConfig;
+use App\Config\Database;
 
 class SMTPController {
     private $smtpService;

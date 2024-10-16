@@ -1,5 +1,6 @@
 <?php
-
+namespace App\Models;
+use PDO;
 class Campaign {
     private $conn;
     private $table = 'campaigns';

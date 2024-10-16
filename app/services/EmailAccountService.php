@@ -1,7 +1,8 @@
 <?php
+namespace App\Services;
 
-include_once __DIR__ . '/../models/EmailAccount.php';
-include_once __DIR__ . '/../helpers/EncryptionHelper.php';
+use App\Models\EmailAccount;
+use App\Helpers\EncryptionHelper;
 
 class EmailAccountService {
     private $emailAccountModel;

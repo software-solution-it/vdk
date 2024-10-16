@@ -1,6 +1,7 @@
 <?php
+namespace App\Services;
 
-class ConnectionTesterImap {
+class ConnectionIMAP {
     public function testIMAPConnection($imap_host, $imap_port, $imap_username, $imap_password) {
         $mailbox = "{" . $imap_host . ":" . $imap_port . "/imap/ssl}INBOX";
 

@@ -1,5 +1,7 @@
 <?php
-
+namespace App\Models;
+use Exception;
+use PDO;
 class User {
     private $conn;
     private $table = "users";
@@ -30,12 +32,11 @@ class User {
                 print_r($stmt->errorInfo());
                 return false;
             }
-        } catch (PDOException $e) {
+        } catch (Exception $e) {
             echo "Error: " . $e->getMessage();
             return false;
         }
     }
-    
 
     public function update($id, $name, $email, $role_id) {
         $query = "UPDATE " . $this->table . " SET name = :name, email = :email, role_id = :role_id WHERE id = :id";
@@ -48,12 +49,24 @@ class User {
 
         return $stmt->execute();
     }
+
     public function delete($id) {
         $query = "DELETE FROM " . $this->table . " WHERE id = :id";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(":id", $id);
 
         return $stmt->execute();
+    }
+
+    public function listUsers() {
+        $query = "SELECT u.id, u.name, u.email, r.role_name, u.created_at 
+                  FROM " . $this->table . " u 
+                  JOIN " . $this->roleTable . " r ON u.role_id = r.id";
+        
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function getUserById($id) {
@@ -72,17 +85,14 @@ class User {
         $query = "UPDATE users SET verification_code = :verificationCode, code_expiration = :expirationTime WHERE id = :user_id";
         $stmt = $this->conn->prepare($query);
     
-        $userIdVar = $user_id;
-        $verificationCodeVar = $verificationCode;
-        $expirationTimeVar = date('Y-m-d H:i:s', $expirationTime);
-    
-        $stmt->bindParam(":verificationCode", $verificationCodeVar);
-        $stmt->bindParam(":expirationTime", $expirationTimeVar); 
-        $stmt->bindParam(":user_id", $userIdVar);
+        $formattedExpirationTime = date('Y-m-d H:i:s', $expirationTime); 
+        
+        $stmt->bindParam(":verificationCode", $verificationCode);
+        $stmt->bindParam(":expirationTime", $formattedExpirationTime);
+        $stmt->bindParam(":user_id", $user_id);
     
         return $stmt->execute();
     }
-
     public function checkUserAccess($user_id, $functionality_name) {
         $query = "SELECT rf.functionality_name 
                   FROM " . $this->table . " u 
@@ -97,6 +107,7 @@ class User {
         return $stmt->fetch(PDO::FETCH_ASSOC) ? true : false;
     }
 
+
     public function getAllRoles() {
         $query = "SELECT id, role_name FROM " . $this->roleTable;
         $stmt = $this->conn->prepare($query);
@@ -104,6 +115,7 @@ class User {
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+
 
     public function updateRole($id, $role_id) {
         $query = "UPDATE " . $this->table . " SET role_id = :role_id WHERE id = :id";
@@ -115,6 +127,7 @@ class User {
         return $stmt->execute();
     }
 
+
     public function findByEmail($email) {
         $query = "SELECT * FROM " . $this->table . " WHERE email = :email LIMIT 1";
         $stmt = $this->conn->prepare($query);
@@ -125,6 +138,7 @@ class User {
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
     
+
     public function updateForgotPasswordCode($email, $forgotPasswordCode, $expirationDateTime) {
         $query = "UPDATE users 
                   SET forgot_password_code = :forgot_password_code, forgot_password_expiration = :forgot_password_expiration 
@@ -139,6 +153,7 @@ class User {
         return $stmt->execute();
     }
 
+
     public function clearForgotPasswordCode($email) {
         $query = "UPDATE users 
                   SET forgot_password_code = NULL, forgot_password_expiration = NULL 
@@ -150,6 +165,7 @@ class User {
         return $stmt->execute();
     }
 
+
     public function updatePassword($email, $newPassword) {
         $query = "UPDATE users SET password = :password WHERE email = :email";
         $stmt = $this->conn->prepare($query);
@@ -159,5 +175,4 @@ class User {
     
         return $stmt->execute();
     }
-    
 }

@@ -1,5 +1,7 @@
 <?php
-include_once __DIR__ . '/../helpers/EncryptionHelper.php';
+namespace App\Models;
+use PDO;
+use  App\Helpers;
 class EmailAccount {
     private $conn;
     private $table = "email_accounts";
@@ -70,20 +72,32 @@ class EmailAccount {
     }
 
     public function getByUserId($user_id) {
-        $query = "SELECT ea.id, ea.email, p.name AS provider_name, p.smtp_host, p.smtp_port, p.imap_host, 
-                         p.imap_port, p.encryption, p.auth_type, ea.oauth_token, ea.refresh_token
+        $query = "SELECT 
+                        u.name,
+                        ea.id, 
+                        ea.email, 
+                        ea.password,
+                        ea.provider_id,
+                        p.name AS provider_name, 
+                        p.smtp_host, 
+                        p.smtp_port, 
+                        p.imap_host, 
+                        p.imap_port, 
+                        p.encryption, 
+                        p.auth_type, 
+                        ea.oauth_token, 
+                        ea.refresh_token
                   FROM " . $this->table . " ea
+                  INNER JOIN users u ON u.id = ea.user_id
                   INNER JOIN " . $this->providerTable . " p ON ea.provider_id = p.id
                   WHERE ea.user_id = :user_id";
         
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':user_id', $user_id);
-    
         $stmt->execute();
-    
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        return $stmt->fetch(PDO::FETCH_ASSOC);
     }
-    
 
 
     public function delete($id) {

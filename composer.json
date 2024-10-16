@@ -8,7 +8,8 @@
         "ddeboer/imap": "^1.19",
         "firebase/php-jwt": "^6.10",
         "php-amqplib/php-amqplib": "^3.7",
-        "webklex/php-imap": "^5.5"
+        "webklex/php-imap": "^5.5",
+        "guzzlehttp/guzzle": "^7.9"
     },
     "autoload": {
         "psr-4": {

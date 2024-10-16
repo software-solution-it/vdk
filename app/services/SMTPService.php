@@ -1,5 +1,5 @@
 <?php
-
+namespace App\Services;
 class SMTPService {
     private $smtpConfig;
 

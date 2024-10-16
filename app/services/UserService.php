@@ -1,109 +1,86 @@
 <?php
+namespace App\Services;
 
-class User {
-    private $conn;
-    private $table = "users";
-    private $roleTable = "roles";
-    private $roleFunctionalityTable = "role_functionality";
+use App\Models\User;
+use App\Config\Database;
+use PDO;
 
-    public function __construct($db) {
-        $this->conn = $db;
+class UserService {
+    private $userModel;
+    private $db;
+
+    public function __construct(User $userModel) {
+        $this->userModel = $userModel;
+
+        $database = new Database();
+        $this->db = $database->getConnection();
+    }
+    public function createUser($name, $email, $password, $role_id) {
+        $verificationCode = rand(100000, 999999);
+        $expirationDateTime = date('Y-m-d H:i:s', strtotime('+5 minutes'));
+
+        $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
+
+        return $this->userModel->create($name, $email, $hashedPassword, $verificationCode, $expirationDateTime, $role_id);
     }
 
-    public function create($name, $email, $password, $verificationCode, $expirationDateTime, $role_id) {
-        $query = "INSERT INTO users (name, email, password, verification_code, code_expiration, role_id, is_verified) 
-                  VALUES (:name, :email, :password, :verification_code, :code_expiration, :role_id, 0)";
-        
-        $stmt = $this->conn->prepare($query);
-    
-        $stmt->bindParam(":name", $name);
-        $stmt->bindParam(":email", $email);
-        $stmt->bindParam(":password", $password);
-        $stmt->bindParam(":verification_code", $verificationCode);
-        $stmt->bindParam(":code_expiration", $expirationDateTime); 
-        $stmt->bindParam(":role_id", $role_id);
-    
-        if ($stmt->execute()) {
-            return $this->conn->lastInsertId();
-        } else {
-            return false;
-        }
-    }
-    
-
-    public function update($id, $name, $email, $role_id) {
-        $query = "UPDATE " . $this->table . " 
-                  SET name = :name, email = :email, role_id = :role_id 
-                  WHERE id = :id";
-        $stmt = $this->conn->prepare($query);
-
-        $stmt->bindParam(":id", $id);
-        $stmt->bindParam(":name", $name);
-        $stmt->bindParam(":email", $email);
-        $stmt->bindParam(":role_id", $role_id);
-
-        return $stmt->execute();
+    public function updateUser($id, $name, $email, $role_id) {
+        return $this->userModel->update($id, $name, $email, $role_id);
     }
 
-    public function delete($id) {
-        $query = "DELETE FROM " . $this->table . " WHERE id = :id";
-        $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(":id", $id);
-
-        return $stmt->execute();
+    public function deleteUser($id) {
+        return $this->userModel->delete($id);
     }
 
     public function getUserById($id) {
-        $query = "SELECT u.id, u.name, u.email, r.role_name, u.created_at 
-                  FROM " . $this->table . " u 
-                  JOIN " . $this->roleTable . " r ON u.role_id = r.id 
-                  WHERE u.id = :id";
-        $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(":id", $id);
-        $stmt->execute();
-
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+        return $this->userModel->getUserById($id);
     }
 
-    public function checkUserAccess($user_id, $functionality_name) {
-        $query = "SELECT rf.functionality_name 
-                  FROM " . $this->table . " u 
-                  JOIN " . $this->roleTable . " r ON u.role_id = r.id 
-                  JOIN " . $this->roleFunctionalityTable . " rf ON r.id = rf.role_id 
-                  WHERE u.id = :user_id AND rf.functionality_name = :functionality_name";
-        $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(":user_id", $user_id);
-        $stmt->bindParam(":functionality_name", $functionality_name);
-        $stmt->execute();
-
-        return $stmt->fetch(PDO::FETCH_ASSOC) ? true : false;
+    public function listUsers() {
+        return $this->userModel->listUsers();
     }
 
-    public function getAllRoles() {
-        $query = "SELECT id, role_name FROM " . $this->roleTable;
-        $stmt = $this->conn->prepare($query);
-        $stmt->execute();
+    public function checkUserAccess($user_id, $functionality_name): bool {
+        $roleQuery = "SELECT role_id FROM users WHERE id = :user_id";
+        $roleStmt = $this->db->prepare($roleQuery);
+        $roleStmt->bindParam(':user_id', $user_id);
+        $roleStmt->execute();
+        $roleResult = $roleStmt->fetch(PDO::FETCH_ASSOC);
+    
+        if (!$roleResult) {
+            return false;
+        }
+    
+        $role_id = $roleResult['role_id'];
+    
+    
+        $functionalityQuery = "
+        SELECT functionality_name 
+        FROM role_functionality 
+        WHERE role_id = :role_id 
+        AND functionality_type = 'api' 
+        AND functionality_name LIKE :functionality_name
+    ";
 
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
+    $stmt = $this->db->prepare($functionalityQuery);
+    
+    $likeFunctionalityName = $functionality_name . "%";
+    
+    $stmt->bindParam(':role_id', $role_id);
+    $stmt->bindParam(':functionality_name', $likeFunctionalityName);
+    $stmt->execute();
+    $functionalityResult = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    public function updateRole($id, $role_id) {
-        $query = "UPDATE " . $this->table . " SET role_id = :role_id WHERE id = :id";
-        $stmt = $this->conn->prepare($query);
-
-        $stmt->bindParam(":id", $id);
-        $stmt->bindParam(":role_id", $role_id);
-
-        return $stmt->execute();
-    }
+    return $functionalityResult ? true : false;
+}
 
     public function findByEmail($email) {
-        $query = "SELECT * FROM " . $this->table . " WHERE email = :email LIMIT 1";
-        $stmt = $this->conn->prepare($query);
+        return $this->userModel->findByEmail($email);
+    }
 
-        $stmt->bindParam(":email", $email);
-        $stmt->execute();
+    public function resetPassword($email, $newPassword) {
+        $hashedPassword = password_hash($newPassword, PASSWORD_BCRYPT);
 
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+        return $this->userModel->updatePassword($email, $hashedPassword);
     }
 }

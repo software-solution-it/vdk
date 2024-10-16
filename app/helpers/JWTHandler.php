@@ -1,6 +1,10 @@
 <?php
+// app/lib/JWTHandler.php
 
-use \Firebase\JWT\JWT;
+namespace App\Helpers;
+
+use Firebase\JWT\JWT;
+use Firebase\JWT\Key;
 
 class JWTHandler {
     private $key = "your_secret_key"; 
@@ -30,10 +34,11 @@ class JWTHandler {
 
     public function validateToken($token) {
         try {
-            $decoded = JWT::decode($token, $this->key, ['HS256']);
-            return (array) $decoded;
-        } catch (Exception $e) {
+            $decoded = JWT::decode($token, new Key($this->key, 'HS256'));
+            return $decoded;
+        } catch (\Exception $e) {
             return false;
         }
     }
 }
+?>

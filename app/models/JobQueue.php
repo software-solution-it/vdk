@@ -1,5 +1,7 @@
 <?php
 
+namespace App\Models;
+
 class JobQueue {
     private $conn;
     private $table_name = "job_queue";
@@ -15,50 +17,35 @@ class JobQueue {
         $this->conn = $db;
     }
 
-    // Método para criar um novo job
     public function create() {
-        $query = "INSERT INTO " . $this->table_name . "
-                  (queue_name, user_id) 
-                  VALUES 
-                  (:queue_name, :user_id)";
-
+        $query = "INSERT INTO " . $this->table_name . " (queue_name, user_id, is_executed, created_at)
+                  VALUES (:queue_name, :user_id, 0, NOW())";
         $stmt = $this->conn->prepare($query);
-
-        // Vincula os parâmetros
         $stmt->bindParam(':queue_name', $this->queue_name);
         $stmt->bindParam(':user_id', $this->user_id);
-
-        if ($stmt->execute()) {
-            return true;
-        }
-
-        return false;
+        return $stmt->execute();
     }
 
-    // Método para marcar um job como executado
-    public function markAsExecuted($id) {
-        $query = "UPDATE " . $this->table_name . "
-                  SET is_executed = TRUE, executed_at = NOW()
-                  WHERE id = :id";
+    public function getPendingJobsByUserId($user_id) {
+        $query = "SELECT * FROM " . $this->table_name . " WHERE user_id = :user_id AND is_executed = 0 ORDER BY created_at ASC";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':user_id', $user_id);
+        $stmt->execute();
+        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+    }
 
+    public function markAsExecuted($id) {
+        $query = "UPDATE " . $this->table_name . " SET is_executed = 1, executed_at = NOW() WHERE id = :id";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':id', $id);
-
-        if ($stmt->execute()) {
-            return true;
-        }
-
-        return false;
+        return $stmt->execute();
     }
 
-    // Método para obter todos os jobs pendentes
-    public function getPendingJobs() {
-        $query = "SELECT * FROM " . $this->table_name . " 
-                  WHERE is_executed = FALSE";
-
+    public function getJobByQueueName($queue_name) {
+        $query = "SELECT * FROM " . $this->table_name . " WHERE queue_name = :queue_name LIMIT 1";
         $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':queue_name', $queue_name);
         $stmt->execute();
-
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return $stmt->fetch(\PDO::FETCH_ASSOC);
     }
 }

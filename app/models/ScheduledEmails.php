@@ -1,6 +1,7 @@
 <?php
-
-class ScheduledEmail {
+namespace App\Models;
+use PDO;
+class ScheduledEmails {
     private $conn;
     private $table = 'scheduled_emails';
 

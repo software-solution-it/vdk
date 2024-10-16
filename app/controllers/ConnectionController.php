@@ -1,15 +1,16 @@
 <?php
+namespace App\Controllers;
 
-include_once __DIR__ . '/../services/ConnectionSMTP.php';
-include_once __DIR__ . '/../services/ConnectionIMAP.php';
+use App\Services\ConnectionSMTP;
+use App\Services\ConnectionIMAP;
 
 class ConnectionController {
     private $connectionTesterSmtp;
     private $connectionTesterImap;
 
     public function __construct() {
-        $this->connectionTesterSmtp = new ConnectionTesterSmtp();
-        $this->connectionTesterImap = new ConnectionTesterImap();
+        $this->smtpConnection = new ConnectionSMTP();
+        $this->imapConnection = new ConnectionIMAP();
     }
 
     public function testSMTP() {

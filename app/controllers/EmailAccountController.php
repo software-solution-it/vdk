@@ -1,7 +1,8 @@
 <?php
+namespace App\Controllers;
 
-include_once __DIR__ . '/../services/EmailAccountService.php';
-include_once __DIR__ . '/../config/database.php';
+use App\Services\EmailAccountService;
+use App\Config\Database;
 
 class EmailAccountController {
     private $emailAccountService;

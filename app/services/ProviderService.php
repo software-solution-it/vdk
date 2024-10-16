@@ -1,6 +1,7 @@
 <?php
+namespace App\Services;
 
-include_once __DIR__ . '/../models/Provider.php';
+use App\Models\Provider;
 
 class ProviderService {
     private $providerModel;

@@ -1,6 +1,8 @@
 <?php
-
+namespace App\Models;
+use PDO;
 class EmailAttachment {
+    
     private $conn;
     private $table = "email_attachments";
 

@@ -1,55 +1,99 @@
 <?php
 
-include_once __DIR__ . '/../interfaces/AuthServiceInterface.php';
-include_once __DIR__ . '/../helpers/PasswordHasher.php';
-include_once __DIR__ . '/../services/EmailService.php';
-include_once __DIR__ . '/../models/Email.php';
-include_once __DIR__ . '/../models/User.php';
+namespace App\Services;
 
-class AuthService implements AuthServiceInterface {
+use App\Interfaces\AuthServiceInterface;
+use App\Helpers\PasswordHasher;
+use App\Services\EmailService;
+use App\Models\Email;
+use App\Models\User;
+use App\Config\Database;
+use App\Helpers\EncryptionHelper;
+class AuthService  {
     private $user;
     private $jwtHandler;
     private $emailService;
 
-    public function __construct($userModel, $jwtHandler) {
+    public function __construct($jwtHandler) {
         $this->jwtHandler = $jwtHandler;
         
         $database = new Database();
         $db = $database->getConnection();
         $emailModel = new Email($db); 
         $this->user = new User($db);
-        $this->emailService = new EmailService($emailModel);
+        $this->emailService = new EmailService($db);
     }
 
 
     public function login($email, $password) {
-        $user = $this->user->findByEmail($email);
-
-        if ($user && PasswordHasher::verify($password, $user['password'])) {
-                $verificationCode = rand(100000, 999999);
-                $expirationTime = time() + (5 * 60); 
-
-                $this->user->updateLoginVerificationCode($user['id'], $verificationCode, $expirationTime);
-
-                $this->emailService->sendVerificationEmail(1, $email, $verificationCode);
-                return [
-                    'success' => true,
-                    'message' => 'Login successful. Please enter the verification code sent to your email.',
-                    'verificationCode' => $verificationCode
-                ];
-        //    } else {
-            //    return ['success' => false, 'message' => 'Email not verified.'];
-         //   }
+     if (empty($email) || empty($password)) {
+            return [
+                'success' => false,
+                'message' => 'Email and password are required.'
+            ];
         }
+    
 
-        return ['success' => false, 'message' => 'Invalid email or password.'];
+        $user = $this->user->findByEmail($email);
+    
+
+        if (!$user || !EncryptionHelper::decrypt($user['password'])) {
+            return [
+                'success' => false,
+                'message' => 'Invalid email or password.'
+            ];
+        }
+    
+
+        if ($user['role_id'] == 1) {
+            $token = $this->jwtHandler->generateToken($user['id'], $user['email'], false);
+            return [
+                'success' => true,
+                'role_id' => $user['role_id'],
+                'message' => 'Login successful. Here is your token.',
+                'token' => $token
+            ];
+        }
+    
+
+        $verificationCode = rand(100000, 999999);
+        $expirationTime = time() + (5 * 60);
+    
+
+        $updateResult = $this->user->updateLoginVerificationCode($user['id'], $verificationCode, $expirationTime);
+    
+        if (!$updateResult) {
+            return [
+                'success' => false,
+                'message' => 'Failed to update verification code. Please try again later.'
+            ];
+        }
+    
+
+        $emailResult = $this->emailService->sendVerificationEmail($user['id'], $email, $verificationCode);
+    
+        if (!$emailResult['success']) {
+            return [
+                'success' => false,
+                'message' => 'Failed to send verification email: ' . $emailResult['message']
+            ];
+        }
+    
+
+        return [
+            'success' => true,
+            'role_id' => $user['role_id'],
+            'message' => 'Login successful. Please enter the verification code sent to your email.',
+            'verificationCode' => $verificationCode
+        ];
     }
+    
 
     public function resendVerificationCode($email) {
         $user = $this->user->findByEmail($email);
 
         if ($user) {
-          //  if ($user['is_verified']) {
+
                 $verificationCode = rand(100000, 999999);
                 $expirationTime = time() + (5 * 60);
 
@@ -62,9 +106,7 @@ class AuthService implements AuthServiceInterface {
                 } else {
                     return ['success' => false, 'message' => 'Failed to resend verification code.'];
                 }
-           // } else {
-            //    return ['success' => false, 'message' => 'Email not verified.'];
-           // }
+
         }
 
         return ['success' => false, 'message' => 'User not found.'];
@@ -85,7 +127,7 @@ class AuthService implements AuthServiceInterface {
     }
 
     public function preRegister($name, $email, $password, $role_id) {
-        $hashedPassword = PasswordHasher::hash($password);
+        $hashedPassword = EncryptionHelper::encrypt($password);
         
         $verificationCode = rand(100000, 999999);
     
