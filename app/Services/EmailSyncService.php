@@ -71,7 +71,7 @@ class EmailSyncService
         } else {
             $config_content = "
                 [program:{$consumer_id}]
-                command=php /app/scripts/email_consumer.php {$user_id} {$provider_id}
+                command=/usr/bin/php /home/suporte/vdk/app/Scripts/email_consumer.php {$user_id} {$provider_id}
                 autostart=true
                 autorestart=true
                 stdout_logfile={$log_directory}{$consumer_id}.log
@@ -144,7 +144,7 @@ class EmailSyncService
         }
     }
 
-    private function generateQueueName($user_id, $provider_id)
+    public function generateQueueName($user_id, $provider_id)
     {
         return 'email_sync_queue_' . $user_id . '_' . $provider_id . '_' . time();
     }
