@@ -35,34 +35,80 @@ class EmailSyncService
 
         $this->syncEmailsByUserIdAndProviderId($user_id, $provider_id);
     }
-
     public function startConsumer($user_id, $provider_id)
     {
         $consumer_id = "email_consumer_{$user_id}_{$provider_id}";
-
         $config_directory = '/app/scripts/supervisor_configs/';
+        $log_directory = '/var/log/supervisor/';
+        $directory_permissions = 0755;
+    
         if (!file_exists($config_directory)) {
-            mkdir($config_directory, 0777, true);
+            error_log("Diretório de configuração não existe. Tentando criar: {$config_directory}");
+            if (!mkdir($config_directory, $directory_permissions, true)) {
+                error_log("Falha ao criar o diretório de configuração: {$config_directory}");
+                return;
+            }
+            error_log("Diretório de configuração criado: {$config_directory}");
+        } else {
+            error_log("Diretório de configuração encontrado: {$config_directory}");
         }
+    
+        if (!file_exists($log_directory)) {
+            error_log("Diretório de logs não existe. Tentando criar: {$log_directory}");
+            if (!mkdir($log_directory, $directory_permissions, true)) {
+                error_log("Falha ao criar o diretório de logs: {$log_directory}");
+                return;
+            }
+            error_log("Diretório de logs criado: {$log_directory}");
+        } else {
+            error_log("Diretório de logs encontrado: {$log_directory}");
+        }
+    
         $config_file = $config_directory . "{$consumer_id}.conf";
-
-        $config_content = "
-[program:{$consumer_id}]
-command=php /app/scripts/email_consumer.php {$user_id} {$provider_id}
-autostart=true
-autorestart=true
-stdout_logfile=/var/log/supervisor/{$consumer_id}.log
-stderr_logfile=/var/log/supervisor/{$consumer_id}_err.log
-";
-
-        file_put_contents($config_file, $config_content);
-
-        shell_exec('supervisorctl reread');
-        shell_exec('supervisorctl update');
-
+    
+        if (file_exists($config_file)) {
+            error_log("Arquivo de configuração já existe: {$config_file}. Pulando criação.");
+        } else {
+            $config_content = "
+                [program:{$consumer_id}]
+                command=php /app/scripts/email_consumer.php {$user_id} {$provider_id}
+                autostart=true
+                autorestart=true
+                stdout_logfile={$log_directory}{$consumer_id}.log
+                stderr_logfile={$log_directory}{$consumer_id}_err.log
+                ";
+    
+            if (file_put_contents($config_file, $config_content) === false) {
+                error_log("Falha ao escrever o arquivo de configuração: {$config_file}");
+                return;
+            }
+    
+            error_log("Arquivo de configuração criado: {$config_file}");
+        }
+    
+        // Executar os comandos e garantir que shell_exec não retorne null
+        $reread_output = shell_exec('supervisorctl reread 2>&1') ?? '';
+        $update_output = shell_exec('supervisorctl update 2>&1') ?? '';
+    
+        // Verificar o resultado de reread_output e update_output
+        if (strpos($reread_output, 'ERROR') !== false) {
+            error_log("Erro ao executar 'supervisorctl reread': {$reread_output}");
+        } else {
+            error_log("'supervisorctl reread' executado com sucesso.");
+        }
+    
+        if (strpos($update_output, 'ERROR') !== false) {
+            error_log("Erro ao executar 'supervisorctl update': {$update_output}");
+        } else {
+            error_log("'supervisorctl update' executado com sucesso.");
+        }
+    
+        $status = shell_exec("supervisorctl status {$consumer_id} 2>&1") ?? '';
+        error_log("Status do consumidor {$consumer_id}: {$status}");
+    
         error_log("Novo consumidor {$consumer_id} criado para user_id={$user_id} e provider_id={$provider_id}.");
     }
-
+    
     public function syncEmailsByUserIdAndProviderId($user_id, $provider_id)
     {
         set_time_limit(0);
@@ -221,7 +267,7 @@ stderr_logfile=/var/log/supervisor/{$consumer_id}_err.log
                             $content = $attachment->getDecodedContent();
 
                             $this->emailModel->saveAttachment(
-                                $messageId, 
+                                $messageId,
                                 $filename,
                                 $mimeType,
                                 $size,

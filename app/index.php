@@ -9,6 +9,7 @@ use App\Controllers\ProviderController;
 use App\Controllers\EmailSyncController;
 use App\Controllers\ConnectionController;
 use App\Controllers\WebhookController;
+use App\Helpers\AuthMiddleware;
 
 //AuthMiddleware::verifyBearerToken();
 
@@ -169,11 +170,6 @@ switch ($request_uri[0]) {
         } else {
             echo json_encode(['status' => false, 'message' => 'ID is required']);
         }
-        break;
-
-    case '/email/sync':
-        $emailSync = new EmailSyncController();
-        $emailSync->syncEmails();
         break;
 
     case '/email/sync/consume':

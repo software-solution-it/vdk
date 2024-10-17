@@ -1,5 +1,4 @@
 <?php
-// app/lib/JWTHandler.php
 
 namespace App\Helpers;
 

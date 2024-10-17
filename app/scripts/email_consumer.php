@@ -1,5 +1,5 @@
 <?php
-require_once 'vendor/autoload.php';
+require_once __DIR__ . '/../vendor/autoload.php';
 
 use App\Config\Database;
 use App\Services\EmailSyncService;
@@ -18,3 +18,4 @@ $db = $database->getConnection();
 $emailSyncService = new EmailSyncService($db);
 $queue_name = $emailSyncService->generateQueueName($user_id, $provider_id);
 $emailSyncService->consumeEmailSyncQueue($user_id, $provider_id, $queue_name);
+?>
