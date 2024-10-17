@@ -1,6 +1,6 @@
 <?php
 
-require __DIR__ . '/../vendor/autoload.php';
+require __DIR__ . '/vendor/autoload.php';
 use App\Controllers\AuthController;
 use App\Controllers\UserController;
 use App\Controllers\EmailController;
