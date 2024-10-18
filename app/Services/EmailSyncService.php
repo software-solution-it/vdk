@@ -236,22 +236,22 @@ class EmailSyncService
                                 continue;
                             }
                     
-                            $mimeTypeName = $attachment->getType();      // Retorna o tipo principal, exemplo: "application"
-                            $subtype = $attachment->getSubtype();         // Retorna o subtipo, exemplo: "pdf"
+                            $mimeTypeName = $attachment->getType(); // Exemplo: "application"
+                            $subtype = $attachment->getSubtype();    // Exemplo: "pdf"
                     
                             // Concatenar o tipo e subtipo para formar o MIME type completo
                             $fullMimeType = $mimeTypeName . '/' . $subtype;
                     
                             // Obter o conteúdo do anexo em bytes
-                            $contentBytes = $attachment->getContent(); // Certifique-se de que isso retorna o conteúdo correto
+                            $contentBytes = $attachment->getBytes(); // Usando getBytes para obter o conteúdo
                     
-                            // Adicione log para verificar o conteúdo antes da codificação
-                            error_log("Conteúdo do anexo: " . print_r($contentBytes, true)); 
-                    
-                            // Verifica se o conteúdo foi recuperado corretamente
+                            // Log do conteúdo do anexo
                             if ($contentBytes === false) {
                                 error_log("Falha ao obter o conteúdo do anexo: $filename");
                                 continue;
+                            } else {
+                                error_log("Conteúdo do anexo obtido com sucesso.");
+                                error_log("Tamanho do conteúdo do anexo: " . strlen($contentBytes));
                             }
                     
                             // Codificar o conteúdo em Base64
@@ -261,13 +261,16 @@ class EmailSyncService
                                 continue;
                             }
                     
-                            // Salva o anexo no banco de dados
+                            // Adicionar o prefixo de data URL
+                            $dataUrl = "data:$fullMimeType;base64,$contentBase64";
+                    
+                            // Salvar anexo no banco de dados
                             $this->emailModel->saveAttachment(
                                 $emailId,
                                 $filename,
                                 $fullMimeType,
-                                strlen($contentBase64), // Armazena o tamanho da string Base64
-                                $contentBase64 // Salva o conteúdo codificado em Base64
+                                strlen($dataUrl), // Armazena o tamanho da string Base64 com prefixo
+                                $dataUrl // Salva o conteúdo codificado em Base64 com prefixo
                             );
                         }
                     }
