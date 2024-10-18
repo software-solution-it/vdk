@@ -226,38 +226,42 @@ class EmailSyncService
 
                     
                     if ($message->hasAttachments()) {
-                        $attachments = $message->getAttachments();
+                        // Obtenha as partes da mensagem
+                        $parts = $message->getParts();
+                        
+                        foreach ($parts as $part) {
+                            // Verifique se a parte é um anexo
+                            if ($part->getDisposition() === 'attachment') {
+                                $filename = $part->getFilename();
+                                
+                                if (is_null($filename) || empty($filename)) {
+                                    error_log("Anexo ignorado: o nome do arquivo está nulo.");
+                                    continue;
+                                }
+                                
+                                $mimeTypeName = $part->getType();      // Retorna o tipo principal, exemplo: "application"
+                                $subtype = $part->getSubtype();        // Retorna o subtipo, exemplo: "pdf"
+                                
+                                // Concatenar o tipo e subtipo para formar o MIME type completo
+                                $fullMimeType = $mimeTypeName . '/' . $subtype;
                     
-                        foreach ($attachments as $attachment) {
-                            $filename = $attachment->getFilename();
+                                // Obter o conteúdo decodificado da parte
+                                $content = $part->getDecodedContent(); // Usando getDecodedContent para obter o conteúdo decodificado
                     
-                            if (is_null($filename) || empty($filename)) {
-                                error_log("Anexo ignorado: o nome do arquivo está nulo.");
-                                continue;
+                                // Converter o conteúdo em Base64
+                                $contentBase64 = base64_encode($content);
+                    
+                                // Salvar no banco de dados
+                                $this->emailModel->saveAttachment(
+                                    $emailId,
+                                    $filename,
+                                    $fullMimeType,
+                                    strlen($contentBase64), // Armazena o tamanho da string Base64
+                                    $contentBase64 // Salva o conteúdo codificado em Base64
+                                );
+                    
+                                error_log("Anexo salvo com sucesso: $filename");
                             }
-                    
-                            $mimeTypeName = $attachment->getType();      // Retorna o tipo principal, exemplo: "application"
-                            $subtype = $attachment->getSubtype();    // Retorna o subtipo, exemplo: "pdf"
-                    
-                            // Concatenar o tipo e subtipo para formar o MIME type completo
-                            $fullMimeType = $mimeTypeName . '/' . $subtype;
-                    
-    // Obter o conteúdo do anexo em bytes
-    $contentBytes = $attachment->getBytes(); // Usando getBytes para obter o conteúdo
-
-    // Verifica se o conteúdo foi recuperado corretamente
-    if ($contentBytes === false) {
-        error_log("Falha ao obter o conteúdo do anexo: $filename");
-        continue;
-    }
-                    
-                            $this->emailModel->saveAttachment(
-                                $emailId,
-                                $filename,
-                                $fullMimeType,
-                                strlen($contentBytes), // Armazena o tamanho da string Base64
-                                $contentBytes // Salva o conteúdo codificado em Base64
-                            );
                         }
                     }
 
