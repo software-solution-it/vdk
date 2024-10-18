@@ -95,7 +95,7 @@ class EmailSyncService
         }
     }
 
-    private function getOAuth2Token($clientId, $clientSecret, $refreshToken) {
+    public function getOAuth2Token($clientId, $clientSecret, $refreshToken) {
         $url = 'https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token';
         $data = [
             'client_id' => $clientId,
