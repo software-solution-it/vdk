@@ -65,7 +65,7 @@ class EmailSyncService
                     $task['imap_host'],
                     $task['imap_port'],
                     $task['password'],
-                    $task['oauth2_token'] ?? null 
+                     null 
                 );
 
                 $msg->ack();
@@ -132,7 +132,7 @@ class EmailSyncService
             return;
         }
     
-        if (!empty($emailAccount['client_id']) && !empty($emailAccount['client_secret'])) {
+        if (!empty($emailAccount['client_id']) && !empty($emailAccount['client_secret']) && $emailAccount['client_secret'] != null && $emailAccount['client_id'] != null) {
 
             $oauthData = $this->getOAuth2Token($emailAccount['client_id'], $emailAccount['client_secret'], $emailAccount['refresh_token']);
             
@@ -161,7 +161,7 @@ class EmailSyncService
                 'imap_host' => $emailAccount['imap_host'],
                 'imap_port' => $emailAccount['imap_port'],
                 'password' => EncryptionHelper::decrypt($emailAccount['password']),
-                'oauth2_token' => $oauthToken 
+             //   'oauth2_token' => $oauthToken 
             ];
     
             $this->rabbitMQService->publishMessage($queue_name, $message, $user_id);
