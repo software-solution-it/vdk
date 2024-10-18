@@ -26,80 +26,70 @@ class EmailSyncService
         $this->emailModel = new Email($db);
         $this->emailAccountModel = new EmailAccount($db);
         $this->rabbitMQService = new RabbitMQService($db);
-        $this->webhookService = new WebhookService($db);
+        $this->webhookService = new WebhookService();
     }
 
     public function startConsumer($user_id, $provider_id)
     {
         $this->syncEmailsByUserIdAndProviderId($user_id, $provider_id);
-    
     }
-    
 
     public function reconnectRabbitMQ() {
-        // Verifica se a conexão está fechada e reconecta
         if (!$this->db || !$this->db->isConnected()) {
             $this->rabbitMQService->connect();
         }
     }
-    
+
     public function consumeEmailSyncQueue($user_id, $provider_id, $queue_name)
     {
         error_log("Iniciando o consumidor RabbitMQ para sincronização de e-mails...");
-    
+
         $callback = function ($msg) use ($user_id, $provider_id, $queue_name) {
             error_log("Recebida tarefa de sincronização: " . $msg->body);
             $task = json_decode($msg->body, true);
-    
+
             if (!$task) {
                 error_log("Erro ao decodificar a mensagem da fila.");
                 $msg->nack(false, true);
                 return;
             }
-    
+
             try {
-                // Sincroniza os e-mails conforme os dados da fila
                 $this->syncEmails(
                     $task['user_id'],
                     $task['provider_id'],
                     $task['email'],
                     $task['imap_host'],
                     $task['imap_port'],
-                    $task['password']
+                    $task['password'],
+                    $task['oauth2_token'] ?? null // Adiciona suporte para OAuth2
                 );
-    
-                // Confirma a mensagem como processada
+
                 $msg->ack();
-    
                 error_log("Sincronização concluída para a mensagem na fila.");
-    
 
                 if ($this->rabbitMQService->markJobAsExecuted($queue_name)) {
                     error_log("Job marcado como executado com sucesso.");
                 } else {
                     error_log("Erro ao marcar o job como executado.");
                 }
-    
-                // Cria uma nova fila para continuar a sincronização
+
                 $this->syncEmailsByUserIdAndProviderId($user_id, $provider_id);
-    
+
             } catch (Exception $e) {
                 error_log("Erro ao sincronizar e-mails: " . $e->getMessage());
                 $msg->nack(false, true);
             }
         };
-    
+
         try {
             error_log("Aguardando nova mensagem na fila: " . $queue_name);
-    
-            // Consome uma única mensagem por vez e processa antes de consumir a próxima
             $this->rabbitMQService->consumeQueue($queue_name, $callback);
-    
         } catch (Exception $e) {
             error_log("Erro ao consumir a fila RabbitMQ: " . $e->getMessage());
         }
     }
-    
+
     public function syncEmailsByUserIdAndProviderId($user_id, $provider_id)
     {
         set_time_limit(0);
@@ -123,11 +113,11 @@ class EmailSyncService
                 'email' => $emailAccount['email'],
                 'imap_host' => $emailAccount['imap_host'],
                 'imap_port' => $emailAccount['imap_port'],
-                'password' => EncryptionHelper::decrypt($emailAccount['password'])
+                'password' => EncryptionHelper::decrypt($emailAccount['password']),
+                'oauth2_token' => $emailAccount['oauth2_token'] ?? null // Inclui o token OAuth2
             ];
 
             $this->rabbitMQService->publishMessage($queue_name, $message, $user_id);
-
             $this->consumeEmailSyncQueue($user_id, $provider_id, $queue_name);
 
         } catch (Exception $e) {
@@ -140,9 +130,7 @@ class EmailSyncService
         return 'email_sync_queue_' . $user_id . '_' . $provider_id . '_' . time();
     }
 
-    
-
-    private function syncEmails($user_id, $provider_id, $email, $imap_host, $imap_port, $password)
+    private function syncEmails($user_id, $provider_id, $email, $imap_host, $imap_port, $password, $oauth2_token = null)
     {
         error_log("Sincronizando e-mails para o usuário $user_id e provedor $provider_id");
 
@@ -151,7 +139,12 @@ class EmailSyncService
 
         try {
             $server = new Server($imap_host, $imap_port);
-            $connection = $server->authenticate($email, $password);
+
+            if ($oauth2_token) {
+                $connection = $server->authenticate($email, $oauth2_token); // Usa OAuth2 se disponível
+            } else {
+                $connection = $server->authenticate($email, $password); // Usa a senha se OAuth2 não estiver disponível
+            }
 
             $mailboxes = $connection->getMailboxes();
             foreach ($mailboxes as $mailbox) {
@@ -203,7 +196,6 @@ class EmailSyncService
 
                     $references = implode(', ', $message->getReferences());
 
-
                     $ccAddresses = $message->getCc();
                     $cc = $ccAddresses ? implode(', ', array_map(fn(EmailAddress $addr) => $addr->getAddress(), $ccAddresses)) : null;
 
@@ -223,40 +215,35 @@ class EmailSyncService
                         $uidCounter
                     );
 
-
-                    
                     if ($message->hasAttachments()) {
                         $attachments = $message->getAttachments();
-                    
+
                         foreach ($attachments as $attachment) {
                             $filename = $attachment->getFilename();
-                    
+
                             if (is_null($filename) || empty($filename)) {
                                 error_log("Anexo ignorado: o nome do arquivo está nulo.");
                                 continue;
                             }
-                    
-                            $mimeTypeName = $attachment->getType();      // Retorna o tipo principal, exemplo: "application"
-                            $subtype = $attachment->getSubtype();    // Retorna o subtipo, exemplo: "pdf"
-                    
-                            // Concatenar o tipo e subtipo para formar o MIME type completo
-                            $fullMimeType = $mimeTypeName . '/' . $subtype;
-                    
-    // Obter o conteúdo do anexo em bytes
-    $contentBytes = $attachment->getDecodedContent(); // Usando getBytes para obter o conteúdo
 
-    // Verifica se o conteúdo foi recuperado corretamente
-    if ($contentBytes === false) {
-        error_log("Falha ao obter o conteúdo do anexo: $filename");
-        continue;
-    }
-                    
+                            $mimeTypeName = $attachment->getType();
+                            $subtype = $attachment->getSubtype();
+
+                            $fullMimeType = $mimeTypeName . '/' . $subtype;
+
+                            $contentBytes = $attachment->getDecodedContent();
+
+                            if ($contentBytes === false) {
+                                error_log("Falha ao obter o conteúdo do anexo: $filename");
+                                continue;
+                            }
+
                             $this->emailModel->saveAttachment(
                                 $emailId,
                                 $filename,
                                 $fullMimeType,
-                                strlen($contentBytes ), // Armazena o tamanho da string Base64
-                                $contentBytes  // Salva o conteúdo codificado em Base64
+                                strlen($contentBytes),
+                                $contentBytes
                             );
                         }
                     }

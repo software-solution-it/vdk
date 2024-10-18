@@ -4,15 +4,18 @@ namespace App\Controllers;
 
 use App\Services\EmailService;
 use App\Config\Database;
+use App\Controllers\ErrorLogController;
 use Exception;
 
 class EmailController {
     private $emailService;
+    private $errorLogController;
 
     public function __construct() {
         $database = new Database();
         $db = $database->getConnection();
         $this->emailService = new EmailService($db);
+        $this->errorLogController = new ErrorLogController();
     }
 
     private function validateParams($requiredParams, $data) {
@@ -53,7 +56,6 @@ class EmailController {
             }
     
             $user_id = $data['user_id'];
-    
             $sendResults = [];
             foreach ($data['emails'] as $emailData) {
                 $requiredParams = ['recipientEmails', 'subject', 'htmlTemplate'];
@@ -129,6 +131,7 @@ class EmailController {
                         'message' => $result['message'] ?? 'Erro desconhecido'
                     ];
                 } catch (Exception $e) {
+                    $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
                     $sendResults[] = [
                         'email' => $recipientEmails,
                         'result' => 'falhou',
@@ -144,6 +147,7 @@ class EmailController {
             ]);
     
         } catch (Exception $e) {
+            $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
             http_response_code(500);
             echo json_encode([
                 'message' => 'Erro ao processar os e-mails: ' . $e->getMessage()
@@ -152,7 +156,6 @@ class EmailController {
     
         ob_end_flush(); 
     }
-    
 
     public function sendEmail() {
         ob_start();
@@ -232,6 +235,7 @@ class EmailController {
                 echo json_encode(['message' => $result['message']]);
             }
         } catch (Exception $e) {
+            $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
             http_response_code(500);
             echo json_encode(['message' => 'Erro ao processar o envio de e-mails: ' . $e->getMessage()]);
         }
@@ -241,15 +245,20 @@ class EmailController {
 
     public function checkDomain($domain) {
         if (empty($domain)) {
-            http_response_code(400); // Bad Request
+            http_response_code(400);
             echo json_encode(['message' => 'Domain is required']);
             return;
         }
 
-        $results = $this->emailService->checkEmailRecords($domain);
-
-        http_response_code(200); 
-        echo json_encode($results);
+        try {
+            $results = $this->emailService->checkEmailRecords($domain);
+            http_response_code(200); 
+            echo json_encode($results);
+        } catch (Exception $e) {
+            $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
+            http_response_code(500);
+            echo json_encode(['message' => 'Erro ao verificar o domínio: ' . $e->getMessage()]);
+        }
     }
 
     public function listEmails($user_id, $folder = '*', $search = '') {
@@ -259,10 +268,15 @@ class EmailController {
             return;
         }
     
-        $emails = $this->emailService->listEmails($user_id, $folder, $search);
-    
-        http_response_code(200); 
-        echo json_encode($emails);
+        try {
+            $emails = $this->emailService->listEmails($user_id, $folder, $search);
+            http_response_code(200); 
+            echo json_encode($emails);
+        } catch (Exception $e) {
+            $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
+            http_response_code(500);
+            echo json_encode(['message' => 'Erro ao listar e-mails: ' . $e->getMessage()]);
+        }
     }
 
     public function viewEmail($email_id) {
@@ -272,13 +286,19 @@ class EmailController {
             return;
         }
 
-        $email = $this->emailService->viewEmail($email_id);
-        if ($email) {
-            http_response_code(200);
-            echo json_encode($email);
-        } else {
-            http_response_code(404);
-            echo json_encode(['message' => 'E-mail não encontrado.']);
+        try {
+            $email = $this->emailService->viewEmail($email_id);
+            if ($email) {
+                http_response_code(200);
+                echo json_encode($email);
+            } else {
+                http_response_code(404);
+                echo json_encode(['message' => 'E-mail não encontrado.']);
+            }
+        } catch (Exception $e) {
+            $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
+            http_response_code(500);
+            echo json_encode(['message' => 'Erro ao visualizar o e-mail: ' . $e->getMessage()]);
         }
     }
 
@@ -290,14 +310,19 @@ class EmailController {
             return;
         }
     
-        $result = $this->emailService->markEmailAsSpam($user_id, $provider_id, $email_id);
-    
-        if ($result) {
-            http_response_code(200);
-            echo json_encode(['message' => 'E-mail marcado como SPAM.']);
-        } else {
+        try {
+            $result = $this->emailService->markEmailAsSpam($user_id, $provider_id, $email_id);
+            if ($result) {
+                http_response_code(200);
+                echo json_encode(['message' => 'E-mail marcado como SPAM.']);
+            } else {
+                http_response_code(500);
+                echo json_encode(['message' => 'Erro ao marcar o e-mail como SPAM.']);
+            }
+        } catch (Exception $e) {
+            $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
             http_response_code(500);
-            echo json_encode(['message' => 'Erro ao marcar o e-mail como SPAM.']);
+            echo json_encode(['message' => 'Erro ao marcar e-mail como SPAM: ' . $e->getMessage()]);
         }
     }
 
@@ -308,13 +333,19 @@ class EmailController {
             return;
         }
 
-        $result = $this->emailService->deleteSpamEmail($user_id, $email_id);
-        if ($result) {
-            http_response_code(200);
-            echo json_encode(['message' => 'E-mail excluído com sucesso.']);
-        } else {
+        try {
+            $result = $this->emailService->deleteSpamEmail($user_id, $email_id);
+            if ($result) {
+                http_response_code(200);
+                echo json_encode(['message' => 'E-mail excluído com sucesso.']);
+            } else {
+                http_response_code(500);
+                echo json_encode(['message' => 'Erro ao excluir o e-mail.']);
+            }
+        } catch (Exception $e) {
+            $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
             http_response_code(500);
-            echo json_encode(['message' => 'Erro ao excluir o e-mail.']);
+            echo json_encode(['message' => 'Erro ao excluir o e-mail: ' . $e->getMessage()]);
         }
     }
 
@@ -325,13 +356,19 @@ class EmailController {
             return;
         }
 
-        $result = $this->emailService->unmarkSpam($user_id, $email_id, $destinationFolder);
-        if ($result) {
-            http_response_code(200);
-            echo json_encode(['message' => 'E-mail movido para a pasta ' . $destinationFolder]);
-        } else {
+        try {
+            $result = $this->emailService->unmarkSpam($user_id, $email_id, $destinationFolder);
+            if ($result) {
+                http_response_code(200);
+                echo json_encode(['message' => 'E-mail movido para a pasta ' . $destinationFolder]);
+            } else {
+                http_response_code(500);
+                echo json_encode(['message' => 'Erro ao mover o e-mail.']);
+            }
+        } catch (Exception $e) {
+            $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
             http_response_code(500);
-            echo json_encode(['message' => 'Erro ao mover o e-mail.']);
+            echo json_encode(['message' => 'Erro ao mover o e-mail: ' . $e->getMessage()]);
         }
     }
 }

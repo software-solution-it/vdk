@@ -1,26 +1,46 @@
 <?php
+
 namespace App\Controllers;
 
 use App\Services\ProviderService;
 use App\Config\Database;
+use App\Controllers\ErrorLogController;
 
 class ProviderController {
     private $providerService;
+    private $errorLogController;
 
     public function __construct() {
         $database = new Database();
         $db = $database->getConnection();
         $this->providerService = new ProviderService($db);
+        $this->errorLogController = new ErrorLogController();
     }
 
     public function createProvider() {
         $data = json_decode(file_get_contents('php://input'), true);
+        
+        if (empty($data['name']) || empty($data['host'])) {
+            $this->errorLogController->logError('Name and host are required for creating a provider.', __FILE__, __LINE__);
+            http_response_code(400);
+            echo json_encode(['message' => 'Name and host are required.']);
+            return;
+        }
+
         $response = $this->providerService->createProvider($data);
         echo json_encode($response);
     }
 
     public function updateProvider($id) {
         $data = json_decode(file_get_contents('php://input'), true);
+        
+        if (empty($data['name']) || empty($data['host'])) {
+            $this->errorLogController->logError('Name and host are required for updating a provider.', __FILE__, __LINE__);
+            http_response_code(400);
+            echo json_encode(['message' => 'Name and host are required.']);
+            return;
+        }
+
         $response = $this->providerService->updateProvider($id, $data);
         echo json_encode($response);
     }

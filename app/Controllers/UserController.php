@@ -1,20 +1,24 @@
 <?php
+
 namespace App\Controllers;
 
 use App\Services\AuthService;
 use App\Models\User;
 use App\Config\Database;
 use App\Services\UserService;
+use App\Controllers\ErrorLogController;
 
 class UserController {
     private $userService;
     private $authService;
+    private $errorLogController;
 
     public function __construct() {
         $database = new Database();
         $db = $database->getConnection();
         $this->userService = new UserService(new User($db));
-        $this->authService = new AuthService(new User($db)); // Adicionando o AuthService
+        $this->authService = new AuthService(new User($db));
+        $this->errorLogController = new ErrorLogController();
     }
 
     public function listUsers() {
@@ -51,10 +55,12 @@ class UserController {
                 http_response_code(201);
                 echo json_encode(['message' => 'User created successfully']);
             } else {
+                $this->errorLogController->logError('Failed to create user.', __FILE__, __LINE__);
                 http_response_code(500);
                 echo json_encode(['message' => 'Failed to create user']);
             }
         } else {
+            $this->errorLogController->logError('Incomplete data provided for user creation.', __FILE__, __LINE__);
             http_response_code(400);
             echo json_encode(['message' => 'Incomplete data. Name, email, password, and role_id are required.']);
         }
@@ -63,7 +69,7 @@ class UserController {
     public function updateUser() {
         header('Content-Type: application/json');
         $data = json_decode(file_get_contents("php://input"));
-    
+
         if (!empty($data->id) && !empty($data->name) && !empty($data->email) && !empty($data->role_id)) {
             $user = $this->userService->getUserById($data->id);
             if (!$user) {
@@ -71,16 +77,18 @@ class UserController {
                 echo json_encode(['message' => 'User not found']);
                 return;
             }
-    
+
             $update = $this->userService->updateUser($data->id, $data->name, $data->email, $data->role_id);
-    
+
             if ($update) {
                 echo json_encode(['message' => 'User updated successfully']);
             } else {
+                $this->errorLogController->logError('Failed to update user.', __FILE__, __LINE__);
                 http_response_code(500);
                 echo json_encode(['message' => 'Failed to update user']);
             }
         } else {
+            $this->errorLogController->logError('Incomplete data provided for user update.', __FILE__, __LINE__);
             http_response_code(400);
             echo json_encode(['message' => 'Incomplete data. ID, name, email, and role_id are required.']);
         }
@@ -89,7 +97,7 @@ class UserController {
     public function deleteUser() {
         header('Content-Type: application/json');
         $id = $_GET['id'] ?? null;
-    
+
         if ($id) {
             $user = $this->userService->getUserById($id);
             if (!$user) {
@@ -97,16 +105,18 @@ class UserController {
                 echo json_encode(['message' => 'User not found']);
                 return;
             }
-    
+
             $delete = $this->userService->deleteUser($id);
-    
+
             if ($delete) {
                 echo json_encode(['message' => 'User deleted successfully']);
             } else {
+                $this->errorLogController->logError('Failed to delete user.', __FILE__, __LINE__);
                 http_response_code(500);
                 echo json_encode(['message' => 'Failed to delete user']);
             }
         } else {
+            $this->errorLogController->logError('User ID is required for deletion.', __FILE__, __LINE__);
             http_response_code(400);
             echo json_encode(['message' => 'User ID is required']);
         }
@@ -114,20 +124,20 @@ class UserController {
 
     public function checkUserAccess() {
         header('Content-Type: application/json');
-        
+
         $data = json_decode(file_get_contents('php://input'), true);
-    
+
         if (!empty($data['user_id']) && !empty($data['functionality_name'])) {
             $user = $this->userService->getUserById($data['user_id']);
-            
+
             if (!$user) {
                 http_response_code(404);
                 echo json_encode(['message' => 'User not found']);
                 return;
             }
-    
+
             $hasAccess = $this->userService->checkUserAccess($data['user_id'], $data['functionality_name']);
-            
+
             if ($hasAccess) {
                 http_response_code(200);
                 echo json_encode(['message' => 'Access granted to ' . $data['functionality_name']]);
@@ -136,15 +146,16 @@ class UserController {
                 echo json_encode(['message' => 'Access denied']);
             }
         } else {
+            $this->errorLogController->logError('User ID and functionality name are required for access check.', __FILE__, __LINE__);
             http_response_code(400);
             echo json_encode(['message' => 'User ID and functionality name are required']);
         }
     }
-    
+
     public function verifyCode() {
         header('Content-Type: application/json');
 
-        $data = json_decode(file_get_contents("php://input"));
+        $data = json_decode(file_get_contents('php://input'));
 
         if (!empty($data->email) && !empty($data->verification_code)) {
             $result = $this->authService->verifyLoginCode($data->email, $data->verification_code);
@@ -156,6 +167,7 @@ class UserController {
                 echo json_encode(['message' => $result['message']]);
             }
         } else {
+            $this->errorLogController->logError('Email and verification code are required for verification.', __FILE__, __LINE__);
             http_response_code(400);
             echo json_encode(['message' => 'Email and verification code are required.']);
         }
