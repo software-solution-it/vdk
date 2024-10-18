@@ -173,34 +173,53 @@ class EmailService {
         }
     }
 
-    public function listEmails($user_id, $folder = '*', $search = '') {
+    public function listEmails($user_id, $folder = '*', $search = '', $startDate = '', $endDate = '') {
+        // Base query
         if ($folder == '*') {
             $query = "SELECT * FROM emails WHERE user_id = :user_id";
         } else {
             $query = "SELECT * FROM emails WHERE user_id = :user_id AND folder LIKE :folder";
         }
-
+    
+        // Search filter for subject, sender, recipient
         if (!empty($search)) {
-            $query .= " AND (subject LIKE :search OR sender LIKE :search OR recipient LIKE :search)";
+            $query .= " AND (subject LIKE :search OR sender LIKE :search OR recipient LIKE :search OR email_id LIKE :search OR `references` LIKE :search OR in_reply_to LIKE :search)";
         }
-
-        $query .= " ORDER BY date_received DESC";
-
+    
+        // Date filtering (optional)
+        if (!empty($startDate) && !empty($endDate)) {
+            $query .= " AND date_received BETWEEN :startDate AND :endDate";
+        }
+    
+        // Sorting: First, sort by thread reference and then by date to group responses correctly
+        $query .= " ORDER BY `references`, in_reply_to, date_received DESC";
+    
+        // Prepare statement
         $stmt = $this->db->prepare($query);
         $stmt->bindParam(':user_id', $user_id);
-
+    
+        // Bind folder if needed
         if ($folder != '*') {
             $folderTerm = "%" . $folder . "%";
             $stmt->bindParam(':folder', $folderTerm);
         }
-
+    
+        // Bind search term if needed
         if (!empty($search)) {
             $searchTerm = "%" . $search . "%";
             $stmt->bindParam(':search', $searchTerm);
         }
-
+    
+        // Bind date range if provided
+        if (!empty($startDate) && !empty($endDate)) {
+            $stmt->bindParam(':startDate', $startDate);
+            $stmt->bindParam(':endDate', $endDate);
+        }
+    
+        // Execute query
         $stmt->execute();
-
+    
+        // Return results
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
