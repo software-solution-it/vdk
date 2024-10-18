@@ -177,17 +177,17 @@ class EmailService {
         if ($folder == '*') {
             $query = "SELECT e.*, a.filename, a.mime_type, a.size 
                       FROM emails e 
-                      LEFT JOIN email_attachments a ON e.email_id = a.email_id 
+                      LEFT JOIN email_attachments a ON e.id = a.email_id 
                       WHERE e.user_id = :user_id";
         } else {
             $query = "SELECT e.*, a.filename, a.mime_type, a.size 
                       FROM emails e 
-                      LEFT JOIN email_attachments a ON e.email_id = a.email_id 
+                      LEFT JOIN email_attachments a ON e.id = a.email_id 
                       WHERE e.user_id = :user_id AND e.folder LIKE :folder";
         }
     
         if (!empty($search)) {
-            $query .= " AND (e.subject LIKE :search OR e.sender LIKE :search OR e.recipient LIKE :search OR e.email_id LIKE :search OR e.`references` LIKE :search OR e.in_reply_to LIKE :search)";
+            $query .= " AND (e.subject LIKE :search OR e.sender LIKE :search OR e.recipient LIKE :search OR e.id LIKE :search OR e.`references` LIKE :search OR e.in_reply_to LIKE :search)";
         }
     
        if (!empty($startDate) && !empty($endDate)) {
