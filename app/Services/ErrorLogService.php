@@ -15,6 +15,10 @@ class ErrorLogService {
         return $this->errorLogModel->logError($errorMessage, $file, $line, $userId, $additionalInfo);
     }
 
+    public function getLogsByUserId($userId) {
+        return $this->errorLogModel->getLogsByUserId($userId);
+    }
+
     // Método para obter todos os logs
     public function getAllLogs() {
         return $this->errorLogModel->getAllLogs();

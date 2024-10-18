@@ -24,6 +24,16 @@ class ErrorLog {
         return $stmt->execute();
     }
 
+    public function getLogsByUserId($userId) {
+        $query = "SELECT * FROM error_logs WHERE user_id = :user_id ORDER BY timestamp DESC";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':user_id', $userId);
+        $stmt->execute();
+    
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+    
+
     public function getAllLogs() {
         $query = "SELECT * FROM error_logs ORDER BY timestamp DESC";
         $stmt = $this->conn->prepare($query);

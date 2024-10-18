@@ -22,4 +22,9 @@ class ErrorLogController {
         $logs = $this->errorLogService->getAllLogs();
         echo json_encode($logs);
     }
+
+    public function getLogsByUserId($userId) {
+        $logs = $this->errorLogService->getLogsByUserId($userId);
+        echo json_encode($logs);
+    }
 }
