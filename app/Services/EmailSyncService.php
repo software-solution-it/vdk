@@ -227,31 +227,32 @@ class EmailSyncService
                     
                     if ($message->hasAttachments()) {
                         $attachments = $message->getAttachments();
-
+                    
                         foreach ($attachments as $attachment) {
                             $filename = $attachment->getFilename();
-
+                    
                             if (is_null($filename) || empty($filename)) {
                                 error_log("Anexo ignorado: o nome do arquivo está nulo.");
                                 continue;
                             }
+                    
                             $mimeTypeName = $attachment->getType();      // Retorna o tipo principal, exemplo: "application"
                             $subtype = $attachment->getSubtype();    // Retorna o subtipo, exemplo: "pdf"
-                            
+                    
                             // Concatenar o tipo e subtipo para formar o MIME type completo
                             $fullMimeType = $mimeTypeName . '/' . $subtype;
-
-                            $filename = $attachment->getFilename();
-                            $mimeType = $fullMimeType;
-                            $size = $attachment->getBytes();
-                            $content = $attachment->getDecodedContent();
-
+                    
+                            // Obter o conteúdo do anexo em bytes
+                            $contentBytes = $attachment->getContent(); // Aqui você deve garantir que está obtendo o conteúdo em bytes
+                            // Codificar o conteúdo em Base64
+                            $contentBase64 = base64_encode($contentBytes);
+                    
                             $this->emailModel->saveAttachment(
                                 $emailId,
                                 $filename,
-                                $mimeType,
-                                $size,
-                                $content
+                                $fullMimeType,
+                                strlen($contentBase64), // Armazena o tamanho da string Base64
+                                $contentBase64 // Salva o conteúdo codificado em Base64
                             );
                         }
                     }
