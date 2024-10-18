@@ -10,9 +10,9 @@ services:
     ports:
       - "4300:4300"  
 
-  rabbitmq:
+  localhost:
     image: rabbitmq:3-management
-    container_name: rabbitmq
+    container_name: localhost
     ports:
       - "5672:5672"  
       - "15672:15672"  

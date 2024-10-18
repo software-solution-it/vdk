@@ -1469,7 +1469,7 @@
             "keywords": [
                 "message",
                 "queue",
-                "rabbitmq"
+                "localhost"
             ],
             "support": {
                 "issues": "https://github.com/php-amqplib/php-amqplib/issues",
