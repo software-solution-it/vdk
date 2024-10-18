@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Email;
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 use App\Models\EmailAccount;
@@ -17,6 +18,7 @@ class EmailService {
     private $emailAccountModel;
     private $userService;
     private $userModel;
+    private $emailModel;
     private $db;
     private $webhookService;
     private $rabbitMQService;
@@ -26,7 +28,8 @@ class EmailService {
         $this->userModel = new User($this->db);
         $this->userService = new UserService($this->userModel);
         $this->emailAccountModel = new EmailAccount($this->db);
-        $this->webhookService = new WebhookService($this->db);
+        $this->emailModel = new Email($this->db);
+        $this->webhookService = new WebhookService();
         $this->rabbitMQService = new RabbitMQService($this->db);
     }
 
@@ -227,6 +230,19 @@ class EmailService {
     
         return $emails; // Retorna a lista de emails com conteúdo codificado em Base64
     }
+
+    public function checkEmailRecords($domain) {
+        $dkim = $this->emailModel->checkDkim($domain);
+        $dmarc = $this->emailModel->checkDmarc($domain);
+        $spf = $this->emailModel->checkSpf($domain);
+
+        return [
+            'dkim' => $dkim ? $dkim : 'DKIM não encontrado',
+            'dmarc' => $dmarc ? $dmarc : 'DMARC não encontrado',
+            'spf' => $spf ? $spf : 'SPF não encontrado',
+        ];
+    }
+
     public function viewEmail($email_id) {
         $query = "SELECT * FROM emails WHERE id = :email_id";
         $stmt = $this->db->prepare($query);

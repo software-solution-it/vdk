@@ -239,6 +239,19 @@ class EmailController {
         ob_end_flush(); 
     }
 
+    public function checkDomain($domain) {
+        if (empty($domain)) {
+            http_response_code(400); // Bad Request
+            echo json_encode(['message' => 'Domain is required']);
+            return;
+        }
+
+        $results = $this->emailService->checkEmailRecords($domain);
+
+        http_response_code(200); 
+        echo json_encode($results);
+    }
+
     public function listEmails($user_id, $folder = '*', $search = '') {
         header('Content-Type: application/json');
         $requiredParams = ['user_id'];

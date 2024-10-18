@@ -80,10 +80,18 @@ switch ($request_uri[0]) {
         $emailController->sendEmail();
         break;
 
-        case '/email/sendMultiple':
-            $emailController = new EmailController();
-            $emailController->sendMultipleEmails();
-            break;
+
+            case '/email/check':
+                    $domain = $_GET['domain'] ?? null; // Obtém o domínio da requisição
+                    $emailController = new EmailController();
+                    $emailController->checkDomain($domain); // Passa o domínio para o método checkDomain
+                
+                break;
+
+    case '/email/sendMultiple':
+        $emailController = new EmailController();
+        $emailController->sendMultipleEmails();
+        break;
 
 
 
@@ -175,8 +183,8 @@ switch ($request_uri[0]) {
     case '/email/sync/consume':
         $emailSync = new EmailSyncController();
         $emailSync->startConsumer();
-        break; 
- 
+        break;
+
     case '/test/smtp':
         $connection = new ConnectionController();
         $connection->testSMTP();

@@ -116,6 +116,30 @@ class Email {
         
         return $stmt->execute();
     }
+
+    public function getDnsRecords($domain) {
+        return dns_get_record($domain, DNS_TXT);
+    }
+
+    public function checkDkim($domain) {
+        $dkimSelector = 'default';
+        $dkimRecord = dns_get_record("{$dkimSelector}._domainkey.{$domain}", DNS_TXT);
+
+        return !empty($dkimRecord) ? $dkimRecord : null;
+    }
+
+    public function checkDmarc($domain) {
+        $dmarcRecord = dns_get_record("_dmarc.{$domain}", DNS_TXT);
+        return !empty($dmarcRecord) ? $dmarcRecord : null;
+    }
+
+    public function checkSpf($domain) {
+        $spfRecords = dns_get_record($domain, DNS_TXT);
+        $spfRecords = array_filter($spfRecords, function($record) {
+            return strpos($record['txt'], 'v=spf1') !== false; // Filtra registros SPF
+        });
+        return !empty($spfRecords) ? $spfRecords : null;
+    }
     
     public function emailExistsByMessageId($email_id) {
         $query = "SELECT COUNT(*) as count FROM emails WHERE email_id = :email_id";
