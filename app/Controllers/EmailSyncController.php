@@ -32,7 +32,7 @@ class EmailSyncController {
         }
 
         // Atualizar para o caminho correto do arquivo
-        $command = "php /app/Worker/email_sync_worker.php $user_id $provider_id > /dev/null 2>&1 &";
+        $command = "php /home/suporte/vdk/app/Worker/email_sync_worker.php $user_id $provider_id > /dev/null 2>&1 &";
 
         // Usar shell_exec ou popen
         shell_exec($command);
