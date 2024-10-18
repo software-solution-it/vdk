@@ -175,12 +175,12 @@ class EmailService {
 
     public function listEmails($user_id, $folder = '*', $search = '', $startDate = '', $endDate = '') {
         if ($folder == '*') {
-            $query = "SELECT e.*, a.filename, a.mime_type, a.size 
+            $query = "SELECT e.*, a.filename, a.mime_type, a.size, a.content 
                       FROM emails e 
                       LEFT JOIN email_attachments a ON e.id = a.email_id 
                       WHERE e.user_id = :user_id";
         } else {
-            $query = "SELECT e.*, a.filename, a.mime_type, a.size 
+            $query = "SELECT e.*, a.filename, a.mime_type, a.size, a.content
                       FROM emails e 
                       LEFT JOIN email_attachments a ON e.id = a.email_id 
                       WHERE e.user_id = :user_id AND e.folder LIKE :folder";
