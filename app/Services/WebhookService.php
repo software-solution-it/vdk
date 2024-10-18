@@ -8,8 +8,7 @@ class WebhookService {
     private $webhookModel;
     private $client;
 
-    public function __construct($db) {
-        $this->webhookModel = new Webhook($db);
+    public function __construct() {
         $this->client = new Client();
     }
 
