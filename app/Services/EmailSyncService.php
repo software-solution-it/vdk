@@ -29,84 +29,75 @@ class EmailSyncService
         $this->webhookService = new WebhookService($db);
     }
 
-    public function startConsumerAndSync($user_id, $provider_id)
-    {
-        $this->startConsumer($user_id, $provider_id);
-
-        $this->syncEmailsByUserIdAndProviderId($user_id, $provider_id);
-    }
     public function startConsumer($user_id, $provider_id)
     {
-        $consumer_id = "email_consumer_{$user_id}_{$provider_id}";
-        $config_directory = '/app/scripts/supervisor_configs/';
-        $log_directory = '/var/log/supervisor/';
-        $directory_permissions = 0755;
+        $this->syncEmailsByUserIdAndProviderId($user_id, $provider_id);
     
-        if (!file_exists($config_directory)) {
-            error_log("Diretório de configuração não existe. Tentando criar: {$config_directory}");
-            if (!mkdir($config_directory, $directory_permissions, true)) {
-                error_log("Falha ao criar o diretório de configuração: {$config_directory}");
-                return;
-            }
-            error_log("Diretório de configuração criado: {$config_directory}");
-        } else {
-            error_log("Diretório de configuração encontrado: {$config_directory}");
+    }
+    
+
+    public function reconnectRabbitMQ() {
+        // Verifica se a conexão está fechada e reconecta
+        if (!$this->db || !$this->db->isConnected()) {
+            $this->rabbitMQService->connect();
         }
+    }
     
-        if (!file_exists($log_directory)) {
-            error_log("Diretório de logs não existe. Tentando criar: {$log_directory}");
-            if (!mkdir($log_directory, $directory_permissions, true)) {
-                error_log("Falha ao criar o diretório de logs: {$log_directory}");
-                return;
-            }
-            error_log("Diretório de logs criado: {$log_directory}");
-        } else {
-            error_log("Diretório de logs encontrado: {$log_directory}");
-        }
+    public function consumeEmailSyncQueue($user_id, $provider_id, $queue_name)
+    {
+        error_log("Iniciando o consumidor RabbitMQ para sincronização de e-mails...");
     
-        $config_file = $config_directory . "{$consumer_id}.conf";
+        $callback = function ($msg) use ($user_id, $provider_id, $queue_name) {
+            error_log("Recebida tarefa de sincronização: " . $msg->body);
+            $task = json_decode($msg->body, true);
     
-        if (file_exists($config_file)) {
-            error_log("Arquivo de configuração já existe: {$config_file}. Pulando criação.");
-        } else {
-            $config_content = "
-                [program:{$consumer_id}]
-                command=/usr/bin/php /home/suporte/vdk/app/Scripts/email_consumer.php {$user_id} {$provider_id}
-                autostart=true
-                autorestart=true
-                stdout_logfile={$log_directory}{$consumer_id}.log
-                stderr_logfile={$log_directory}{$consumer_id}_err.log
-                ";
-    
-            if (file_put_contents($config_file, $config_content) === false) {
-                error_log("Falha ao escrever o arquivo de configuração: {$config_file}");
+            if (!$task) {
+                error_log("Erro ao decodificar a mensagem da fila.");
+                $msg->nack(false, true);
                 return;
             }
     
-            error_log("Arquivo de configuração criado: {$config_file}");
+            try {
+                // Sincroniza os e-mails conforme os dados da fila
+                $this->syncEmails(
+                    $task['user_id'],
+                    $task['provider_id'],
+                    $task['email'],
+                    $task['imap_host'],
+                    $task['imap_port'],
+                    $task['password']
+                );
+    
+                // Confirma a mensagem como processada
+                $msg->ack();
+    
+                error_log("Sincronização concluída para a mensagem na fila.");
+    
+
+                if ($this->rabbitMQService->markJobAsExecuted($queue_name)) {
+                    error_log("Job marcado como executado com sucesso.");
+                } else {
+                    error_log("Erro ao marcar o job como executado.");
+                }
+    
+                // Cria uma nova fila para continuar a sincronização
+                $this->syncEmailsByUserIdAndProviderId($user_id, $provider_id);
+    
+            } catch (Exception $e) {
+                error_log("Erro ao sincronizar e-mails: " . $e->getMessage());
+                $msg->nack(false, true);
+            }
+        };
+    
+        try {
+            error_log("Aguardando nova mensagem na fila: " . $queue_name);
+    
+            // Consome uma única mensagem por vez e processa antes de consumir a próxima
+            $this->rabbitMQService->consumeQueue($queue_name, $callback);
+    
+        } catch (Exception $e) {
+            error_log("Erro ao consumir a fila RabbitMQ: " . $e->getMessage());
         }
-    
-        // Executar os comandos e garantir que shell_exec não retorne null
-        $reread_output = shell_exec('supervisorctl reread 2>&1') ?? '';
-        $update_output = shell_exec('supervisorctl update 2>&1') ?? '';
-    
-        // Verificar o resultado de reread_output e update_output
-        if (strpos($reread_output, 'ERROR') !== false) {
-            error_log("Erro ao executar 'supervisorctl reread': {$reread_output}");
-        } else {
-            error_log("'supervisorctl reread' executado com sucesso.");
-        }
-    
-        if (strpos($update_output, 'ERROR') !== false) {
-            error_log("Erro ao executar 'supervisorctl update': {$update_output}");
-        } else {
-            error_log("'supervisorctl update' executado com sucesso.");
-        }
-    
-        $status = shell_exec("supervisorctl status {$consumer_id} 2>&1") ?? '';
-        error_log("Status do consumidor {$consumer_id}: {$status}");
-    
-        error_log("Novo consumidor {$consumer_id} criado para user_id={$user_id} e provider_id={$provider_id}.");
     }
     
     public function syncEmailsByUserIdAndProviderId($user_id, $provider_id)
@@ -144,57 +135,12 @@ class EmailSyncService
         }
     }
 
-    public function generateQueueName($user_id, $provider_id)
+    private function generateQueueName($user_id, $provider_id)
     {
         return 'email_sync_queue_' . $user_id . '_' . $provider_id . '_' . time();
     }
 
-    public function consumeEmailSyncQueue($user_id, $provider_id, $queue_name)
-    {
-        error_log("Iniciando o consumidor RabbitMQ para sincronização de e-mails...");
-
-        error_log("Consumindo a fila: " . $queue_name);
-
-        $callback = function ($msg) use ($user_id, $provider_id, $queue_name) {
-            error_log("Recebida tarefa de sincronização: " . $msg->body);
-            $task = json_decode($msg->body, true);
-
-            if (!$task) {
-                error_log("Erro ao decodificar a mensagem da fila.");
-                $msg->nack(false, true);
-                return;
-            }
-
-            error_log("Sincronizando e-mails com as seguintes informações: " . json_encode($task));
-
-            try {
-                $this->syncEmails(
-                    $task['user_id'],
-                    $task['provider_id'],
-                    $task['email'],
-                    $task['imap_host'],
-                    $task['imap_port'],
-                    $task['password']
-                );
-
-                $msg->ack();
-
-                $this->rabbitMQService->markJobAsExecuted($queue_name);
-
-                $this->syncEmailsByUserIdAndProviderId($user_id, $provider_id);
-
-            } catch (Exception $e) {
-                error_log("Erro ao sincronizar e-mails: " . $e->getMessage());
-                $msg->nack(false, true);
-            }
-        };
-
-        try {
-            $this->rabbitMQService->consumeQueue($queue_name, $callback);
-        } catch (Exception $e) {
-            error_log("Erro ao consumir a fila RabbitMQ: " . $e->getMessage());
-        }
-    }
+    
 
     private function syncEmails($user_id, $provider_id, $email, $imap_host, $imap_port, $password)
     {
@@ -257,29 +203,11 @@ class EmailSyncService
 
                     $references = implode(', ', $message->getReferences());
 
-                    if ($message->hasAttachments()) {
-                        $attachments = $message->getAttachments();
-
-                        foreach ($attachments as $attachment) {
-                            $filename = $attachment->getFilename();
-                            $mimeType = $attachment->getType();
-                            $size = $attachment->getBytes();
-                            $content = $attachment->getDecodedContent();
-
-                            $this->emailModel->saveAttachment(
-                                $messageId,
-                                $filename,
-                                $mimeType,
-                                $size,
-                                $content
-                            );
-                        }
-                    }
 
                     $ccAddresses = $message->getCc();
                     $cc = $ccAddresses ? implode(', ', array_map(fn(EmailAddress $addr) => $addr->getAddress(), $ccAddresses)) : null;
 
-                    $this->emailModel->saveEmail(
+                    $emailId = $this->emailModel->saveEmail(
                         $user_id,
                         $messageId,
                         $subject,
@@ -294,6 +222,39 @@ class EmailSyncService
                         $cc,
                         $uidCounter
                     );
+
+
+                    
+                    if ($message->hasAttachments()) {
+                        $attachments = $message->getAttachments();
+
+                        foreach ($attachments as $attachment) {
+                            $filename = $attachment->getFilename();
+
+                            if (is_null($filename) || empty($filename)) {
+                                error_log("Anexo ignorado: o nome do arquivo está nulo.");
+                                continue;
+                            }
+                            $mimeTypeName = $attachment->getType();      // Retorna o tipo principal, exemplo: "application"
+                            $subtype = $attachment->getSubtype();    // Retorna o subtipo, exemplo: "pdf"
+                            
+                            // Concatenar o tipo e subtipo para formar o MIME type completo
+                            $fullMimeType = $mimeTypeName . '/' . $subtype;
+
+                            $filename = $attachment->getFilename();
+                            $mimeType = $fullMimeType;
+                            $size = $attachment->getBytes();
+                            $content = $attachment->getDecodedContent();
+
+                            $this->emailModel->saveAttachment(
+                                $emailId,
+                                $filename,
+                                $mimeType,
+                                $size,
+                                $content
+                            );
+                        }
+                    }
 
                     $event = [
                         'type' => 'email_received',

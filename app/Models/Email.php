@@ -56,7 +56,12 @@ class Email {
         $stmt->bindParam(':cc', $cc);
         $stmt->bindParam(':uid', $uid); 
     
-        return $stmt->execute();
+        if ($stmt->execute()) {
+            // Retornar o último ID inserido (email_id)
+            return $this->conn->lastInsertId();
+        } else {
+            return false; // Em caso de erro
+        }
     }
 
     public function saveAttachment($email_id, $filename, $mimeType, $size, $content) {

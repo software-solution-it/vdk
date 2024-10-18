@@ -3,7 +3,7 @@ namespace App\Config;
 use PDO;
 use PDOException;
 use Exception;
-class database {
+class Database {
     private $host = "betnext.cfkm8siwuqq1.sa-east-1.rds.amazonaws.com";
     private $db_name = "mail";
     private $username = "betadmin";

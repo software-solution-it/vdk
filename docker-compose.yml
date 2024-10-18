@@ -6,7 +6,7 @@ services:
     container_name: email_sync_php
     volumes:
       - ./:/app   
-    command: php -S 0.0.0.0:4300 -t app  
+    command: php -S 0.0.0.0:4300
     ports:
       - "4300:4300"  
 
@@ -28,16 +28,3 @@ services:
     working_dir: /app
     command: install --ignore-platform-reqs
 
-  consumer-supervisor:
-    image: ubuntu:latest
-    container_name: consumer_supervisor
-    volumes:
-      - ./:/app
-      - /var/log/supervisor:/var/log/supervisor  # Para armazenar logs
-    working_dir: /app
-    environment:
-      - DEBIAN_FRONTEND=noninteractive
-    command: /bin/bash -c "apt-get update && apt-get install -y supervisor && /app/scripts/run_supervisor.sh"
-    depends_on:
-      - php
-      - rabbitmq

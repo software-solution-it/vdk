@@ -175,8 +175,8 @@ switch ($request_uri[0]) {
     case '/email/sync/consume':
         $emailSync = new EmailSyncController();
         $emailSync->startConsumer();
-        break;
-
+        break; 
+ 
     case '/test/smtp':
         $connection = new ConnectionController();
         $connection->testSMTP();
