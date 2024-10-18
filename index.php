@@ -3,6 +3,7 @@
 require __DIR__ . '/vendor/autoload.php';
 use App\Controllers\AuthController;
 use App\Controllers\UserController;
+use App\Controllers\ErrorLogController;
 use App\Controllers\EmailController;
 use App\Controllers\EmailAccountController;
 use App\Controllers\ProviderController;
@@ -81,12 +82,12 @@ switch ($request_uri[0]) {
         break;
 
 
-            case '/email/check':
-                    $domain = $_GET['domain'] ?? null; // Obtém o domínio da requisição
-                    $emailController = new EmailController();
-                    $emailController->checkDomain($domain); // Passa o domínio para o método checkDomain
-                
-                break;
+    case '/email/check':
+        $domain = $_GET['domain'] ?? null; // Obtém o domínio da requisição
+        $emailController = new EmailController();
+        $emailController->checkDomain($domain); // Passa o domínio para o método checkDomain
+
+        break;
 
     case '/email/sendMultiple':
         $emailController = new EmailController();
@@ -135,16 +136,16 @@ switch ($request_uri[0]) {
         $controller->createEmailAccount();
         break;
 
-        case '/email/account':
-                $userId = $_GET['user_id'] ?? null; // Obtém o user_id da requisição
-                if ($userId) {
-                    $controller = new EmailAccountController();
-                    $controller->getEmailAccountByUserId($userId); // Passa o userId para o método
-                } else {
-                    http_response_code(400); // Bad Request
-                    echo json_encode(['message' => 'User ID is required']);
-                }
-            break;
+    case '/email/account':
+        $userId = $_GET['user_id'] ?? null; // Obtém o user_id da requisição
+        if ($userId) {
+            $controller = new EmailAccountController();
+            $controller->getEmailAccountByUserId($userId); // Passa o userId para o método
+        } else {
+            http_response_code(400); // Bad Request
+            echo json_encode(['message' => 'User ID is required']);
+        }
+        break;
     case '/email/update':
         $controller = new EmailAccountController();
         $id = $_GET['id'] ?? null;
@@ -203,6 +204,26 @@ switch ($request_uri[0]) {
             $controller->deleteProvider($id);
         } else {
             echo json_encode(['status' => false, 'message' => 'ID is required']);
+        }
+        break;
+
+    case '/error/log':
+        $errorLogController = new ErrorLogController();
+        $data = json_decode(file_get_contents('php://input'), true);
+        if (isset($data['error_message'], $data['file'], $data['line'], $data['user_id'])) {
+            $errorLogController->logError($data['error_message'], $data['file'], $data['line'], $data['user_id'], $data['additional_info'] ?? null);
+        } else {
+            echo json_encode(['status' => false, 'message' => 'Missing fields for error logging']);
+        }
+        break;
+
+    case '/error/logs':
+        $errorLogController = new ErrorLogController();
+        $userId = $_GET['user_id'] ?? null;
+        if ($userId) {
+            $errorLogController->getLogsByUserId($userId);
+        } else {
+            $errorLogController->getLogs();
         }
         break;
 
