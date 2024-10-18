@@ -1,7 +1,10 @@
 <?php
+
 namespace App\Models;
+
 use PDO;
-use  App\Helpers;
+use App\Helpers;
+
 class EmailAccount {
     private $conn;
     private $table = "email_accounts";
@@ -12,10 +15,9 @@ class EmailAccount {
         $this->conn = $db;
     }
 
-
-    public function create($user_id, $email, $provider_id, $password, $oauth_token, $refresh_token) {
-        $query = "INSERT INTO " . $this->table . " (user_id, email, provider_id, password, oauth_token, refresh_token) 
-                  VALUES (:user_id, :email, :provider_id, :password, :oauth_token, :refresh_token)";
+    public function create($user_id, $email, $provider_id, $password, $oauth_token, $refresh_token, $client_id, $client_secret) {
+        $query = "INSERT INTO " . $this->table . " (user_id, email, provider_id, password, oauth_token, refresh_token, client_id, client_secret) 
+                  VALUES (:user_id, :email, :provider_id, :password, :oauth_token, :refresh_token, :client_id, :client_secret)";
         
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':user_id', $user_id);
@@ -24,6 +26,8 @@ class EmailAccount {
         $stmt->bindParam(':password', $password);
         $stmt->bindParam(':oauth_token', $oauth_token);
         $stmt->bindParam(':refresh_token', $refresh_token);
+        $stmt->bindParam(':client_id', $client_id); // Adicionando client_id
+        $stmt->bindParam(':client_secret', $client_secret); // Adicionando client_secret
 
         if ($stmt->execute()) {
             return $this->conn->lastInsertId();
@@ -31,6 +35,16 @@ class EmailAccount {
         return false;
     }
 
+    public function updateTokens($id, $oauth_token, $refresh_token) {
+        $query = "UPDATE " . $this->table . " SET oauth_token = :oauth_token, refresh_token = :refresh_token WHERE id = :id";
+        
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':id', $id);
+        $stmt->bindParam(':oauth_token', $oauth_token);
+        $stmt->bindParam(':refresh_token', $refresh_token);
+    
+        return $stmt->execute();
+    }
 
     public function getById($id) {
         $query = "SELECT * FROM " . $this->table . " WHERE id = :id LIMIT 1";
@@ -56,9 +70,10 @@ class EmailAccount {
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    public function update($id, $email, $provider_id, $password, $oauth_token, $refresh_token) {
+    public function update($id, $email, $provider_id, $password, $oauth_token, $refresh_token, $client_id, $client_secret) {
         $query = "UPDATE " . $this->table . " SET email = :email, provider_id = :provider_id, 
-                  password = :password, refresh_token = :refresh_token WHERE id = :id";
+                  password = :password, oauth_token = :oauth_token, refresh_token = :refresh_token, 
+                  client_id = :client_id, client_secret = :client_secret WHERE id = :id";
         
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':id', $id);
@@ -67,17 +82,19 @@ class EmailAccount {
         $stmt->bindParam(':password', $password);
         $stmt->bindParam(':oauth_token', $oauth_token);
         $stmt->bindParam(':refresh_token', $refresh_token);
+        $stmt->bindParam(':client_id', $client_id); // Adicionando client_id
+        $stmt->bindParam(':client_secret', $client_secret); // Adicionando client_secret
 
         return $stmt->execute();
     }
 
     public function getEmailAccountByUserId($userId) {
-        $query = "SELECT * FROM email_accounts WHERE user_id = :user_id"; // Altere para o nome correto da tabela
+        $query = "SELECT * FROM email_accounts WHERE user_id = :user_id";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':user_id', $userId);
         $stmt->execute();
 
-        return $stmt->fetchAll(PDO::FETCH_ASSOC); // Retorna todas as contas de email para o usuário
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function getByUserId($user_id) {
@@ -95,7 +112,9 @@ class EmailAccount {
                         p.encryption, 
                         p.auth_type, 
                         ea.oauth_token, 
-                        ea.refresh_token
+                        ea.refresh_token,
+                        ea.client_id,   // Incluindo client_id
+                        ea.client_secret // Incluindo client_secret
                   FROM " . $this->table . " ea
                   INNER JOIN users u ON u.id = ea.user_id
                   INNER JOIN " . $this->providerTable . " p ON ea.provider_id = p.id
@@ -107,7 +126,6 @@ class EmailAccount {
         
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
-
 
     public function delete($id) {
         $query = "DELETE FROM " . $this->table . " WHERE id = :id";

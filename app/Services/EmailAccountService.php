@@ -24,32 +24,35 @@ class EmailAccountService {
 
 
     public function createEmailAccount($data) {
+        // Adicionando 'client_id' e 'client_secret' aos campos obrigatórios
         $requiredFields = ['user_id', 'email', 'provider_id'];
         $missingFields = $this->validateFields($data, $requiredFields);
-
+    
         if (!empty($missingFields)) {
             return ['status' => false, 'message' => 'Missing fields: ' . implode(', ', $missingFields)];
         }
-
+    
+        // Criptografando a senha
         $encryptedPassword = EncryptionHelper::encrypt($data['password']);
-
-
+    
+        // Criando a conta de email e incluindo client_id e client_secret
         $emailAccountId = $this->emailAccountModel->create(
             $data['user_id'],
             $data['email'],
             $data['provider_id'],
             $encryptedPassword ?? null,
             $data['oauth_token'] ?? null,
-            $data['refresh_token'] ?? null
+            $data['refresh_token'] ?? null,
+            $data['client_id'] ?? null,
+            $data['client_secret'] ?? null
         );
-
+    
         if ($emailAccountId) {
             return ['status' => true, 'message' => 'Email account created successfully', 'email_account_id' => $emailAccountId];
         }
-
+    
         return ['status' => false, 'message' => 'Failed to create email account'];
     }
-
 
     public function updateEmailAccount($id, $data) {
         $requiredFields = ['email', 'provider_id'];
@@ -67,7 +70,9 @@ class EmailAccountService {
             $data['provider_id'],
             $encryptedPassword ?? null,
             $data['oauth_token'] ?? null,
-            $data['refresh_token'] ?? null
+            $data['refresh_token'] ?? null,
+            $data['client_id'] ?? null,
+            $data['client_secret'] ?? null
         );
 
         if ($updated) {

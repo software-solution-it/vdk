@@ -95,23 +95,67 @@ class EmailSyncService
         }
     }
 
+    private function getOAuth2Token($clientId, $clientSecret, $refreshToken) {
+        $url = 'https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token';
+        $data = [
+            'client_id' => $clientId,
+            'client_secret' => $clientSecret,
+            'refresh_token' => $refreshToken,
+            'grant_type' => 'refresh_token',
+            'scope' => 'https://graph.microsoft.com/.default'
+        ];
+    
+        $options = [
+            CURLOPT_URL => $url,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => http_build_query($data),
+            CURLOPT_RETURNTRANSFER => true
+        ];
+    
+        $curl = curl_init();
+        curl_setopt_array($curl, $options);
+        $response = curl_exec($curl);
+        curl_close($curl);
+    
+        return json_decode($response, true);
+    }
+
     public function syncEmailsByUserIdAndProviderId($user_id, $provider_id)
     {
         set_time_limit(0);
-
+    
         $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $provider_id);
-
+    
         if (!$emailAccount) {
             error_log("Conta de e-mail não encontrada para user_id={$user_id} e provider_id={$provider_id}");
-            $this->errorLogController->logError("Conta de e-mail não encontrada para user_id={$user_id} e provider_id={$provider_id}", __FILE__, __LINE__); // Loga o erro
+            $this->errorLogController->logError("Conta de e-mail não encontrada para user_id={$user_id} e provider_id={$provider_id}", __FILE__, __LINE__);
             return;
         }
-
+    
+        // Verifica se client_id e client_secret existem
+        if (!empty($emailAccount['client_id']) && !empty($emailAccount['client_secret'])) {
+            // Tenta obter o token OAuth2 usando client_id e client_secret
+            $oauthData = $this->getOAuth2Token($emailAccount['client_id'], $emailAccount['client_secret'], $emailAccount['refresh_token']);
+            
+            if (isset($oauthData['access_token'])) {
+                // Armazena o novo token e refresh token no banco
+                $this->emailAccountModel->updateTokens($emailAccount['id'], $oauthData['access_token'], $oauthData['refresh_token']);
+                $oauthToken = $oauthData['access_token'];
+            } else {
+                error_log("Erro ao obter o token OAuth2: " . json_encode($oauthData));
+                $this->errorLogController->logError("Erro ao obter o token OAuth2: " . json_encode($oauthData), __FILE__, __LINE__);
+                return;
+            } 
+        } else {
+            // Se não houver client_id ou client_secret, use a senha
+            $oauthToken = EncryptionHelper::decrypt($emailAccount['password']);
+        }
+    
         $queue_name = $this->generateQueueName($user_id, $provider_id);
-
+    
         error_log("Conta de e-mail encontrada: " . $emailAccount['email']);
         error_log("Senha Descriptografada: " . EncryptionHelper::decrypt($emailAccount['password']));
-
+    
         try {
             $message = [
                 'user_id' => $user_id,
@@ -120,15 +164,15 @@ class EmailSyncService
                 'imap_host' => $emailAccount['imap_host'],
                 'imap_port' => $emailAccount['imap_port'],
                 'password' => EncryptionHelper::decrypt($emailAccount['password']),
-                'oauth2_token' => $emailAccount['oauth2_token'] ?? null // Inclui o token OAuth2
+                'oauth2_token' => $oauthToken // Usa o token OAuth2 obtido ou a senha
             ];
-
+    
             $this->rabbitMQService->publishMessage($queue_name, $message, $user_id);
             $this->consumeEmailSyncQueue($user_id, $provider_id, $queue_name);
-
+    
         } catch (Exception $e) {
             error_log("Erro ao adicionar tarefa de sincronização no RabbitMQ: " . $e->getMessage());
-            $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__); // Loga o erro
+            $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
         }
     }
 
