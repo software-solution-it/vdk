@@ -100,7 +100,6 @@ class EmailSyncService
         $data = [
             'client_id' => $clientId,
             'client_secret' => $clientSecret,
-            'refresh_token' => $refreshToken,
             'grant_type' => 'refresh_token',
             'scope' => 'https://graph.microsoft.com/.default'
         ];
