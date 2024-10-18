@@ -7,11 +7,12 @@ use PDO;
 
 class Webhook {
     private $conn;
+    private $db;
 
-    public function __construct($db) {
+    public function __construct() {
         $database = new Database();
         $this->db = $database->getConnection();
-        $this->conn = $db;
+        $this->conn = $this->db;
     }
 
     public function register($data) {
