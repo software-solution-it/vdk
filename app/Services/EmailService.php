@@ -177,12 +177,12 @@ class EmailService {
         if ($folder == '*') {
             $query = "SELECT e.*, a.filename, a.mime_type, a.size 
                       FROM emails e 
-                      LEFT JOIN email_attachments a ON e.id = a.id 
+                      LEFT JOIN email_attachments a ON e.id = a.email_id 
                       WHERE e.user_id = :user_id";
         } else {
             $query = "SELECT e.*, a.filename, a.mime_type, a.size 
                       FROM emails e 
-                      LEFT JOIN email_attachments a ON e.id = a.id 
+                      LEFT JOIN email_attachments a ON e.id = a.email_id 
                       WHERE e.user_id = :user_id AND e.folder LIKE :folder";
         }
     
