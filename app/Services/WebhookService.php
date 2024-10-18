@@ -50,4 +50,8 @@ class WebhookService {
     public function registerWebhook($data) {
         return $this->webhookModel->register($data);
     }
+
+    public function getWebhooksByUserId($user_id) {
+        return $this->webhookModel->getWebhooksByUserId($user_id);
+    }
 }

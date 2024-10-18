@@ -202,14 +202,14 @@ switch ($request_uri[0]) {
         $controller->getAllProviders();
         break;
 
+    case '/webhook/list':
+        $webhook = new WebhookController();
+        $webhook->getList();
+        break;
+
     case '/webhook/register':
         $webhook = new WebhookController();
         $webhook->registerWebhook();
-        break;
-
-    case '/webhook/trigger':
-        $webhook = new WebhookController();
-        $webhook->triggerWebhook();
         break;
 
 }

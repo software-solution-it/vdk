@@ -16,20 +16,21 @@ class WebhookController {
 
     public function registerWebhook() {
         $data = json_decode(file_get_contents("php://input"));
-
-        if (!empty($data->user_id) && !empty($data->url) && !empty($data->secret)) {
+    
+        if (!empty($data->user_id) && !empty($data->url) && !empty($data->secret) && !empty($data->name)) {
             if (strpos($data->url, 'https://') !== 0) {
                 http_response_code(400);
                 echo json_encode(['message' => 'URL must be HTTPS']);
                 return;
             }
-
+    
             $webhookData = [
                 'user_id' => $data->user_id,
                 'url' => $data->url,
-                'secret' => $data->secret
+                'secret' => $data->secret,
+                'name' => $data->name
             ];
-
+    
             if ($this->webhookService->registerWebhook($webhookData)) {
                 http_response_code(201);
                 echo json_encode(['message' => 'Webhook registered successfully']);
@@ -43,22 +44,18 @@ class WebhookController {
         }
     }
 
-    public function triggerWebhook() {
-        $data = json_decode(file_get_contents("php://input"));
+    public function getList() {
+        // Obtém o user_id da requisição
+        $user_id = $_GET['user_id'] ?? null; // Ou use outra abordagem para obter o user_id, conforme necessário
 
-        if (!empty($data->event)) {
-            $event = $data->event;
+        if (!empty($user_id)) {
+            $webhooks = $this->webhookService->getWebhooksByUserId($user_id);
 
-            if ($this->webhookService->triggerWebhook($event)) {
-                http_response_code(200);
-                echo json_encode(['message' => 'Webhook triggered successfully']);
-            } else {
-                http_response_code(503);
-                echo json_encode(['message' => 'Unable to trigger webhook']);
-            }
+            http_response_code(200);
+            echo json_encode($webhooks);
         } else {
             http_response_code(400);
-            echo json_encode(['message' => 'No event data found']);
+            echo json_encode(['message' => 'User ID is required']);
         }
     }
 }

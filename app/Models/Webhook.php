@@ -11,12 +11,13 @@ class Webhook {
     }
 
     public function register($data) {
-        $query = "INSERT INTO webhooks (user_id, url, secret) VALUES (:user_id, :url, :secret)";
+        $query = "INSERT INTO webhooks (user_id, url, secret, name) VALUES (:user_id, :url, :secret, :name)";
         $stmt = $this->conn->prepare($query);
 
         $stmt->bindParam(':user_id', $data['user_id']);
         $stmt->bindParam(':url', $data['url']);
         $stmt->bindParam(':secret', $data['secret']);
+        $stmt->bindParam(':name', $data['name']); // Adiciona o nome do webhook
 
         return $stmt->execute();
     }
@@ -42,3 +43,4 @@ class Webhook {
         return $stmt->execute();
     }
 }
+
