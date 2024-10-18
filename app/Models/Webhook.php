@@ -1,12 +1,16 @@
 <?php
 namespace App\Models;
 
+use App\Config\Database;
+
 use PDO;
 
 class Webhook {
     private $conn;
 
     public function __construct($db) {
+        $database = new Database();
+        $this->db = $database->getConnection();
         $this->conn = $db;
     }
 
