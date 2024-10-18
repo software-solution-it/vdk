@@ -22,7 +22,7 @@ class RabbitMQService {
     private function connect() {
         if (!$this->connection || !$this->channel) {
             try {
-                $this->connection = new AMQPStreamConnection('localhost', 5672, 'guest', 'guest');
+                $this->connection = new AMQPStreamConnection('localhost', 15672, 'guest', 'guest');
                 $this->channel = $this->connection->channel(); 
             } catch (Exception $e) {
                 error_log("Erro ao conectar ao RabbitMQ: " . $e->getMessage());
