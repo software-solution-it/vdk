@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Controllers;
 
 use App\Services\EmailSyncService;
@@ -35,6 +34,14 @@ class EmailSyncController {
             return;
         }
 
+        // Tenta obter o token OAuth2
+        $tokenResponse = $this->emailSyncService->getOAuth2Token($user_id, $provider_id, null);
+        if (!$tokenResponse['status']) {
+            echo json_encode($tokenResponse);
+            return;
+        }
+
+        // Inicia o consumidor para sincronizar e-mails
         $command = "php /home/suporte/vdk/app/Worker/email_sync_worker.php $user_id $provider_id > /dev/null 2>&1 &";
         shell_exec($command);
         echo json_encode(['status' => true, 'message' => 'Sincronização de e-mails iniciada em segundo plano.']);
