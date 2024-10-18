@@ -10,6 +10,7 @@ use App\Models\EmailAccount;
 use App\Helpers\EncryptionHelper;
 use App\Services\RabbitMQService;
 use App\Services\WebhookService;
+use App\Controllers\ErrorLogController; // Importa o ErrorLogController
 use Exception;
 
 class EmailSyncService
@@ -18,6 +19,7 @@ class EmailSyncService
     private $emailAccountModel;
     private $rabbitMQService;
     private $webhookService;
+    private $errorLogController; // Declara o controlador de logs de erro
     private $db;
 
     public function __construct($db)
@@ -27,6 +29,7 @@ class EmailSyncService
         $this->emailAccountModel = new EmailAccount($db);
         $this->rabbitMQService = new RabbitMQService($db);
         $this->webhookService = new WebhookService();
+        $this->errorLogController = new ErrorLogController(); // Inicializa o controlador de logs de erro
     }
 
     public function startConsumer($user_id, $provider_id)
@@ -78,6 +81,7 @@ class EmailSyncService
 
             } catch (Exception $e) {
                 error_log("Erro ao sincronizar e-mails: " . $e->getMessage());
+                $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__); // Loga o erro
                 $msg->nack(false, true);
             }
         };
@@ -87,6 +91,7 @@ class EmailSyncService
             $this->rabbitMQService->consumeQueue($queue_name, $callback);
         } catch (Exception $e) {
             error_log("Erro ao consumir a fila RabbitMQ: " . $e->getMessage());
+            $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__); // Loga o erro
         }
     }
 
@@ -98,6 +103,7 @@ class EmailSyncService
 
         if (!$emailAccount) {
             error_log("Conta de e-mail não encontrada para user_id={$user_id} e provider_id={$provider_id}");
+            $this->errorLogController->logError("Conta de e-mail não encontrada para user_id={$user_id} e provider_id={$provider_id}", __FILE__, __LINE__); // Loga o erro
             return;
         }
 
@@ -122,6 +128,7 @@ class EmailSyncService
 
         } catch (Exception $e) {
             error_log("Erro ao adicionar tarefa de sincronização no RabbitMQ: " . $e->getMessage());
+            $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__); // Loga o erro
         }
     }
 
@@ -276,6 +283,7 @@ class EmailSyncService
             }
         } catch (Exception $e) {
             error_log("Erro durante a sincronização de e-mails: " . $e->getMessage());
+            $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__); // Loga o erro
         }
 
         error_log("Sincronização de e-mails concluída para o usuário $user_id e provedor $provider_id");
