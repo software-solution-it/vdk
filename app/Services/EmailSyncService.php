@@ -123,7 +123,7 @@ class EmailSyncService
     public function syncEmailsByUserIdAndProviderId($user_id, $provider_id)
     {
         set_time_limit(0);
-    
+        try {
         $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $provider_id);
     
         if (!$emailAccount) {
@@ -153,7 +153,7 @@ class EmailSyncService
         error_log("Conta de e-mail encontrada: " . $emailAccount['email']);
         error_log("Senha Descriptografada: " . EncryptionHelper::decrypt($emailAccount['password']));
     
-        try {
+
             $message = [
                 'user_id' => $user_id,
                 'provider_id' => $provider_id,
