@@ -10,7 +10,7 @@ use App\Models\EmailAccount;
 use App\Helpers\EncryptionHelper;
 use App\Services\RabbitMQService;
 use App\Services\WebhookService;
-use App\Controllers\ErrorLogController; // Importa o ErrorLogController
+use App\Controllers\ErrorLogController;
 use Exception;
 
 class EmailSyncService
@@ -19,7 +19,7 @@ class EmailSyncService
     private $emailAccountModel;
     private $rabbitMQService;
     private $webhookService;
-    private $errorLogController; // Declara o controlador de logs de erro
+    private $errorLogController;
     private $db;
 
     public function __construct($db)
@@ -29,7 +29,7 @@ class EmailSyncService
         $this->emailAccountModel = new EmailAccount($db);
         $this->rabbitMQService = new RabbitMQService($db);
         $this->webhookService = new WebhookService();
-        $this->errorLogController = new ErrorLogController(); // Inicializa o controlador de logs de erro
+        $this->errorLogController = new ErrorLogController(); 
     }
 
     public function startConsumer($user_id, $provider_id)
@@ -65,7 +65,7 @@ class EmailSyncService
                     $task['imap_host'],
                     $task['imap_port'],
                     $task['password'],
-                    $task['oauth2_token'] ?? null // Adiciona suporte para OAuth2
+                    $task['oauth2_token'] ?? null 
                 );
 
                 $msg->ack();
@@ -100,6 +100,7 @@ class EmailSyncService
         $data = [
             'client_id' => $clientId,
             'client_secret' => $clientSecret,
+            'refresh_token' => $refreshToken,
             'grant_type' => 'refresh_token',
             'scope' => 'https://graph.microsoft.com/.default'
         ];
@@ -131,13 +132,11 @@ class EmailSyncService
             return;
         }
     
-        // Verifica se client_id e client_secret existem
         if (!empty($emailAccount['client_id']) && !empty($emailAccount['client_secret'])) {
-            // Tenta obter o token OAuth2 usando client_id e client_secret
+
             $oauthData = $this->getOAuth2Token($emailAccount['client_id'], $emailAccount['client_secret'], $emailAccount['refresh_token']);
             
             if (isset($oauthData['access_token'])) {
-                // Armazena o novo token e refresh token no banco
                 $this->emailAccountModel->updateTokens($emailAccount['id'], $oauthData['access_token'], $oauthData['refresh_token']);
                 $oauthToken = $oauthData['access_token'];
             } else {
@@ -146,7 +145,6 @@ class EmailSyncService
                 return;
             } 
         } else {
-            // Se não houver client_id ou client_secret, use a senha
             $oauthToken = EncryptionHelper::decrypt($emailAccount['password']);
         }
     
@@ -163,7 +161,7 @@ class EmailSyncService
                 'imap_host' => $emailAccount['imap_host'],
                 'imap_port' => $emailAccount['imap_port'],
                 'password' => EncryptionHelper::decrypt($emailAccount['password']),
-                'oauth2_token' => $oauthToken // Usa o token OAuth2 obtido ou a senha
+                'oauth2_token' => $oauthToken 
             ];
     
             $this->rabbitMQService->publishMessage($queue_name, $message, $user_id);
@@ -190,9 +188,9 @@ class EmailSyncService
             $server = new Server($imap_host, $imap_port);
 
             if ($oauth2_token) {
-                $connection = $server->authenticate($email, $oauth2_token); // Usa OAuth2 se disponível
+                $connection = $server->authenticate($email, $oauth2_token); 
             } else {
-                $connection = $server->authenticate($email, $password); // Usa a senha se OAuth2 não estiver disponível
+                $connection = $server->authenticate($email, $password);
             }
 
             $mailboxes = $connection->getMailboxes();
