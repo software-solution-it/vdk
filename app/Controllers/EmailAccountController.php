@@ -30,8 +30,8 @@ class EmailAccountController {
         echo json_encode($result);
     }
     
-    public function getEmailAccountById($id) {
-        $result = $this->emailAccountService->getEmailAccountById($id);
+    public function getEmailAccountByUserId($id) { 
+        $result = $this->emailAccountService->getEmailAccountByUserId($id);
         echo json_encode($result);
-    }
+    } 
 }

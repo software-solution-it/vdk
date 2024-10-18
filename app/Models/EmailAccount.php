@@ -71,6 +71,15 @@ class EmailAccount {
         return $stmt->execute();
     }
 
+    public function getEmailAccountByUserId($userId) {
+        $query = "SELECT * FROM email_accounts WHERE user_id = :user_id"; // Altere para o nome correto da tabela
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':user_id', $userId);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC); // Retorna todas as contas de email para o usuário
+    }
+
     public function getByUserId($user_id) {
         $query = "SELECT 
                         u.name,

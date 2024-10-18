@@ -88,11 +88,9 @@ class EmailAccountService {
         return ['status' => false, 'message' => 'Failed to delete email account'];
     }
 
-    public function getEmailAccountById($id) {
-        $account = $this->emailAccountModel->getById($id);
-        if ($account) {
-            return ['status' => true, 'data' => $account];
-        }
-        return ['status' => false, 'message' => 'Email account not found'];
+    public function getEmailAccountByUserId($id) {
+        $result = $this->emailAccountModel->getEmailAccountByUserId($id);
+
+        return $result; 
     }
 }
