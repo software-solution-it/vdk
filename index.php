@@ -136,7 +136,6 @@ switch ($request_uri[0]) {
         break;
 
         case '/email/account':
-            if ($requestMethod === 'GET') {
                 $userId = $_GET['user_id'] ?? null; // Obtém o user_id da requisição
                 if ($userId) {
                     $controller = new EmailAccountController();
@@ -145,10 +144,6 @@ switch ($request_uri[0]) {
                     http_response_code(400); // Bad Request
                     echo json_encode(['message' => 'User ID is required']);
                 }
-            } else {
-                http_response_code(405); // Método não permitido
-                echo json_encode(['message' => 'Method not allowed']);
-            }
             break;
     case '/email/update':
         $controller = new EmailAccountController();
