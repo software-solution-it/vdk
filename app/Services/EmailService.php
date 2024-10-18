@@ -190,7 +190,7 @@ class EmailService {
             $query .= " AND (e.subject LIKE :search OR e.sender LIKE :search OR e.recipient LIKE :search OR e.email_id LIKE :search OR e.`references` LIKE :search OR e.in_reply_to LIKE :search)";
         }
     
-       if (!empty($startDate) && !empty($endDate)) {
+        if (!empty($startDate) && !empty($endDate)) {
             $query .= " AND e.date_received BETWEEN :startDate AND :endDate";
         }
     
@@ -215,10 +215,18 @@ class EmailService {
         }
     
         $stmt->execute();
+        $emails = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        // Para retornar os emails com conteúdo binário
+        foreach ($emails as &$email) {
+            if (!empty($email['content'])) {
+                // Adiciona o conteúdo como Base64
+                $email['content'] = base64_encode($email['content']);
+            }
+        }
+    
+        return $emails; // Retorna a lista de emails com conteúdo codificado em Base64
     }
-
     public function viewEmail($email_id) {
         $query = "SELECT * FROM emails WHERE id = :email_id";
         $stmt = $this->db->prepare($query);
