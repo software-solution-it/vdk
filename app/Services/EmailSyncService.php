@@ -237,16 +237,31 @@ class EmailSyncService
                             }
                     
                             $mimeTypeName = $attachment->getType();      // Retorna o tipo principal, exemplo: "application"
-                            $subtype = $attachment->getSubtype();    // Retorna o subtipo, exemplo: "pdf"
+                            $subtype = $attachment->getSubtype();         // Retorna o subtipo, exemplo: "pdf"
                     
                             // Concatenar o tipo e subtipo para formar o MIME type completo
                             $fullMimeType = $mimeTypeName . '/' . $subtype;
                     
                             // Obter o conteúdo do anexo em bytes
-                            $contentBytes = $attachment->getContent(); // Aqui você deve garantir que está obtendo o conteúdo em bytes
+                            $contentBytes = $attachment->getContent(); // Certifique-se de que isso retorna o conteúdo correto
+                    
+                            // Adicione log para verificar o conteúdo antes da codificação
+                            error_log("Conteúdo do anexo: " . print_r($contentBytes, true)); 
+                    
+                            // Verifica se o conteúdo foi recuperado corretamente
+                            if ($contentBytes === false) {
+                                error_log("Falha ao obter o conteúdo do anexo: $filename");
+                                continue;
+                            }
+                    
                             // Codificar o conteúdo em Base64
                             $contentBase64 = base64_encode($contentBytes);
+                            if ($contentBase64 === false) {
+                                error_log("Falha ao codificar o conteúdo do anexo em Base64: $filename");
+                                continue;
+                            }
                     
+                            // Salva o anexo no banco de dados
                             $this->emailModel->saveAttachment(
                                 $emailId,
                                 $filename,
