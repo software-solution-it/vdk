@@ -174,52 +174,48 @@ class EmailService {
     }
 
     public function listEmails($user_id, $folder = '*', $search = '', $startDate = '', $endDate = '') {
-        // Base query
         if ($folder == '*') {
-            $query = "SELECT * FROM emails WHERE user_id = :user_id";
+            $query = "SELECT e.*, a.filename, a.mime_type, a.size 
+                      FROM emails e 
+                      LEFT JOIN email_attachments a ON e.email_id = a.email_id 
+                      WHERE e.user_id = :user_id";
         } else {
-            $query = "SELECT * FROM emails WHERE user_id = :user_id AND folder LIKE :folder";
+            $query = "SELECT e.*, a.filename, a.mime_type, a.size 
+                      FROM emails e 
+                      LEFT JOIN email_attachments a ON e.email_id = a.email_id 
+                      WHERE e.user_id = :user_id AND e.folder LIKE :folder";
         }
     
-        // Search filter for subject, sender, recipient
         if (!empty($search)) {
-            $query .= " AND (subject LIKE :search OR sender LIKE :search OR recipient LIKE :search OR email_id LIKE :search OR `references` LIKE :search OR in_reply_to LIKE :search)";
+            $query .= " AND (e.subject LIKE :search OR e.sender LIKE :search OR e.recipient LIKE :search OR e.email_id LIKE :search OR e.`references` LIKE :search OR e.in_reply_to LIKE :search)";
         }
     
-        // Date filtering (optional)
-        if (!empty($startDate) && !empty($endDate)) {
-            $query .= " AND date_received BETWEEN :startDate AND :endDate";
+       if (!empty($startDate) && !empty($endDate)) {
+            $query .= " AND e.date_received BETWEEN :startDate AND :endDate";
         }
     
-        // Sorting: First, sort by thread reference and then by date to group responses correctly
-        $query .= " ORDER BY `references`, in_reply_to, date_received DESC";
+        $query .= " ORDER BY e.`references`, e.in_reply_to, e.date_received DESC";
     
-        // Prepare statement
         $stmt = $this->db->prepare($query);
         $stmt->bindParam(':user_id', $user_id);
     
-        // Bind folder if needed
         if ($folder != '*') {
             $folderTerm = "%" . $folder . "%";
             $stmt->bindParam(':folder', $folderTerm);
         }
     
-        // Bind search term if needed
         if (!empty($search)) {
             $searchTerm = "%" . $search . "%";
             $stmt->bindParam(':search', $searchTerm);
         }
     
-        // Bind date range if provided
         if (!empty($startDate) && !empty($endDate)) {
             $stmt->bindParam(':startDate', $startDate);
             $stmt->bindParam(':endDate', $endDate);
         }
     
-        // Execute query
         $stmt->execute();
     
-        // Return results
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
