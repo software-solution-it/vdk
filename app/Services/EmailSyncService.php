@@ -135,7 +135,6 @@ class EmailSyncService
         error_log("Sincronizando e-mails para o usuário $user_id e provedor $provider_id");
 
         $lastSyncDate = $this->emailModel->getLastEmailSyncDate($user_id);
-        $lastSyncDateFormatted = $lastSyncDate ? new \DateTime($lastSyncDate) : null;
 
         try {
             $server = new Server($imap_host, $imap_port);
