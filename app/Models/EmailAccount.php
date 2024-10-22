@@ -57,12 +57,12 @@ class EmailAccount {
 
     public function getEmailAccountByUserIdAndProviderId($user_id, $provider_id) {
         $query = "SELECT ea.id, ea.email, ea.password, 
-                          p.imap_host, p.imap_port, 
-                          p.smtp_host, p.smtp_port, 
-                          p.encryption,
-                          ea.client_id, ea.client_secret, 
-                          ea.oauth_token, ea.refresh_token,
-                          ea.tenant_id
+                         p.imap_host, p.imap_port, 
+                         p.smtp_host, p.smtp_port, 
+                         p.encryption,
+                         ea.client_id, ea.client_secret, 
+                         ea.oauth_token, ea.refresh_token,
+                         ea.tenant_id, ea.auth_code
                   FROM " . $this->table . " ea
                   INNER JOIN " . $this->userTable . " u ON ea.user_id = u.id
                   INNER JOIN " . $this->providerTable . " p ON ea.provider_id = p.id
@@ -75,6 +75,7 @@ class EmailAccount {
         $stmt->execute();
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
+    
 
     public function update($id, $email, $provider_id, $password, $oauth_token, $refresh_token, $client_id, $client_secret) {
         $query = "UPDATE " . $this->table . " SET email = :email, provider_id = :provider_id, 

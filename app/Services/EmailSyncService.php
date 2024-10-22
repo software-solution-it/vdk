@@ -97,6 +97,24 @@ class EmailSyncService
         }
     }
 
+
+    public function getEmailAccountByUserIdAndProviderId($user_id, $provider_id)
+    {
+        try {
+            $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $provider_id);
+
+            if (!$emailAccount) {
+                throw new Exception("Conta de e-mail não encontrada para user_id={$user_id} e provider_id={$provider_id}");
+            }
+
+            return $emailAccount;
+        } catch (Exception $e) {
+            // Aqui você pode logar o erro ou tratar como preferir
+            error_log("Erro ao buscar conta de e-mail: " . $e->getMessage());
+            return null;
+        }
+    }
+
     public function syncEmailsByUserIdAndProviderId($user_id, $provider_id)
 {
     set_time_limit(0);
@@ -108,6 +126,8 @@ class EmailSyncService
         $this->errorLogController->logError("Conta de e-mail não encontrada para user_id={$user_id} e provider_id={$provider_id}", __FILE__, __LINE__, $user_id);
         return;
     }
+
+    
 
     // Verifica se o client_id e client_secret existem no banco de dados
     if (!empty($emailAccount['client_id']) && !empty($emailAccount['client_secret'])) {
