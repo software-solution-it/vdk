@@ -239,8 +239,8 @@ private function requestNewOAuthToken($emailAccount)
         $lastSyncDateFormatted = $lastSyncDate ? new \DateTime($lastSyncDate) : null;
 
         try {
-            $server = new Server($imap_host, $imap_port);
             $this->errorLogController->logError("imap" . $imap_host . 'host' . $imap_port , __FILE__, __LINE__, $user_id);
+            $server = new Server($imap_host, $imap_port);
             if ($oauth2_token) {
                 $connection = $server->authenticate($email, $oauth2_token); // Usa OAuth2 se disponível
             } else {
