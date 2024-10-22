@@ -75,6 +75,8 @@ class EmailAccount {
         $stmt->execute();
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
+
+    
     
 
     public function update($id, $email, $provider_id, $password, $oauth_token, $refresh_token, $client_id, $client_secret) {

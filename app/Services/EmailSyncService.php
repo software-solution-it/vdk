@@ -32,6 +32,8 @@ class EmailSyncService
         $this->errorLogController = new ErrorLogController(); // Inicializa o controlador de logs de erro
     }
 
+    
+
     public function startConsumer($user_id, $provider_id)
     {
         $this->syncEmailsByUserIdAndProviderId($user_id, $provider_id);
@@ -42,6 +44,26 @@ class EmailSyncService
             $this->rabbitMQService->connect();
         }
     }
+
+    public function updateTokens($emailAccountId, $access_token, $refresh_token = null)
+{
+    try {
+        // Atualiza os tokens no modelo EmailAccount
+        $this->emailAccountModel->updateTokens(
+            $emailAccountId,
+            $access_token,
+            $refresh_token
+        );
+
+        // Loga o sucesso da atualização
+        error_log("Access token e refresh token atualizados com sucesso para a conta de e-mail ID: $emailAccountId");
+
+    } catch (Exception $e) {
+        // Caso ocorra um erro, registra o erro e utiliza o ErrorLogController para logá-lo
+        error_log("Erro ao atualizar os tokens: " . $e->getMessage());
+        $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__, $emailAccountId);
+    }
+}
 
     public function consumeEmailSyncQueue($user_id, $provider_id, $queue_name)
     {
