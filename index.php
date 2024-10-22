@@ -95,7 +95,7 @@ switch ($request_uri[0]) {
         $emailController->sendMultipleEmails();
         break;
 
-        case '/imap/test':
+        case '/api/imap/test':
             $imapTest = new ImapTestController(); // Cria uma instância do controlador de teste IMAP
             $imapTest->testImap(); // Chama o método para testar IMAP
             break;
