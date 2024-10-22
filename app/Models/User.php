@@ -137,6 +137,25 @@ class User {
 
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
+
+    public function login($email, $password) {
+        $query = "SELECT * FROM " . $this->table . " WHERE email = :email LIMIT 1";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(":email", $email);
+        $stmt->execute();
+    
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($user) {
+            if (password_verify($password, $user['password'])) {
+                return true;
+            } else {
+                return false;
+            }
+        } else {
+            return false;
+        }
+    }
     
 
     public function updateForgotPasswordCode($email, $forgotPasswordCode, $expirationDateTime) {

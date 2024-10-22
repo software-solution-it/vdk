@@ -19,7 +19,7 @@ class EmailSyncService
     private $emailAccountModel;
     private $rabbitMQService;
     private $webhookService;
-    private $errorLogController; // Adiciona a variável do controlador de logs
+    private $errorLogController; 
     private $db;
 
     public function __construct($db)
@@ -29,7 +29,7 @@ class EmailSyncService
         $this->emailAccountModel = new EmailAccount($db);
         $this->rabbitMQService = new RabbitMQService($db);
         $this->webhookService = new WebhookService();
-        $this->errorLogController = new ErrorLogController(); // Inicializa o controlador de logs de erro
+        $this->errorLogController = new ErrorLogController();
     }
 
     
@@ -48,18 +48,15 @@ class EmailSyncService
     public function updateTokens($emailAccountId, $access_token, $refresh_token = null)
 {
     try {
-        // Atualiza os tokens no modelo EmailAccount
         $this->emailAccountModel->updateTokens(
             $emailAccountId,
             $access_token,
             $refresh_token
         );
 
-        // Loga o sucesso da atualização
         error_log("Access token e refresh token atualizados com sucesso para a conta de e-mail ID: $emailAccountId");
 
     } catch (Exception $e) {
-        // Caso ocorra um erro, registra o erro e utiliza o ErrorLogController para logá-lo
         error_log("Erro ao atualizar os tokens: " . $e->getMessage());
         $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__, $emailAccountId);
         throw $e;
@@ -88,7 +85,7 @@ class EmailSyncService
                     $task['imap_host'],
                     $task['imap_port'],
                     $task['password'],
-                    $task['oauth2_token'] ?? null // Adiciona suporte para OAuth2
+                    $task['oauth2_token'] ?? null 
                 );
 
                 $msg->ack();
@@ -104,7 +101,6 @@ class EmailSyncService
 
             } catch (Exception $e) {
                 error_log("Erro ao sincronizar e-mails: " . $e->getMessage());
-                // Loga o erro usando o controlador de logs
                 $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__, $user_id);
                 $msg->nack(false, true);
                 throw $e;
@@ -116,7 +112,6 @@ class EmailSyncService
             $this->rabbitMQService->consumeQueue($queue_name, $callback);
         } catch (Exception $e) {
             error_log("Erro ao consumir a fila RabbitMQ: " . $e->getMessage());
-            // Loga o erro usando o controlador de logs
             $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
             throw $e;
         }
@@ -134,7 +129,6 @@ class EmailSyncService
 
             return $emailAccount;
         } catch (Exception $e) {
-            // Aqui você pode logar o erro ou tratar como preferir
             error_log("Erro ao buscar conta de e-mail: " . $e->getMessage());
             throw $e;
         }
@@ -173,8 +167,8 @@ class EmailSyncService
             'imap_host' => $emailAccount['imap_host'],
             'imap_port' => $emailAccount['imap_port'],
             'password' => EncryptionHelper::decrypt($emailAccount['password']),
-            'oauth2_token' => $emailAccount['oauth_token'] ?? null, // Inclui o token OAuth2
-            'tenant_id' => $emailAccount['tenant_id'] // Inclui o tenant_id
+            'oauth2_token' => $emailAccount['oauth_token'] ?? null,
+            'tenant_id' => $emailAccount['tenant_id'] 
         ];
 
         $this->rabbitMQService->publishMessage($queue_name, $message, $user_id);
@@ -188,7 +182,6 @@ class EmailSyncService
 }
 private function requestNewOAuthToken($emailAccount, $authCode = null)
 {
-    // URL para solicitar o token
     $token_url = "https://login.microsoftonline.com/{$emailAccount['tenant_id']}/oauth2/v2.0/token";
 
     if ($authCode) {
@@ -197,11 +190,9 @@ private function requestNewOAuthToken($emailAccount, $authCode = null)
             'client_secret' => $emailAccount['client_secret'],
             'grant_type' => 'authorization_code',
             'code' => $authCode,
-            'redirect_uri' => 'YOUR_REDIRECT_URI', // Altere para a URI de redirecionamento correta
             'scope' => 'https://outlook.office365.com/IMAP.AccessAsUser.All offline_access'
         ];
     } else {
-        // Usa o refresh_token para obter um novo token de acesso
         $params = [
             'client_id' => $emailAccount['client_id'],
             'client_secret' => $emailAccount['client_secret'],
@@ -247,7 +238,7 @@ private function requestNewOAuthToken($emailAccount, $authCode = null)
 
     private function refreshOAuthTokenIfNeeded($emailAccount)
     {
-        $token_expiry_threshold = 3600; // em segundos
+        $token_expiry_threshold = 3600; 
 
         if (time() > strtotime($emailAccount['updated_at']) + $token_expiry_threshold) {
             error_log("Token OAuth2 expirado, tentando renovar...");
@@ -257,7 +248,6 @@ private function requestNewOAuthToken($emailAccount, $authCode = null)
 
     private function refreshOAuthToken($emailAccount)
     {
-        // Use o tenant_id na URL
         $token_url = "https://login.microsoftonline.com/{$emailAccount['tenant_id']}/oauth2/v2.0/token";
     
         $params = [
@@ -277,7 +267,6 @@ private function requestNewOAuthToken($emailAccount, $authCode = null)
         $tokenData = json_decode($response, true);
     
         if (isset($tokenData['access_token'])) {
-            // Atualiza os tokens na base de dados
             $this->emailAccountModel->updateTokens(
                 $emailAccount['id'],
                 $tokenData['access_token'],
@@ -286,7 +275,6 @@ private function requestNewOAuthToken($emailAccount, $authCode = null)
             error_log("Token OAuth2 renovado com sucesso.");
         } else {
             error_log("Erro ao renovar o token OAuth2: " . json_encode($tokenData));
-            // Loga o erro usando o controlador de logs
             $this->errorLogController->logError("Erro ao renovar o token OAuth2: " . json_encode($tokenData), __FILE__, __LINE__, $emailAccount['user_id']);
             return;
         }
@@ -443,7 +431,6 @@ private function requestNewOAuthToken($emailAccount, $authCode = null)
             }
         } catch (Exception $e) {
             error_log("Erro durante a sincronização de e-mails: " . $e->getMessage());
-            // Loga o erro usando o controlador de logs
             $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__, $user_id);
             throw $e;
         }

@@ -22,7 +22,7 @@ class Webhook {
         $stmt->bindParam(':user_id', $data['user_id']);
         $stmt->bindParam(':url', $data['url']);
         $stmt->bindParam(':secret', $data['secret']);
-        $stmt->bindParam(':name', $data['name']); // Adiciona o nome do webhook
+        $stmt->bindParam(':name', $data['name']); 
 
         return $stmt->execute();
     }

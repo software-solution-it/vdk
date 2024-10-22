@@ -26,9 +26,8 @@ class EmailAccount {
         $stmt->bindParam(':password', $password);
         $stmt->bindParam(':oauth_token', $oauth_token);
         $stmt->bindParam(':refresh_token', $refresh_token);
-        $stmt->bindParam(':client_id', $client_id); // Adicionando client_id
-        $stmt->bindParam(':client_secret', $client_secret); // Adicionando client_secret
-
+        $stmt->bindParam(':client_id', $client_id); 
+        $stmt->bindParam(':client_secret', $client_secret); 
         if ($stmt->execute()) {
             return $this->conn->lastInsertId();
         }
@@ -92,8 +91,8 @@ class EmailAccount {
         $stmt->bindParam(':password', $password);
         $stmt->bindParam(':oauth_token', $oauth_token);
         $stmt->bindParam(':refresh_token', $refresh_token);
-        $stmt->bindParam(':client_id', $client_id); // Adicionando client_id
-        $stmt->bindParam(':client_secret', $client_secret); // Adicionando client_secret
+        $stmt->bindParam(':client_id', $client_id); 
+        $stmt->bindParam(':client_secret', $client_secret); 
 
         return $stmt->execute();
     }

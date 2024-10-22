@@ -57,10 +57,9 @@ class Email {
         $stmt->bindParam(':uid', $uid); 
     
         if ($stmt->execute()) {
-            // Retornar o último ID inserido (email_id)
             return $this->conn->lastInsertId();
         } else {
-            return false; // Em caso de erro
+            return false; 
         }
     }
 
@@ -136,7 +135,7 @@ class Email {
     public function checkSpf($domain) {
         $spfRecords = dns_get_record($domain, DNS_TXT);
         $spfRecords = array_filter($spfRecords, function($record) {
-            return strpos($record['txt'], 'v=spf1') !== false; // Filtra registros SPF
+            return strpos($record['txt'], 'v=spf1') !== false; 
         });
         return !empty($spfRecords) ? $spfRecords : null;
     }

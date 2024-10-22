@@ -133,7 +133,7 @@ class EmailService {
             }
     
             if ($priority !== null) {
-                $mail->Priority = max(1, min(99, $priority)); // Limita a prioridade entre 1 e 99
+                $mail->Priority = max(1, min(99, $priority)); 
             }
     
             foreach ($attachments as $attachment) {
@@ -220,15 +220,13 @@ class EmailService {
         $stmt->execute();
         $emails = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-        // Para retornar os emails com conteúdo binário
         foreach ($emails as &$email) {
             if (!empty($email['content'])) {
-                // Adiciona o conteúdo como Base64
                 $email['content'] = base64_encode($email['content']);
             }
         }
     
-        return $emails; // Retorna a lista de emails com conteúdo codificado em Base64
+        return $emails;
     }
 
     public function checkEmailRecords($domain) {
@@ -236,7 +234,6 @@ class EmailService {
         $dmarc = $this->emailModel->checkDmarc($domain);
         $spf = $this->emailModel->checkSpf($domain);
     
-        // Transformar em arrays legíveis se os retornos forem complexos
         return [
             'dkim' => is_array($dkim) || is_string($dkim) ? $dkim : [],
             'dmarc' => is_array($dmarc) || is_string($dmarc) ? $dmarc : [],

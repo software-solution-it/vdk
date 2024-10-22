@@ -26,25 +26,29 @@ class AuthService  {
 
 
     public function login($email, $password) {
-     if (empty($email) || empty($password)) {
+        if (empty($email) || empty($password)) {
             return [
                 'success' => false,
                 'message' => 'Email and password are required.'
             ];
         }
     
-
         $user = $this->user->findByEmail($email);
     
-
-        if (!$user || !EncryptionHelper::decrypt($user['password'])) {
+        if (!$user) {
             return [
                 'success' => false,
                 'message' => 'Invalid email or password.'
             ];
         }
     
-
+        if (!password_verify($password, $user['password'])) {
+            return [
+                'success' => false,
+                'message' => 'Invalid email or password.'
+            ];
+        }
+    
         if ($user['role_id'] == 1) {
             $token = $this->jwtHandler->generateToken($user['id'], $user['email'], false);
             return [
@@ -59,19 +63,17 @@ class AuthService  {
         $verificationCode = rand(100000, 999999);
         $expirationTime = time() + (5 * 60);
     
-
         $updateResult = $this->user->updateLoginVerificationCode($user['id'], $verificationCode, $expirationTime);
-    
+        
         if (!$updateResult) {
-            return [
+            return [ 
                 'success' => false,
                 'message' => 'Failed to update verification code. Please try again later.'
             ];
         }
     
-
         $emailResult = $this->emailService->sendVerificationEmail($user['id'], $email, $verificationCode);
-    
+        
         if (!$emailResult['success']) {
             return [
                 'success' => false,
@@ -79,7 +81,6 @@ class AuthService  {
             ];
         }
     
-
         return [
             'success' => true,
             'role_id' => $user['role_id'],
@@ -87,6 +88,7 @@ class AuthService  {
             'verificationCode' => $verificationCode
         ];
     }
+    
     
 
     public function resendVerificationCode($email) {

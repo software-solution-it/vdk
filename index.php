@@ -83,19 +83,14 @@ switch ($request_uri[0]) {
         break;
 
     case '/api/email/check':
-        $domain = $_GET['domain'] ?? null; // Obtém o domínio da requisição
+        $domain = $_GET['domain'] ?? null; 
         $emailController = new EmailController();
-        $emailController->checkDomain($domain); // Passa o domínio para o método checkDomain
+        $emailController->checkDomain($domain); 
         break;
 
     case '/api/email/sendMultiple':
         $emailController = new EmailController();
         $emailController->sendMultipleEmails();
-        break;
-
-    case '/api/imap/test':
-        $imapTest = new ImapTestController(); // Cria uma instância do controlador de teste IMAP
-        $imapTest->testImap(); // Chama o método para testar IMAP
         break;
 
     case '/api/email/list':
@@ -139,12 +134,12 @@ switch ($request_uri[0]) {
         break;
 
     case '/api/email/account':
-        $userId = $_GET['user_id'] ?? null; // Obtém o user_id da requisição
+        $userId = $_GET['user_id'] ?? null; 
         if ($userId) {
             $controller = new EmailAccountController();
-            $controller->getEmailAccountByUserId($userId); // Passa o userId para o método
+            $controller->getEmailAccountByUserId($userId); 
         } else {
-            http_response_code(400); // Bad Request
+            http_response_code(400);
             echo json_encode(['message' => 'User ID is required']);
         }
         break;

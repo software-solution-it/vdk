@@ -24,7 +24,6 @@ class EmailAccountService {
 
 
     public function createEmailAccount($data) {
-        // Adicionando 'client_id' e 'client_secret' aos campos obrigatórios
         $requiredFields = ['user_id', 'email', 'provider_id'];
         $missingFields = $this->validateFields($data, $requiredFields);
     
@@ -32,10 +31,8 @@ class EmailAccountService {
             return ['status' => false, 'message' => 'Missing fields: ' . implode(', ', $missingFields)];
         }
     
-        // Criptografando a senha
         $encryptedPassword = EncryptionHelper::encrypt($data['password']);
     
-        // Criando a conta de email e incluindo client_id e client_secret
         $emailAccountId = $this->emailAccountModel->create(
             $data['user_id'],
             $data['email'],
