@@ -24,7 +24,7 @@ class EmailAccountService {
 
 
     public function createEmailAccount($data) {
-        $requiredFields = ['user_id', 'email', 'provider_id'];
+        $requiredFields = ['user_id', 'email', 'provider_id', 'password'];
         $missingFields = $this->validateFields($data, $requiredFields);
     
         if (!empty($missingFields)) {
@@ -37,7 +37,7 @@ class EmailAccountService {
             $data['user_id'],
             $data['email'],
             $data['provider_id'],
-            $encryptedPassword ?? null,
+            $encryptedPassword,
             $data['oauth_token'] ?? null,
             $data['refresh_token'] ?? null,
             $data['client_id'] ?? null,

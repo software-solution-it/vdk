@@ -38,7 +38,7 @@ class AuthService  {
         if (!$user) {
             return [
                 'success' => false,
-                'message' => 'Invalid email or password.'
+                'message' => 'Invalid email.'
             ];
         }
 

@@ -313,15 +313,7 @@ class EmailService {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    private function getMailbox($emailAccount) {
-        return new Mailbox(
-            '{' . $emailAccount['imap_host'] . ':' . $emailAccount['imap_port'] . '/imap/ssl}',
-            $emailAccount['email'],
-            EncryptionHelper::decrypt($emailAccount['password']),
-            __DIR__,
-            'UTF-8'
-        );
-    }
+
 
     private function updateFolderInDatabase($email_id, $folder) {
         $query = "UPDATE emails SET folder = :folder WHERE `uid` = :email_id";
