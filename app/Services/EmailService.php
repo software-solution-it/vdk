@@ -235,11 +235,12 @@ class EmailService {
         $dkim = $this->emailModel->checkDkim($domain);
         $dmarc = $this->emailModel->checkDmarc($domain);
         $spf = $this->emailModel->checkSpf($domain);
-
+    
+        // Transformar em arrays legíveis se os retornos forem complexos
         return [
-            'dkim' => $dkim ? $dkim : 'DKIM não encontrado',
-            'dmarc' => $dmarc ? $dmarc : 'DMARC não encontrado',
-            'spf' => $spf ? $spf : 'SPF não encontrado',
+            'dkim' => is_array($dkim) || is_string($dkim) ? $dkim : [],
+            'dmarc' => is_array($dmarc) || is_string($dmarc) ? $dmarc : [],
+            'spf' => is_array($spf) || is_string($spf) ? $spf : [],
         ];
     }
 

@@ -10,6 +10,7 @@ class WebhookService {
 
     public function __construct() {
         $this->webhookModel = new Webhook();
+        $this->client = new Client(); // Instancia o Guzzle Client
     }
 
     public function triggerEvent($event, $user_id) {
