@@ -143,18 +143,31 @@ class EmailSyncService
         $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__, $user_id);
     }
 }
-
-private function requestNewOAuthToken($emailAccount)
+private function requestNewOAuthToken($emailAccount, $authCode = null)
 {
-    // Use o tenant_id na URL
+    // URL para solicitar o token
     $token_url = "https://login.microsoftonline.com/{$emailAccount['tenant_id']}/oauth2/v2.0/token";
 
-    $params = [
-        'client_id' => $emailAccount['client_id'],
-        'client_secret' => $emailAccount['client_secret'],
-        'grant_type' => 'client_credentials',
-        'scope' => 'https://outlook.office365.com/.default'
-    ];
+    // Verifica se há um código de autorização ou se vai usar o refresh_token
+    if ($authCode) {
+        $params = [
+            'client_id' => $emailAccount['client_id'],
+            'client_secret' => $emailAccount['client_secret'],
+            'grant_type' => 'authorization_code',
+            'code' => $authCode,
+            'redirect_uri' => 'YOUR_REDIRECT_URI', // Altere para a URI de redirecionamento correta
+            'scope' => 'https://outlook.office365.com/IMAP.AccessAsUser.All offline_access'
+        ];
+    } else {
+        // Usa o refresh_token para obter um novo token de acesso
+        $params = [
+            'client_id' => $emailAccount['client_id'],
+            'client_secret' => $emailAccount['client_secret'],
+            'grant_type' => 'refresh_token',
+            'refresh_token' => $emailAccount['refresh_token'],
+            'scope' => 'https://outlook.office365.com/IMAP.AccessAsUser.All offline_access'
+        ];
+    }
 
     $ch = curl_init($token_url);
     curl_setopt($ch, CURLOPT_POST, true);
@@ -166,6 +179,7 @@ private function requestNewOAuthToken($emailAccount)
     $tokenData = json_decode($response, true);
 
     if (isset($tokenData['access_token'])) {
+        // Atualiza os tokens (access e refresh)
         $this->emailAccountModel->updateTokens(
             $emailAccount['id'],
             $tokenData['access_token'],
@@ -178,6 +192,7 @@ private function requestNewOAuthToken($emailAccount)
         $this->errorLogController->logError("Erro ao solicitar um novo token OAuth2: " . json_encode($tokenData), __FILE__, __LINE__, $emailAccount['user_id']);
     }
 }
+
 
     private function refreshOAuthTokenIfNeeded($emailAccount)
     {
