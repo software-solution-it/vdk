@@ -1,6 +1,8 @@
 <?php
-
+namespace App\Controllers;
+use Exception;
 include __DIR__.'/vendor/autoload.php'; 
+
 
 use Webklex\PHPIMAP\ClientManager;
 
