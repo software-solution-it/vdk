@@ -4,7 +4,7 @@ namespace App\Worker;
 
 // Incluir o autoloader do Composer
 require_once __DIR__ . '/../../vendor/autoload.php'; // Ajuste o caminho conforme necessário
-
+use Exception;
 use App\Services\EmailSyncService;
 use App\Config\Database;
 
@@ -24,5 +24,10 @@ $db = $database->getConnection();
 $emailSyncService = new EmailSyncService($db);
 
 // Iniciar a sincronização
-echo "Iniciando sincronização para user_id=$user_id e provider_id=$provider_id\n";
+echo "Iniciando sincronizacao para user_id=$user_id e provider_id=$provider_id\n";
+try {
 $emailSyncService->startConsumer($user_id, $provider_id);
+} catch (Exception $e) {
+    error_log("Erro ao iniciar a sincronizacao: " . $e->getMessage());
+    exit(1);
+}

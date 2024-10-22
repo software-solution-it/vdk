@@ -31,13 +31,10 @@ class EmailSyncController {
             return;
         }
 
-        // Atualizar para o caminho correto do arquivo
         $command = "php /home/suporte/vdk/app/Worker/email_sync_worker.php $user_id $provider_id > /dev/null 2>&1 &";
 
-        // Usar shell_exec ou popen
         shell_exec($command);
 
-        // Retornar uma resposta imediata
         echo json_encode(['status' => true, 'message' => 'Sincronização de e-mails iniciada em segundo plano.']);
     }
 }
