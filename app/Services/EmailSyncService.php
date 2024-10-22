@@ -191,7 +191,6 @@ private function requestNewOAuthToken($emailAccount, $authCode = null)
     // URL para solicitar o token
     $token_url = "https://login.microsoftonline.com/{$emailAccount['tenant_id']}/oauth2/v2.0/token";
 
-    // Verifica se há um código de autorização ou se vai usar o refresh_token
     if ($authCode) {
         $params = [
             'client_id' => $emailAccount['client_id'],
@@ -212,29 +211,38 @@ private function requestNewOAuthToken($emailAccount, $authCode = null)
         ];
     }
 
-    $ch = curl_init($token_url);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($params));
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    $response = curl_exec($ch);
-    curl_close($ch);
+    try {
+        $ch = curl_init($token_url);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($params));
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        $response = curl_exec($ch);
+        
+        if (curl_errno($ch)) {
+            throw new Exception('Erro na requisição cURL: ' . curl_error($ch));
+        }
 
-    $tokenData = json_decode($response, true);
+        curl_close($ch);
 
-    if (isset($tokenData['access_token'])) {
-        // Atualiza os tokens (access e refresh)
-        $this->emailAccountModel->updateTokens(
-            $emailAccount['id'],
-            $tokenData['access_token'],
-            $tokenData['refresh_token'] ?? $emailAccount['refresh_token']
-        );
-        error_log("Novo token OAuth2 gerado e salvo.");
-    } else {
-        error_log("Erro ao solicitar um novo token OAuth2: " . json_encode($tokenData));
-        // Loga o erro usando o controlador de logs
-        $this->errorLogController->logError("Erro ao solicitar um novo token OAuth2: " . json_encode($tokenData), __FILE__, __LINE__, $emailAccount['user_id']);
+        $tokenData = json_decode($response, true);
+
+        if (isset($tokenData['access_token'])) {
+            $this->emailAccountModel->updateTokens(
+                $emailAccount['id'],
+                $tokenData['access_token'],
+                $tokenData['refresh_token'] ?? $emailAccount['refresh_token']
+            );
+            error_log("Novo token OAuth2 gerado e salvo.");
+        } else {
+            throw new Exception("Erro ao solicitar um novo token OAuth2: " . json_encode($tokenData));
+        }
+    } catch (Exception $e) {
+        error_log("Erro ao solicitar um novo token OAuth2: " . $e->getMessage());
+        $this->errorLogController->logError("Erro ao solicitar um novo token OAuth2: " . $e->getMessage(), __FILE__, __LINE__, $emailAccount['user_id']);
+        throw $e; 
     }
 }
+
 
 
     private function refreshOAuthTokenIfNeeded($emailAccount)
