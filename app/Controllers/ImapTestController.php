@@ -1,15 +1,15 @@
 <?php
 
-namespace App\Controllers;
+include __DIR__.'/vendor/autoload.php'; 
 
-use Exception;
+use Webklex\PHPIMAP\ClientManager;
 
 class ImapTestController
 {
     public function testImap()
     {
         $data = json_decode(file_get_contents('php://input'), true);
-        
+
         if (!isset($data['email']) || !isset($data['oauth2_token'])) {
             http_response_code(400); // Bad Request
             echo json_encode(['status' => false, 'message' => 'Email and OAuth2 token are required']);
@@ -17,38 +17,36 @@ class ImapTestController
         }
 
         $email = $data['email'];
-        $oauth2_token = $data['oauth2_token'];
+        $access_token = $data['oauth2_token'];
+
+        // Instanciar o ClientManager
+        $cm = new ClientManager();
+
+        // Configurar o cliente IMAP usando o token OAuth2
+        $client = $cm->make([
+            'host'          => 'outlook.office365.com',
+            'port'          => 993,
+            'encryption'    => 'ssl',
+            'validate_cert' => false,
+            'username'      => $email,
+            'password'      => $access_token, // Aqui usamos o token OAuth2
+            'protocol'      => 'imap',
+            'authentication'=> 'oauth',       // Configurar para usar OAuth2
+        ]);
 
         try {
-            // Gerar o token XOAUTH2 para autenticação
-            $auth_string = base64_encode("user=$email\1auth=Bearer " . $oauth2_token . "\1\1");
+            // Conectar ao servidor IMAP
+            $client->connect();
+            
+            // Acessar a pasta INBOX e listar as mensagens
+            $folder = $client->getFolder('INBOX');
+            $all_messages = $folder->query()->all()->get();
 
-            // Conectar ao servidor IMAP com o XOAUTH2
-            $imap_stream = imap_open(
-                '{outlook.office365.com:993/imap/ssl/novalidate-cert}INBOX',
-                $email,
-                $auth_string,
-                OP_HALFOPEN,
-                1,
-                [
-                    'DISABLE_AUTHENTICATOR' => ['PLAIN', 'LOGIN'] // Desativa métodos antigos de autenticação
-                ]
-            );
-
-            if (!$imap_stream) {
-                throw new Exception("Erro de autenticação: " . imap_last_error());
-            }
-
-            // Se a conexão for bem-sucedida, retornar as pastas
-            $mailboxes = imap_list($imap_stream, '{outlook.office365.com:993/imap/ssl}', '*');
-            echo json_encode(['status' => 'success', 'mailboxes' => $mailboxes]);
-
-            // Fechar a conexão
-            imap_close($imap_stream);
+            echo json_encode([
+                'status' => 'success',
+                'message_count' => count($all_messages)
+            ]);
         } catch (Exception $e) {
-            // Loga o erro e retorna a mensagem de erro
-            error_log("Erro ao autenticar via IMAP: " . $e->getMessage());
-            http_response_code(500); // Internal Server Error
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
         }
     }
