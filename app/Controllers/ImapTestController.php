@@ -54,9 +54,9 @@ class ImapTestController
         }
 
         // Se o auth_code foi capturado, troca o código pelo access_token
-        if (!empty($_GET['code'])) {
+        if (!empty($_GET['auth_code'])) {
             try {
-                $access_token = $this->exchangeAuthorizationCodeForToken($emailAccount['client_id'], $emailAccount['client_secret'], $emailAccount['tenant_id'], $_GET['code']);
+                $access_token = $this->exchangeAuthorizationCodeForToken($emailAccount['client_id'], $emailAccount['client_secret'], $emailAccount['tenant_id'], $_GET['auth_code']);
                 // Salvar o token em sua base de dados
                 $this->emailAccountService->updateTokens($user_id, $provider_id, $access_token);
                 echo json_encode(['status' => 'success', 'access_token' => $access_token]);
