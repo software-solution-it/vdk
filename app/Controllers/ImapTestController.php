@@ -1,18 +1,24 @@
 <?php
 namespace App\Controllers;
+use App\Services\EmailSyncService;
 use Exception;
 include __DIR__.'/vendor/autoload.php'; 
 
+use App\Services\EmailAccountService; 
 use Webklex\PHPIMAP\ClientManager;
-use App\Services\EmailAccountService; // Importa o serviço de conta de e-mail
+use App\Config\Database;
 
 class ImapTestController
 {
     private $emailAccountService;
 
-    public function __construct($db)
-    {
-        $this->emailAccountService = new EmailAccountService($db); // Inicializa o serviço de conta de e-mail
+    public function __construct()
+    {   
+        
+        $database = new Database();
+        $db = $database->getConnection();
+         
+        $this->emailAccountService = new EmailSyncService($db); // Inicializa o serviço de conta de e-mail
     }
 
     public function testImap()
