@@ -61,7 +61,8 @@ class EmailAccount {
                           p.smtp_host, p.smtp_port, 
                           p.encryption,
                           ea.client_id, ea.client_secret, 
-                          ea.oauth_token, ea.refresh_token
+                          ea.oauth_token, ea.refresh_token,
+                          ea.tenant_id
                   FROM " . $this->table . " ea
                   INNER JOIN " . $this->userTable . " u ON ea.user_id = u.id
                   INNER JOIN " . $this->providerTable . " p ON ea.provider_id = p.id

@@ -98,86 +98,87 @@ class EmailSyncService
     }
 
     public function syncEmailsByUserIdAndProviderId($user_id, $provider_id)
-    {
-        set_time_limit(0);
+{
+    set_time_limit(0);
 
-        $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $provider_id);
+    $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $provider_id);
 
-        if (!$emailAccount) {
-            error_log("Conta de e-mail não encontrada para user_id={$user_id} e provider_id={$provider_id}");
-            // Loga a mensagem de erro
-            $this->errorLogController->logError("Conta de e-mail não encontrada para user_id={$user_id} e provider_id={$provider_id}", __FILE__, __LINE__, $user_id);
-            return;
-        }
+    if (!$emailAccount) {
+        error_log("Conta de e-mail não encontrada para user_id={$user_id} e provider_id={$provider_id}");
+        $this->errorLogController->logError("Conta de e-mail não encontrada para user_id={$user_id} e provider_id={$provider_id}", __FILE__, __LINE__, $user_id);
+        return;
+    }
 
-        if (!empty($emailAccount['client_id']) && !empty($emailAccount['client_secret'])) {
-            if (empty($emailAccount['oauth_token'])) {
-                $this->requestNewOAuthToken($emailAccount);
-            } else {
-                $this->refreshOAuthTokenIfNeeded($emailAccount);
-            }
-        }
-
-        $queue_name = $this->generateQueueName($user_id, $provider_id);
-
-        error_log("Conta de e-mail encontrada: " . $emailAccount['email']);
-        error_log("Senha Descriptografada: " . EncryptionHelper::decrypt($emailAccount['password']));
-
-        try {
-            $message = [
-                'user_id' => $user_id,
-                'provider_id' => $provider_id,
-                'email' => $emailAccount['email'],
-                'imap_host' => $emailAccount['imap_host'],
-                'imap_port' => $emailAccount['imap_port'],
-                'password' => EncryptionHelper::decrypt($emailAccount['password']),
-                'oauth2_token' => $emailAccount['oauth_token'] ?? null // Inclui o token OAuth2
-            ];
-
-            $this->rabbitMQService->publishMessage($queue_name, $message, $user_id);
-            $this->consumeEmailSyncQueue($user_id, $provider_id, $queue_name);
-
-        } catch (Exception $e) {
-            error_log("Erro ao adicionar tarefa de sincronização no RabbitMQ: " . $e->getMessage());
-            // Loga o erro usando o controlador de logs
-            $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__, $user_id);
+    // Verifica se o client_id e client_secret existem no banco de dados
+    if (!empty($emailAccount['client_id']) && !empty($emailAccount['client_secret'])) {
+        if (empty($emailAccount['oauth_token'])) {
+            $this->requestNewOAuthToken($emailAccount);
+        } else {
+            $this->refreshOAuthTokenIfNeeded($emailAccount);
         }
     }
 
-    private function requestNewOAuthToken($emailAccount)
-    {
-        $token_url = "https://login.microsoftonline.com/common/oauth2/v2.0/token";
+    $queue_name = $this->generateQueueName($user_id, $provider_id);
 
-        $params = [
-            'client_id' => $emailAccount['client_id'],
-            'client_secret' => $emailAccount['client_secret'],
-            'grant_type' => 'client_credentials',
-            'scope' => 'https://outlook.office365.com/.default'
+    error_log("Conta de e-mail encontrada: " . $emailAccount['email']);
+    error_log("Senha Descriptografada: " . EncryptionHelper::decrypt($emailAccount['password']));
+
+    try {
+        $message = [
+            'user_id' => $user_id,
+            'provider_id' => $provider_id,
+            'email' => $emailAccount['email'],
+            'imap_host' => $emailAccount['imap_host'],
+            'imap_port' => $emailAccount['imap_port'],
+            'password' => EncryptionHelper::decrypt($emailAccount['password']),
+            'oauth2_token' => $emailAccount['oauth_token'] ?? null, // Inclui o token OAuth2
+            'tenant_id' => $emailAccount['tenant_id'] // Inclui o tenant_id
         ];
 
-        $ch = curl_init($token_url);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($params));
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        $response = curl_exec($ch);
-        curl_close($ch);
+        $this->rabbitMQService->publishMessage($queue_name, $message, $user_id);
+        $this->consumeEmailSyncQueue($user_id, $provider_id, $queue_name);
 
-        $tokenData = json_decode($response, true);
-
-        if (isset($tokenData['access_token'])) {
-            $this->emailAccountModel->updateTokens(
-                $emailAccount['id'],
-                $tokenData['access_token'],
-                $tokenData['refresh_token'] ?? $emailAccount['refresh_token']
-            );
-            error_log("Novo token OAuth2 gerado e salvo.");
-        } else {
-            error_log("Erro ao solicitar um novo token OAuth2: " . json_encode($tokenData));
-            // Loga o erro usando o controlador de logs
-            $this->errorLogController->logError("Erro ao solicitar um novo token OAuth2: " . json_encode($tokenData), __FILE__, __LINE__, $emailAccount['user_id']);
-            throw new Exception("Erro ao solicitar um novo token OAuth2.");
-        }
+    } catch (Exception $e) {
+        error_log("Erro ao adicionar tarefa de sincronização no RabbitMQ: " . $e->getMessage());
+        $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__, $user_id);
     }
+}
+
+private function requestNewOAuthToken($emailAccount)
+{
+    // Use o tenant_id na URL
+    $token_url = "https://login.microsoftonline.com/{$emailAccount['tenant_id']}/oauth2/v2.0/token";
+
+    $params = [
+        'client_id' => $emailAccount['client_id'],
+        'client_secret' => $emailAccount['client_secret'],
+        'grant_type' => 'client_credentials',
+        'scope' => 'https://outlook.office365.com/.default'
+    ];
+
+    $ch = curl_init($token_url);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($params));
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    $response = curl_exec($ch);
+    curl_close($ch);
+
+    $tokenData = json_decode($response, true);
+
+    if (isset($tokenData['access_token'])) {
+        $this->emailAccountModel->updateTokens(
+            $emailAccount['id'],
+            $tokenData['access_token'],
+            $tokenData['refresh_token'] ?? $emailAccount['refresh_token']
+        );
+        error_log("Novo token OAuth2 gerado e salvo.");
+    } else {
+        error_log("Erro ao solicitar um novo token OAuth2: " . json_encode($tokenData));
+        // Loga o erro usando o controlador de logs
+        $this->errorLogController->logError("Erro ao solicitar um novo token OAuth2: " . json_encode($tokenData), __FILE__, __LINE__, $emailAccount['user_id']);
+        throw new Exception("Erro ao solicitar um novo token OAuth2.");
+    }
+}
 
     private function refreshOAuthTokenIfNeeded($emailAccount)
     {
@@ -191,25 +192,27 @@ class EmailSyncService
 
     private function refreshOAuthToken($emailAccount)
     {
-        $token_url = "https://login.microsoftonline.com/common/oauth2/v2.0/token";
-
+        // Use o tenant_id na URL
+        $token_url = "https://login.microsoftonline.com/{$emailAccount['tenant_id']}/oauth2/v2.0/token";
+    
         $params = [
             'client_id' => $emailAccount['client_id'],
             'client_secret' => $emailAccount['client_secret'],
             'refresh_token' => $emailAccount['refresh_token'],
             'grant_type' => 'refresh_token'
         ];
-
+    
         $ch = curl_init($token_url);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($params));
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         $response = curl_exec($ch);
         curl_close($ch);
-
+    
         $tokenData = json_decode($response, true);
-
+    
         if (isset($tokenData['access_token'])) {
+            // Atualiza os tokens na base de dados
             $this->emailAccountModel->updateTokens(
                 $emailAccount['id'],
                 $tokenData['access_token'],
