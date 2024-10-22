@@ -62,6 +62,7 @@ class EmailSyncService
         // Caso ocorra um erro, registra o erro e utiliza o ErrorLogController para logá-lo
         error_log("Erro ao atualizar os tokens: " . $e->getMessage());
         $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__, $emailAccountId);
+        throw $e;
     }
 }
 
@@ -106,6 +107,7 @@ class EmailSyncService
                 // Loga o erro usando o controlador de logs
                 $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__, $user_id);
                 $msg->nack(false, true);
+                throw $e;
             }
         };
 
@@ -116,6 +118,7 @@ class EmailSyncService
             error_log("Erro ao consumir a fila RabbitMQ: " . $e->getMessage());
             // Loga o erro usando o controlador de logs
             $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
+            throw $e;
         }
     }
 
@@ -133,7 +136,7 @@ class EmailSyncService
         } catch (Exception $e) {
             // Aqui você pode logar o erro ou tratar como preferir
             error_log("Erro ao buscar conta de e-mail: " . $e->getMessage());
-            return null;
+            throw $e;
         }
     }
 
@@ -149,9 +152,6 @@ class EmailSyncService
         return;
     }
 
-    
-
-    // Verifica se o client_id e client_secret existem no banco de dados
     if (!empty($emailAccount['client_id']) && !empty($emailAccount['client_secret'])) {
         if (empty($emailAccount['oauth_token'])) {
             $this->requestNewOAuthToken($emailAccount);
@@ -183,6 +183,7 @@ class EmailSyncService
     } catch (Exception $e) {
         error_log("Erro ao adicionar tarefa de sincronização no RabbitMQ: " . $e->getMessage());
         $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__, $user_id);
+        throw $e;
     }
 }
 private function requestNewOAuthToken($emailAccount, $authCode = null)
@@ -436,6 +437,7 @@ private function requestNewOAuthToken($emailAccount, $authCode = null)
             error_log("Erro durante a sincronização de e-mails: " . $e->getMessage());
             // Loga o erro usando o controlador de logs
             $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__, $user_id);
+            throw $e;
         }
 
         error_log("Sincronização de e-mails concluída para o usuário $user_id e provedor $provider_id");
