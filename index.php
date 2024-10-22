@@ -22,86 +22,83 @@ header("Access-Control-Allow-Headers: Authorization, Content-Type, X-Requested-W
 $request_uri = explode('?', $_SERVER['REQUEST_URI'], 2);
 
 switch ($request_uri[0]) {
-    case '/auth/login':
+    case '/api/auth/login':
         $auth = new AuthController();
         $auth->login();
         break;
 
-    case '/auth/verify-code':
+    case '/api/auth/verify-code':
         $auth = new AuthController();
         $auth->verifyLoginCode();
         break;
 
-    case '/auth/forgot-password':
+    case '/api/auth/forgot-password':
         $auth = new AuthController();
         $auth->forgotPassword();
         break;
 
-    case '/auth/reset-password':
+    case '/api/auth/reset-password':
         $auth = new AuthController();
         $auth->resetPassword();
         break;
 
-    case '/auth/register':
+    case '/api/auth/register':
         $auth = new AuthController();
         $auth->preRegister();
         break;
 
-    case '/auth/resend-code':
+    case '/api/auth/resend-code':
         $auth = new AuthController();
         $auth->resendCode();
         break;
 
-    case '/user/list':
+    case '/api/user/list':
         $user = new UserController();
         $user->listUsers();
         break;
 
-    case '/user/get':
+    case '/api/user/get':
         $user = new UserController();
         $user->getUserById();
         break;
 
-    case '/user/update':
+    case '/api/user/update':
         $user = new UserController();
         $user->updateUser();
         break;
 
-    case '/user/delete':
+    case '/api/user/delete':
         $user = new UserController();
         $user->deleteUser();
         break;
 
-    case '/user/check-access':
+    case '/api/user/check-access':
         $user = new UserController();
         $user->checkUserAccess();
         break;
 
-    case '/email/send':
+    case '/api/email/send':
         $emailController = new EmailController();
         $emailController->sendEmail();
         break;
 
-
-    case '/email/check':
+    case '/api/email/check':
         $domain = $_GET['domain'] ?? null; // Obtém o domínio da requisição
         $emailController = new EmailController();
         $emailController->checkDomain($domain); // Passa o domínio para o método checkDomain
-
         break;
 
-    case '/email/sendMultiple':
+    case '/api/email/sendMultiple':
         $emailController = new EmailController();
         $emailController->sendMultipleEmails();
         break;
 
-        case '/api/imap/test':
-            $imapTest = new ImapTestController(); // Cria uma instância do controlador de teste IMAP
-            $imapTest->testImap(); // Chama o método para testar IMAP
-            break;
-    
+    case '/api/imap/test':
+        $imapTest = new ImapTestController(); // Cria uma instância do controlador de teste IMAP
+        $imapTest->testImap(); // Chama o método para testar IMAP
+        break;
 
-    case '/email/list':
+    case '/api/email/list':
         $emailController = new EmailController();
         $user_id = $_GET['user_id'] ?? null;
         $folder = $_GET['folder'] ?? 'INBOX';
@@ -109,13 +106,13 @@ switch ($request_uri[0]) {
         $emailController->listEmails($user_id, $folder, $search);
         break;
 
-    case '/email/view':
+    case '/api/email/view':
         $emailController = new EmailController();
         $email_id = $_GET['email_id'] ?? null;
         $emailController->viewEmail($email_id);
         break;
 
-    case '/email/mark-spam':
+    case '/api/email/mark-spam':
         $emailController = new EmailController();
         $data = json_decode(file_get_contents('php://input'), true);
         if (isset($data['user_id']) && isset($data['provider_id']) && isset($data['email_id'])) {
@@ -126,22 +123,22 @@ switch ($request_uri[0]) {
         }
         break;
 
-    case '/email/delete-spam':
+    case '/api/email/delete-spam':
         $emailController = new EmailController();
         $emailController->deleteSpamEmail($_POST['user_id'], $_POST['email_id']);
         break;
 
-    case '/email/unmark-spam':
+    case '/api/email/unmark-spam':
         $emailController = new EmailController();
         $emailController->unmarkSpam($_POST['user_id'], $_POST['email_id'], $_POST['destinationFolder'] ?? 'INBOX');
         break;
 
-    case '/email/create':
+    case '/api/email/create':
         $controller = new EmailAccountController();
         $controller->createEmailAccount();
         break;
 
-    case '/email/account':
+    case '/api/email/account':
         $userId = $_GET['user_id'] ?? null; // Obtém o user_id da requisição
         if ($userId) {
             $controller = new EmailAccountController();
@@ -151,7 +148,8 @@ switch ($request_uri[0]) {
             echo json_encode(['message' => 'User ID is required']);
         }
         break;
-    case '/email/update':
+
+    case '/api/email/update':
         $controller = new EmailAccountController();
         $id = $_GET['id'] ?? null;
         if ($id) {
@@ -161,7 +159,7 @@ switch ($request_uri[0]) {
         }
         break;
 
-    case '/email/delete':
+    case '/api/email/delete':
         $controller = new EmailAccountController();
         $id = $_GET['id'] ?? null;
         if ($id) {
@@ -171,13 +169,12 @@ switch ($request_uri[0]) {
         }
         break;
 
-
-    case '/provider/create':
+    case '/api/provider/create':
         $controller = new ProviderController();
         $controller->createProvider();
         break;
 
-    case '/provider/update':
+    case '/api/provider/update':
         $controller = new ProviderController();
         $id = $_GET['id'] ?? null;
         if ($id) {
@@ -187,22 +184,22 @@ switch ($request_uri[0]) {
         }
         break;
 
-    case '/email/sync/consume':
+    case '/api/email/sync/consume':
         $emailSync = new EmailSyncController();
         $emailSync->startConsumer();
         break;
 
-    case '/test/smtp':
+    case '/api/test/smtp':
         $connection = new ConnectionController();
         $connection->testSMTP();
         break;
 
-    case '/test/imap':
+    case '/api/test/imap':
         $connection = new ConnectionController();
         $connection->testIMAP();
         break;
 
-    case '/provider/delete':
+    case '/api/provider/delete':
         $controller = new ProviderController();
         $id = $_GET['id'] ?? null;
         if ($id) {
@@ -212,7 +209,7 @@ switch ($request_uri[0]) {
         }
         break;
 
-    case '/error/log':
+    case '/api/error/log':
         $errorLogController = new ErrorLogController();
         $data = json_decode(file_get_contents('php://input'), true);
         if (isset($data['error_message'], $data['file'], $data['line'], $data['user_id'])) {
@@ -222,7 +219,7 @@ switch ($request_uri[0]) {
         }
         break;
 
-    case '/error/logs':
+    case '/api/error/logs':
         $errorLogController = new ErrorLogController();
         $userId = $_GET['user_id'] ?? null;
         if ($userId) {
@@ -232,17 +229,17 @@ switch ($request_uri[0]) {
         }
         break;
 
-    case '/provider/list':
+    case '/api/provider/list':
         $controller = new ProviderController();
         $controller->getAllProviders();
         break;
 
-    case '/webhook/list':
+    case '/api/webhook/list':
         $webhook = new WebhookController();
         $webhook->getList();
         break;
 
-    case '/webhook/register':
+    case '/api/webhook/register':
         $webhook = new WebhookController();
         $webhook->registerWebhook();
         break;
