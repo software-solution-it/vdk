@@ -231,7 +231,7 @@ private function requestNewOAuthToken($emailAccount)
         return 'email_sync_queue_' . $user_id . '_' . $provider_id . '_' . time();
     }
 
-    private function syncEmails($user_id, $provider_id, $email, $imap_host, $imap_port, $password, $oauth2_token = null)
+    private function syncEmails($user_id, $provider_id, $email, $imap_host, $imap_port, $password, $oauth2_token)
     {
         error_log("Sincronizando e-mails para o usuário $user_id e provedor $provider_id");
 
