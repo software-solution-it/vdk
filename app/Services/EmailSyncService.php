@@ -10,7 +10,7 @@ use App\Models\EmailAccount;
 use App\Helpers\EncryptionHelper;
 use App\Services\RabbitMQService;
 use App\Services\WebhookService;
-use App\Controllers\ErrorLogController; // Inclui o controlador de logs de erro
+use App\Controllers\ErrorLogController;
 use Exception;
 
 class EmailSyncService

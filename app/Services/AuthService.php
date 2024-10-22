@@ -41,13 +41,15 @@ class AuthService  {
                 'message' => 'Invalid email or password.'
             ];
         }
-    
-        if (!password_verify($password, EncryptionHelper::decrypt($user['password']))) {
+
+
+        if ($password !== EncryptionHelper::decrypt($user['password'])) {
             return [
                 'success' => false,
                 'message' => 'Invalid email or password.'
             ];
         }
+        
     
         if ($user['role_id'] == 1) {
             $token = $this->jwtHandler->generateToken($user['id'], $user['email'], false);
