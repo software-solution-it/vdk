@@ -240,7 +240,7 @@ private function requestNewOAuthToken($emailAccount)
 
         try {
             $server = new Server($imap_host, $imap_port);
-
+            $this->errorLogController->logError("Oauth2" . $oauth2_token, __FILE__, __LINE__, $user_id);
             if ($oauth2_token) {
                 $connection = $server->authenticate($email, $oauth2_token); // Usa OAuth2 se disponível
             } else {
