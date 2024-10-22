@@ -84,7 +84,7 @@ class ImapTestController
 
     private function getAuthorizationUrl($client_id, $tenant_id)
     {
-        $redirect_uri = urlencode('https://seusite.com/callback');
+        $redirect_uri = urlencode('http://localhost:3000/consent');
         $scope = urlencode('https://graph.microsoft.com/Mail.Read offline_access'); 
 
         return "https://login.microsoftonline.com/$tenant_id/oauth2/v2.0/authorize?client_id=$client_id&response_type=code&redirect_uri=$redirect_uri&scope=$scope";
