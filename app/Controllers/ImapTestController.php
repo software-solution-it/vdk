@@ -23,12 +23,16 @@ class ImapTestController
             // Gerar o token XOAUTH2 para autenticação
             $auth_string = base64_encode("user=$email\1auth=Bearer " . $oauth2_token . "\1\1");
 
-            // Conectar ao servidor IMAP
+            // Conectar ao servidor IMAP com o XOAUTH2
             $imap_stream = imap_open(
-                '{outlook.office365.com:993/imap/ssl}INBOX',
+                '{outlook.office365.com:993/imap/ssl/novalidate-cert}INBOX',
                 $email,
                 $auth_string,
-                OP_HALFOPEN
+                OP_HALFOPEN,
+                1,
+                [
+                    'DISABLE_AUTHENTICATOR' => ['PLAIN', 'LOGIN'] // Desativa métodos antigos de autenticação
+                ]
             );
 
             if (!$imap_stream) {
