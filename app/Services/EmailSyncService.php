@@ -176,7 +176,6 @@ private function requestNewOAuthToken($emailAccount)
         error_log("Erro ao solicitar um novo token OAuth2: " . json_encode($tokenData));
         // Loga o erro usando o controlador de logs
         $this->errorLogController->logError("Erro ao solicitar um novo token OAuth2: " . json_encode($tokenData), __FILE__, __LINE__, $emailAccount['user_id']);
-        throw new Exception("Erro ao solicitar um novo token OAuth2.");
     }
 }
 
@@ -223,7 +222,7 @@ private function requestNewOAuthToken($emailAccount)
             error_log("Erro ao renovar o token OAuth2: " . json_encode($tokenData));
             // Loga o erro usando o controlador de logs
             $this->errorLogController->logError("Erro ao renovar o token OAuth2: " . json_encode($tokenData), __FILE__, __LINE__, $emailAccount['user_id']);
-            throw new Exception("Erro ao renovar o token OAuth2.");
+            return;
         }
     }
 
