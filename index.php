@@ -10,6 +10,7 @@ use App\Controllers\ProviderController;
 use App\Controllers\EmailSyncController;
 use App\Controllers\ConnectionController;
 use App\Controllers\WebhookController;
+use App\Controllers\ImapTestController;
 use App\Helpers\AuthMiddleware;
 
 //AuthMiddleware::verifyBearerToken();
@@ -94,7 +95,11 @@ switch ($request_uri[0]) {
         $emailController->sendMultipleEmails();
         break;
 
-
+        case '/imap/test':
+            $imapTest = new ImapTestController(); // Cria uma instância do controlador de teste IMAP
+            $imapTest->testImap(); // Chama o método para testar IMAP
+            break;
+    
 
     case '/email/list':
         $emailController = new EmailController();
