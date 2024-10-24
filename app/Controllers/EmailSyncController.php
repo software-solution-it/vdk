@@ -81,7 +81,6 @@ class EmailSyncController {
         $emailAccount = $this->emailSyncService->getEmailAccountByUserIdAndProviderId($userId, $providerId);
     
         if ($emailAccount) {
-            // Solicita um novo token OAuth2 usando o código
             try {
                 $this->emailSyncService->requestNewOAuthToken($emailAccount, $code);
                 echo json_encode(['status' => true, 'message' => 'Autorização concluída com sucesso!']);
