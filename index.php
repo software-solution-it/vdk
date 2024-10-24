@@ -189,7 +189,7 @@ switch ($request_uri[0]) {
             $emailSync->getAuthorizationUrl();
             break;
 
-            case '/email/callback':
+            case '/api/email/callback':
                 $emailSync = new EmailSyncController();
                 $emailSync->oauthCallback();
                 break;
