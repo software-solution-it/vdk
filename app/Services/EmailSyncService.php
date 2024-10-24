@@ -135,27 +135,30 @@ class EmailSyncService
     }
 
     public function getAuthorizationUrl($emailAccount)
-{
-    $tenant_id = $emailAccount['tenant_id'] ?? 'common'; // Use 'common' se não tiver um tenant_id específico
-    $authorizeUrl = "https://login.microsoftonline.com/{$tenant_id}/oauth2/v2.0/authorize";
-
-    $params = [
-        'client_id' => $emailAccount['client_id'],
-        'response_type' => 'code',
-        'redirect_uri' => 'https://seu-dominio.com/callback',
-        'response_mode' => 'query',
-        'scope' => 'https://outlook.office365.com/IMAP.AccessAsUser.All offline_access',
-        'state' => base64_encode(json_encode([
-            'user_id' => $emailAccount['user_id'],
-            'provider_id' => $emailAccount['provider_id'],
-        ])),
-    ];
+    {
+        // Defina o tenant_id
+        $tenant_id = $emailAccount['tenant_id'] ?? 'common'; // Use 'common' se não tiver um tenant_id específico
+        // Corrigir a URL de autorização com o tenant_id correto
+        $authorizeUrl = "https://login.microsoftonline.com/{$tenant_id}/oauth2/v2.0/authorize";
     
-    // Exemplo de URL de autorização
-    $authorizeUrl = "https://login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize?" . http_build_query($params);
-
-    return $authorizeUrl;
-}
+        $params = [
+            'client_id' => $emailAccount['client_id'],
+            'response_type' => 'code',
+            'redirect_uri' => 'https://seu-dominio.com/callback', // Sua URL de callback
+            'response_mode' => 'query',
+            'scope' => 'https://outlook.office365.com/IMAP.AccessAsUser.All offline_access',
+            'state' => base64_encode(json_encode([
+                'user_id' => $emailAccount['user_id'],
+                'provider_id' => $emailAccount['provider_id'],
+            ])),
+        ];
+    
+        // Concatenar os parâmetros à URL de autorização
+        $authorizeUrl .= '?' . http_build_query($params);
+    
+        return $authorizeUrl; // Retornar a URL final
+    }
+    
 
 
 public function syncEmailsByUserIdAndProviderId($user_id, $provider_id)
