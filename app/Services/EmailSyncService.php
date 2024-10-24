@@ -228,7 +228,7 @@ public function syncEmailsByUserIdAndProviderId($user_id, $provider_id)
     }
 }
 
-private function requestNewOAuthToken($emailAccount, $authCode = null)
+public function requestNewOAuthToken($emailAccount, $authCode = null)
 {
     $token_url = "https://login.microsoftonline.com/{$emailAccount['tenant_id']}/oauth2/v2.0/token";
 
