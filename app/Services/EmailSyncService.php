@@ -243,14 +243,16 @@ public function requestNewOAuthToken($emailAccount, $authCode = null)
 
         $tokenData = json_decode($response, true);
 
-
+        if (isset($tokenData['access_token'])) {
             $this->emailAccountModel->updateTokens(
                 $emailAccount['id'],
                 $tokenData['access_token'],
                 $tokenData['refresh_token'] ?? $emailAccount['refresh_token']
             );
             error_log("Novo token OAuth2 gerado e salvo.");
-        
+        } else {
+            return;
+        }
     } catch (Exception $e) {
         error_log("Erro ao solicitar um novo token OAuth2: " . $e->getMessage());
         $this->errorLogController->logError("Erro ao solicitar um novo token OAuth2: " . $e->getMessage(), __FILE__, __LINE__, $emailAccount['user_id']);
