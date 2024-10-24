@@ -183,20 +183,6 @@ public function syncEmailsByUserIdAndProviderId($user_id, $provider_id)
         return json_encode(['status' => false, 'message' => 'Conta de e-mail não encontrada.']);
     }
 
-    // Verificar se a autenticação é via OAuth2
-    if (!$emailAccount['is_basic']) {
-        // Se não houver um token OAuth2 válido, iniciar o fluxo de autorização
-        if (empty($emailAccount['oauth_token'])) {
-            $authorizationUrl = $this->getAuthorizationUrl($emailAccount);
-
-            // Retornar a URL de autorização como JSON
-            return json_encode(['status' => true, 'authorization_url' => $authorizationUrl]);
-        } else {
-            // Verificar se o token precisa ser atualizado
-            $this->refreshOAuthTokenIfNeeded($emailAccount);
-        }
-    }
-
     $queue_name = $this->generateQueueName($user_id, $provider_id);
 
     error_log("Conta de e-mail encontrada: " . $emailAccount['email']);
@@ -276,49 +262,7 @@ public function requestNewOAuthToken($emailAccount, $authCode = null)
 
 
 
-    private function refreshOAuthTokenIfNeeded($emailAccount)
-    {
-        $token_expiry_threshold = 3600; 
 
-        if (time() > strtotime($emailAccount['updated_at']) + $token_expiry_threshold) {
-            error_log("Token OAuth2 expirado, tentando renovar...");
-            $this->refreshOAuthToken($emailAccount);
-        }
-    }
-
-    private function refreshOAuthToken($emailAccount)
-    {
-        $token_url = "https://login.microsoftonline.com/{$emailAccount['tenant_id']}/oauth2/v2.0/token";
-    
-        $params = [
-            'client_id' => $emailAccount['client_id'],
-            'client_secret' => $emailAccount['client_secret'],
-            'refresh_token' => $emailAccount['refresh_token'],
-            'grant_type' => 'refresh_token'
-        ];
-    
-        $ch = curl_init($token_url);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($params));
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        $response = curl_exec($ch);
-        curl_close($ch);
-    
-        $tokenData = json_decode($response, true);
-    
-        if (isset($tokenData['access_token'])) {
-            $this->emailAccountModel->updateTokens(
-                $emailAccount['id'],
-                $tokenData['access_token'],
-                $tokenData['refresh_token'] ?? $emailAccount['refresh_token']
-            );
-            error_log("Token OAuth2 renovado com sucesso.");
-        } else {
-            error_log("Erro ao renovar o token OAuth2: " . json_encode($tokenData));
-            $this->errorLogController->logError("Erro ao renovar o token OAuth2: " . json_encode($tokenData), __FILE__, __LINE__, $emailAccount['user_id']);
-            return;
-        }
-    }
 
     private function generateQueueName($user_id, $provider_id)
     {
