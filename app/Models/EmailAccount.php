@@ -56,7 +56,7 @@ class EmailAccount {
 
     public function getEmailAccountByUserIdAndProviderId($user_id, $provider_id) {
         $query = "SELECT ea.id, ea.email, ea.password, 
-                         ea.user_id,
+                         ea.user_id, ea.provider_id
                          p.imap_host, p.imap_port, 
                          p.smtp_host, p.smtp_port, 
                          p.encryption,
