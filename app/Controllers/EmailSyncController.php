@@ -59,6 +59,7 @@ class EmailSyncController {
         $state = $_GET['state'] ?? null;
     
         if (!$code || !$state) {
+            $this->errorLogController->logError('Código de autorização ou estado não fornecido.', __FILE__, __LINE__);
             echo json_encode(['status' => false, 'message' => 'Código de autorização ou estado não fornecido.']);
             return;
         }
@@ -67,6 +68,7 @@ class EmailSyncController {
         $stateData = json_decode(base64_decode($state), true);
         
         if (!isset($stateData['user_id']) || !isset($stateData['provider_id'])) {
+            $this->errorLogController->logError('Estado inválido: ' . $state, __FILE__, __LINE__);
             echo json_encode(['status' => false, 'message' => 'Estado inválido.']);
             return;
         }
