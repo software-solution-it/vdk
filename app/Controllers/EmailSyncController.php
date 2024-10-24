@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Services\EmailSyncService;
 use App\Config\Database;
 use App\Controllers\ErrorLogController; // Importação da classe ErrorLogController
+use Exception;
 
 class EmailSyncController {
     private $emailSyncService;
@@ -56,23 +57,37 @@ class EmailSyncController {
     {
         $code = $_GET['code'] ?? null;
         $state = $_GET['state'] ?? null;
-
-        if ($code && $state) {
-            $stateData = json_decode(base64_decode($state), true);
-            $userId = $stateData['user_id'];
-            $providerId = $stateData['provider_id'];
-
-            $emailAccount = $this->emailSyncService->getEmailAccountByUserIdAndProviderId($userId, $providerId);
-
-            if ($emailAccount) {
+    
+        if (!$code || !$state) {
+            echo json_encode(['status' => false, 'message' => 'Código de autorização ou estado não fornecido.']);
+            return;
+        }
+    
+        // Decodifica o estado para obter user_id e provider_id
+        $stateData = json_decode(base64_decode($state), true);
+        
+        if (!isset($stateData['user_id']) || !isset($stateData['provider_id'])) {
+            echo json_encode(['status' => false, 'message' => 'Estado inválido.']);
+            return;
+        }
+    
+        $userId = $stateData['user_id'];
+        $providerId = $stateData['provider_id'];
+    
+  
+        $emailAccount = $this->emailSyncService->getEmailAccountByUserIdAndProviderId($userId, $providerId);
+    
+        if ($emailAccount) {
+            // Solicita um novo token OAuth2 usando o código
+            try {
                 $this->emailSyncService->requestNewOAuthToken($emailAccount, $code);
-
-                echo "Autorização concluída com sucesso!";
-            } else {
-                echo "Conta de e-mail não encontrada.";
+                echo json_encode(['status' => true, 'message' => 'Autorização concluída com sucesso!']);
+            } catch (Exception $e) {
+                $this->errorLogController->logError("Erro ao solicitar token: " . $e->getMessage(), __FILE__, __LINE__);
+                echo json_encode(['status' => false, 'message' => 'Erro ao completar a autorização: ' . $e->getMessage()]);
             }
         } else {
-            echo "Código de autorização não fornecido.";
+            echo json_encode(['status' => false, 'message' => 'Conta de e-mail não encontrada.']);
         }
     }
 
