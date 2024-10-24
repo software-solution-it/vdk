@@ -134,7 +134,7 @@ class EmailSyncService
         }
     }
 
-    private function getAuthorizationUrl($emailAccount)
+    public function getAuthorizationUrl($emailAccount)
 {
     $tenant_id = $emailAccount['tenant_id'] ?? 'common'; // Use 'common' se não tiver um tenant_id específico
     $authorizeUrl = "https://login.microsoftonline.com/{$tenant_id}/oauth2/v2.0/authorize";
