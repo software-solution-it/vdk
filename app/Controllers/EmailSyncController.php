@@ -75,4 +75,31 @@ class EmailSyncController {
             echo "Código de autorização não fornecido.";
         }
     }
+
+
+    public function getAuthorizationUrl()
+    {
+
+        $data = json_decode(file_get_contents('php://input'), true);
+    
+        if (!isset($data['user_id']) || !isset($data['provider_id'])) {
+            $this->errorLogController->logError('user_id and provider_id are required.', __FILE__, __LINE__);
+            echo json_encode(['status' => false, 'message' => 'user_id and provider_id are required.']);
+            return;
+        }
+
+        $user_id = intval($data['user_id']);
+        $provider_id = intval($data['provider_id']);
+
+        if ($user_id <= 0 || $provider_id <= 0) {
+            $this->errorLogController->logError('Invalid user_id or provider_id.', __FILE__, __LINE__);
+            echo json_encode(['status' => false, 'message' => 'Invalid user_id or provider_id.']);
+            return;
+        }
+
+        $emailAccount = $this->emailSyncService->getEmailAccountByUserIdAndProviderId($user_id, $provider_id);
+
+        return $this->emailSyncService->getAuthorizationUrl($emailAccount);
+      
+    }
 }

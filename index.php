@@ -184,6 +184,11 @@ switch ($request_uri[0]) {
         $emailSync->startConsumer();
         break;
 
+        case '/api/email/authorization':
+            $emailSync = new EmailSyncController();
+            $emailSync->getAuthorizationUrl();
+            break;
+
     case '/api/test/smtp':
         $connection = new ConnectionController();
         $connection->testSMTP();
