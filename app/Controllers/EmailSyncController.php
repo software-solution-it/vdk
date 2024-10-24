@@ -55,8 +55,12 @@ class EmailSyncController {
 
     public function oauthCallback()
     {
-        $code = $_GET['code'] ?? null;
-        $state = $_GET['state'] ?? null;
+        // Obtenha os dados do payload JSON
+        $input = json_decode(file_get_contents('php://input'), true);
+    
+        $code = $input['code'] ?? null;
+        $state = $input['state'] ?? null;
+        $userId = $input['userId'] ?? null; // Captura o userId do payload
     
         if (!$code || !$state) {
             $this->errorLogController->logError('Código de autorização ou estado não fornecido.', __FILE__, __LINE__);
@@ -73,7 +77,6 @@ class EmailSyncController {
             return;
         }
     
-        $userId = $stateData['user_id'];
         $providerId = $stateData['provider_id'];
     
         // Recupera a conta de e-mail associada ao user_id e provider_id
