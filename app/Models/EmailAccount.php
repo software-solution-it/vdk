@@ -55,6 +55,9 @@ class EmailAccount {
     }
 
     public function getEmailAccountByUserIdAndProviderId($user_id, $provider_id) {
+        // Log os valores de entrada
+        error_log("user_id: $user_id, provider_id: $provider_id");
+    
         $query = "SELECT ea.id, ea.email, ea.password, 
                          ea.user_id, ea.provider_id,
                          p.imap_host, p.imap_port, 
@@ -73,8 +76,14 @@ class EmailAccount {
         $stmt->bindParam(':provider_id', $provider_id);
     
         $stmt->execute();
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+        // Log o resultado
+        error_log("Resultado da consulta: " . json_encode($result));
+    
+        return $result;
     }
+    
 
     
     

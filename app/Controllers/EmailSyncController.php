@@ -92,10 +92,12 @@ class EmailSyncController {
                 echo json_encode(['status' => false, 'message' => 'Erro ao completar a autorização: ' . $e->getMessage()]);
             }
         } else {
+            // Registro de erro caso a conta de e-mail não seja encontrada
             $this->errorLogController->logError('Conta de e-mail não encontrada para user_id: ' . $userId . ' e provider_id: ' . $providerId, __FILE__, __LINE__);
             echo json_encode(['status' => false, 'message' => 'Conta de e-mail não encontrada.']);
         }
     }
+    
     
 
 
