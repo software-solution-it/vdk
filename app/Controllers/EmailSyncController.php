@@ -31,6 +31,7 @@ class EmailSyncController {
     
         $user_id = intval($data['user_id']);
         $provider_id = intval($data['provider_id']);
+        
     
         if ($user_id <= 0 || $provider_id <= 0) {
             $this->errorLogController->logError('Invalid user_id or provider_id.', __FILE__, __LINE__);
@@ -38,15 +39,12 @@ class EmailSyncController {
             return;
         }
     
-        // Log para saber que o consumo está prestes a ser iniciado
         $this->errorLogController->logError("Iniciando a sincronização para user_id: $user_id e provider_id: $provider_id", __FILE__, __LINE__);
     
         $command = "php /home/suporte/vdk/app/Worker/email_sync_worker.php $user_id $provider_id 2>&1"; // Captura de erro
     
-        // Executa o comando e captura a saída
         $output = shell_exec($command);
     
-        // Log da saída do comando
         $this->errorLogController->logError("Saída do comando: $output", __FILE__, __LINE__);
     
         // Retorna uma resposta indicando que a sincronização foi iniciada

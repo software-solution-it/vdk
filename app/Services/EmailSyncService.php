@@ -85,7 +85,7 @@ class EmailSyncService
                     $task['imap_host'],
                     $task['imap_port'],
                     $task['password'],
-                    $task['oauth2_token'] ?? null 
+                    $task['oauth2_token'] 
                 );
 
                 $msg->ack();
@@ -272,9 +272,7 @@ public function requestNewOAuthToken($emailAccount, $authCode = null)
     private function syncEmails($user_id, $provider_id, $email, $imap_host, $imap_port, $password, $oauth2_token)
     {
         error_log("Sincronizando e-mails para o usuário $user_id e provedor $provider_id");
-
-        $lastSyncDate = $this->emailModel->getLastEmailSyncDate($user_id);
-
+        $this->errorLogController->logError("Oauth2 Token e email" . $oauth2_token, __FILE__, __LINE__, $user_id);
         try {
             $server = new Server($imap_host, $imap_port);
             if ($oauth2_token) {
