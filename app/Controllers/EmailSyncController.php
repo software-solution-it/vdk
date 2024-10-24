@@ -76,7 +76,7 @@ class EmailSyncController {
         $userId = $stateData['user_id'];
         $providerId = $stateData['provider_id'];
     
-  
+        // Recupera a conta de e-mail associada ao user_id e provider_id
         $emailAccount = $this->emailSyncService->getEmailAccountByUserIdAndProviderId($userId, $providerId);
     
         if ($emailAccount) {
@@ -89,9 +89,11 @@ class EmailSyncController {
                 echo json_encode(['status' => false, 'message' => 'Erro ao completar a autorização: ' . $e->getMessage()]);
             }
         } else {
+            $this->errorLogController->logError('Conta de e-mail não encontrada para user_id: ' . $userId . ' e provider_id: ' . $providerId, __FILE__, __LINE__);
             echo json_encode(['status' => false, 'message' => 'Conta de e-mail não encontrada.']);
         }
     }
+    
 
 
     public function getAuthorizationUrl()
