@@ -134,7 +134,33 @@ class EmailSyncService
         }
     }
 
-    public function syncEmailsByUserIdAndProviderId($user_id, $provider_id)
+    private function getAuthorizationUrl($emailAccount)
+{
+    $tenant_id = $emailAccount['tenant_id'] ?? 'common'; // Use 'common' se não tiver um tenant_id específico
+    $authorizeUrl = "https://login.microsoftonline.com/{$tenant_id}/oauth2/v2.0/authorize";
+
+    $params = [
+        'client_id' => $emailAccount['client_id'],
+        'response_type' => 'code',
+        'redirect_uri' => 'https://seu-dominio.com/callback',
+        'response_mode' => 'query',
+        'scope' => 'https://outlook.office365.com/IMAP.AccessAsUser.All offline_access',
+        'state' => base64_encode(json_encode([
+            'user_id' => $emailAccount['user_id'],
+            'provider_id' => $emailAccount['provider_id'],
+        ])),
+    ];
+    
+    // Exemplo de URL de autorização
+    $authorizeUrl = "https://login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize?" . http_build_query($params);
+    
+    // Redirecionar o usuário para o Outlook
+    header("Location: $authorizeUrl");
+    return $authorizeUrl;
+}
+
+
+public function syncEmailsByUserIdAndProviderId($user_id, $provider_id)
 {
     set_time_limit(0);
 
@@ -143,13 +169,21 @@ class EmailSyncService
     if (!$emailAccount) {
         error_log("Conta de e-mail não encontrada para user_id={$user_id} e provider_id={$provider_id}");
         $this->errorLogController->logError("Conta de e-mail não encontrada para user_id={$user_id} e provider_id={$provider_id}", __FILE__, __LINE__, $user_id);
-        return;
+        
+        // Retornar resposta em JSON
+        return json_encode(['status' => false, 'message' => 'Conta de e-mail não encontrada.']);
     }
 
-    if (!empty($emailAccount['client_id']) && !empty($emailAccount['client_secret'])) {
+    // Verificar se a autenticação é via OAuth2
+    if (!$emailAccount['is_basic']) {
+        // Se não houver um token OAuth2 válido, iniciar o fluxo de autorização
         if (empty($emailAccount['oauth_token'])) {
-            $this->requestNewOAuthToken($emailAccount);
+            $authorizationUrl = $this->getAuthorizationUrl($emailAccount);
+
+            // Retornar a URL de autorização como JSON
+            return json_encode(['status' => true, 'authorization_url' => $authorizationUrl]);
         } else {
+            // Verificar se o token precisa ser atualizado
             $this->refreshOAuthTokenIfNeeded($emailAccount);
         }
     }
@@ -168,39 +202,35 @@ class EmailSyncService
             'imap_port' => $emailAccount['imap_port'],
             'password' => EncryptionHelper::decrypt($emailAccount['password']),
             'oauth2_token' => $emailAccount['oauth_token'] ?? null,
-            'tenant_id' => $emailAccount['tenant_id'] 
+            'tenant_id' => $emailAccount['tenant_id']
         ];
 
         $this->rabbitMQService->publishMessage($queue_name, $message, $user_id);
         $this->consumeEmailSyncQueue($user_id, $provider_id, $queue_name);
 
+        // Retornar sucesso
+        return json_encode(['status' => true, 'message' => 'Sincronização de e-mails iniciada com sucesso.']);
     } catch (Exception $e) {
         error_log("Erro ao adicionar tarefa de sincronização no RabbitMQ: " . $e->getMessage());
         $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__, $user_id);
-        throw $e;
+        
+        // Retornar erro em JSON
+        return json_encode(['status' => false, 'message' => 'Erro ao iniciar a sincronização de e-mails.']);
     }
 }
+
 private function requestNewOAuthToken($emailAccount, $authCode = null)
 {
     $token_url = "https://login.microsoftonline.com/{$emailAccount['tenant_id']}/oauth2/v2.0/token";
 
-    if ($authCode) {
-        $params = [
-            'client_id' => $emailAccount['client_id'],
-            'client_secret' => $emailAccount['client_secret'],
-            'grant_type' => 'authorization_code',
-            'code' => $authCode,
-            'scope' => 'https://outlook.office365.com/IMAP.AccessAsUser.All offline_access'
-        ];
-    } else {
-        $params = [
-            'client_id' => $emailAccount['client_id'],
-            'client_secret' => $emailAccount['client_secret'],
-            'grant_type' => 'refresh_token',
-            'refresh_token' => $emailAccount['refresh_token'],
-            'scope' => 'https://outlook.office365.com/IMAP.AccessAsUser.All offline_access'
-        ];
-    }
+    $params = [
+        'client_id' => $emailAccount['client_id'],
+        'client_secret' => $emailAccount['client_secret'],
+        'redirect_uri' => 'https://seu-dominio.com/callback', // Deve ser a mesma usada na autorização
+        'grant_type' => 'authorization_code',
+        'code' => $authCode,
+        'scope' => 'https://outlook.office365.com/IMAP.AccessAsUser.All offline_access',
+    ];
 
     try {
         $ch = curl_init($token_url);
@@ -208,7 +238,7 @@ private function requestNewOAuthToken($emailAccount, $authCode = null)
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($params));
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         $response = curl_exec($ch);
-        
+
         if (curl_errno($ch)) {
             throw new Exception('Erro na requisição cURL: ' . curl_error($ch));
         }
@@ -230,9 +260,10 @@ private function requestNewOAuthToken($emailAccount, $authCode = null)
     } catch (Exception $e) {
         error_log("Erro ao solicitar um novo token OAuth2: " . $e->getMessage());
         $this->errorLogController->logError("Erro ao solicitar um novo token OAuth2: " . $e->getMessage(), __FILE__, __LINE__, $emailAccount['user_id']);
-        throw $e; 
+        throw $e;
     }
 }
+
 
 
 
@@ -290,7 +321,6 @@ private function requestNewOAuthToken($emailAccount, $authCode = null)
         error_log("Sincronizando e-mails para o usuário $user_id e provedor $provider_id");
 
         $lastSyncDate = $this->emailModel->getLastEmailSyncDate($user_id);
-        $lastSyncDateFormatted = $lastSyncDate ? new \DateTime($lastSyncDate) : null;
 
         try {
             $server = new Server($imap_host, $imap_port);

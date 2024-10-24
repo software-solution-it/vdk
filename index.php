@@ -13,7 +13,7 @@ use App\Controllers\WebhookController;
 use App\Controllers\ImapTestController;
 use App\Helpers\AuthMiddleware;
 
-//AuthMiddleware::verifyBearerToken();
+AuthMiddleware::verifyBearerToken();
 
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");

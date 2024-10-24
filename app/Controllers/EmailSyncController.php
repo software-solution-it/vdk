@@ -37,4 +37,29 @@ class EmailSyncController {
 
         echo json_encode(['status' => true, 'message' => 'Sincronização de e-mails iniciada em segundo plano.']);
     }
+
+
+    public function oauthCallback()
+{
+    $code = $_GET['code'] ?? null;
+    $state = $_GET['state'] ?? null;
+
+    if ($code && $state) {
+        $stateData = json_decode(base64_decode($state), true);
+        $userId = $stateData['user_id'];
+        $providerId = $stateData['provider_id'];
+
+        $emailAccount = $this->emailSyncService->getEmailAccountByUserIdAndProviderId($userId, $providerId);
+
+        if ($emailAccount) {
+            $this->emailSyncService->requestNewOAuthToken($emailAccount, $code);
+
+            echo "Autorização concluída com sucesso!";
+        } else {
+            echo "Conta de e-mail não encontrada.";
+        }
+    } else {
+        echo "Código de autorização não fornecido.";
+    }
+}
 }
