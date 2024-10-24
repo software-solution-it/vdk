@@ -153,9 +153,7 @@ class EmailSyncService
     
     // Exemplo de URL de autorização
     $authorizeUrl = "https://login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize?" . http_build_query($params);
-    
-    // Redirecionar o usuário para o Outlook
-    header("Location: $authorizeUrl");
+
     return $authorizeUrl;
 }
 
