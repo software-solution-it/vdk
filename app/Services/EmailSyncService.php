@@ -12,6 +12,7 @@ use App\Services\RabbitMQService;
 use App\Services\WebhookService;
 use App\Controllers\ErrorLogController;
 use Exception;
+use Ddeboer\Imap\Authentication\OAuth2Authenticator;
 
 class EmailSyncService
 {
@@ -275,6 +276,7 @@ public function requestNewOAuthToken($emailAccount, $authCode = null)
         $this->errorLogController->logError("Oauth2 Token e email " . $oauth2_token . " Email: " . $email, __FILE__, __LINE__, $user_id);
         try {
             $server = new Server($imap_host, $imap_port);
+            $this->errorLogController->logError("Imap host " . $imap_host . " Imap Pass: " . $imap_port, __FILE__, __LINE__, $user_id);
             if ($oauth2_token) {
                 $connection = $server->authenticate($email, $oauth2_token); 
             } else {
