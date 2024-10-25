@@ -150,7 +150,7 @@ class EmailSyncService
         $params = [
             'client_id' => $emailAccount['client_id'],
             'response_type' => 'code',
-            'redirect_uri' => 'http://localhost:3000/callback', 
+            'redirect_uri' => 'http://149.18.103.156/callback', 
             'response_mode' => 'query',
             'scope' => 'https://outlook.office365.com/IMAP.AccessAsUser.All offline_access',
             'prompt' => 'consent', 
@@ -228,7 +228,7 @@ public function requestNewOAuthToken($emailAccount, $authCode = null)
     if ($authCode) {
         $params['grant_type'] = 'authorization_code';
         $params['code'] = $authCode;
-        $params['redirect_uri'] = 'http://localhost:3000/callback'; 
+        $params['redirect_uri'] = 'http://149.18.103.156/callback'; 
     } else {
         $params['grant_type'] = 'refresh_token';
         $params['refresh_token'] = $emailAccount['refresh_token'];

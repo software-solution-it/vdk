@@ -98,7 +98,7 @@ class ImapTestController
 
     private function getAuthorizationUrl($client_id, $tenant_id)
     {
-        $redirect_uri = urlencode('http://localhost:3000/consent'); // Modifique conforme necessário
+        $redirect_uri = urlencode('http://149.18.103.156/consent'); // Modifique conforme necessário
         $scope = urlencode('https://graph.microsoft.com/Mail.Read offline_access'); 
 
         return "https://login.microsoftonline.com/$tenant_id/oauth2/v2.0/authorize?client_id=$client_id&response_type=code&redirect_uri=$redirect_uri&scope=$scope";
@@ -107,7 +107,7 @@ class ImapTestController
     private function exchangeAuthorizationCodeForToken($client_id, $client_secret, $tenant_id, $auth_code)
     {
         $url = "https://login.microsoftonline.com/$tenant_id/oauth2/v2.0/token";
-        $redirect_uri = 'http://localhost:3000/consent'; // Modifique conforme necessário
+        $redirect_uri = 'http://149.18.103.156/consent'; // Modifique conforme necessário
 
         $post_fields = [
             'client_id' => $client_id,
