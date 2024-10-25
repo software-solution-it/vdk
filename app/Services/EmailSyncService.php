@@ -12,8 +12,6 @@ use App\Services\RabbitMQService;
 use App\Services\WebhookService;
 use App\Controllers\ErrorLogController;
 use Exception;
-use Ddeboer\Imap\Authentication\OAuth2Authenticator;
-
 class EmailSyncService
 {
     private $emailModel;
@@ -152,10 +150,10 @@ class EmailSyncService
         $params = [
             'client_id' => $emailAccount['client_id'],
             'response_type' => 'code',
-            'redirect_uri' => 'http://localhost:3000/callback', // substitua com a URL de callback registrada
+            'redirect_uri' => 'http://localhost:3000/callback', 
             'response_mode' => 'query',
             'scope' => 'https://outlook.office365.com/IMAP.AccessAsUser.All offline_access',
-            'prompt' => 'consent', // Força o consentimento do usuário
+            'prompt' => 'consent', 
             'state' => base64_encode(json_encode([
                 'user_id' => $emailAccount['user_id'],
                 'provider_id' => $emailAccount['provider_id'],
@@ -211,35 +209,31 @@ public function syncEmailsByUserIdAndProviderId($user_id, $provider_id)
 }
 public function requestNewOAuthToken($emailAccount, $authCode = null)
 {
-    // Verifica se já está gerando um token
+
     if ($this->isGeneratingToken) {
         $this->errorLogController->logError("Tentativa de gerar token bloqueada: processo já em andamento.", __FILE__, __LINE__, $emailAccount['user_id']);
-        return; // Evita uma segunda tentativa de geração
+        return; 
     }
 
-    // Define que o processo de geração começou
     $this->isGeneratingToken = true;
 
     $token_url = "https://login.microsoftonline.com/{$emailAccount['tenant_id']}/oauth2/v2.0/token";
 
-    // Definindo parâmetros comuns para ambos os fluxos (autorização e renovação)
     $params = [
         'client_id' => $emailAccount['client_id'],
         'client_secret' => $emailAccount['client_secret'],
         'scope' => 'https://outlook.office365.com/IMAP.AccessAsUser.All offline_access',
     ];
 
-    // Configurando o tipo de solicitação e o parâmetro apropriado
     if ($authCode) {
         $params['grant_type'] = 'authorization_code';
         $params['code'] = $authCode;
-        $params['redirect_uri'] = 'http://localhost:3000/callback'; // Apenas para o fluxo de autorização
+        $params['redirect_uri'] = 'http://localhost:3000/callback'; 
     } else {
         $params['grant_type'] = 'refresh_token';
         $params['refresh_token'] = $emailAccount['refresh_token'];
     }
 
-    // Logs de debug
     $this->errorLogController->logError("Solicitando novo token com client_id: {$params['client_id']}", __FILE__, __LINE__, $emailAccount['user_id']);
     $this->errorLogController->logError("Usando grant_type: {$params['grant_type']}", __FILE__, __LINE__, $emailAccount['user_id']);
 
@@ -274,7 +268,6 @@ public function requestNewOAuthToken($emailAccount, $authCode = null)
         $this->errorLogController->logError("Erro ao solicitar um novo token OAuth2: " . $e->getMessage(), __FILE__, __LINE__, $emailAccount['user_id']);
         throw $e;
     } finally {
-        // Libera o flag para permitir futuras requisições
         $this->isGeneratingToken = false;
     }
 }

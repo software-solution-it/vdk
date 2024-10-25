@@ -78,7 +78,6 @@ class EmailAccount {
         $stmt->execute();
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
     
-        // Log o resultado
         error_log("Resultado da consulta: " . json_encode($result));
     
         return $result;
