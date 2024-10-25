@@ -137,16 +137,13 @@ class EmailSyncService
 
     public function getAuthorizationUrl($emailAccount)
     {
-        // Defina o tenant_id
-        $tenant_id = $emailAccount['tenant_id'] ?? 'common'; // Use 'common' se não tiver um tenant_id específico
+       $tenant_id = $emailAccount['tenant_id'] ?? 'common'; 
         $authorizeUrl = "https://login.microsoftonline.com/{$tenant_id}/oauth2/v2.0/authorize";
     
-        // Verificar se provider_id está presente
         if (empty($emailAccount['provider_id'])) {
             $this->errorLogController->logError('Provider ID está vazio.', __FILE__, __LINE__);
         }
     
-        // Verifique se client_id está presente
         if (empty($emailAccount['client_id'])) {
             $this->errorLogController->logError('Client ID está vazio.', __FILE__, __LINE__);
         }
@@ -154,7 +151,7 @@ class EmailSyncService
         $params = [
             'client_id' => $emailAccount['client_id'],
             'response_type' => 'code',
-            'redirect_uri' => 'http://localhost:3000/callback', // A URL de callback
+            'redirect_uri' => 'http://149.18.103.156/callback', 
             'response_mode' => 'query',
             'scope' => 'https://outlook.office365.com/IMAP.AccessAsUser.All offline_access',
             'state' => base64_encode(json_encode([
@@ -163,10 +160,9 @@ class EmailSyncService
             ])),
         ];
     
-        // Adiciona os parâmetros à URL de autorização
         $authorizeUrl .= '?' . http_build_query($params);
     
-        return $authorizeUrl; // Retorna a URL de autorização final
+        return $authorizeUrl; 
     }
     
 
@@ -180,7 +176,6 @@ public function syncEmailsByUserIdAndProviderId($user_id, $provider_id)
         error_log("Conta de e-mail não encontrada para user_id={$user_id} e provider_id={$provider_id}");
         $this->errorLogController->logError("Conta de e-mail não encontrada para user_id={$user_id} e provider_id={$provider_id}", __FILE__, __LINE__, $user_id);
         
-        // Retornar resposta em JSON
         return json_encode(['status' => false, 'message' => 'Conta de e-mail não encontrada.']);
     }
 
@@ -204,13 +199,11 @@ public function syncEmailsByUserIdAndProviderId($user_id, $provider_id)
         $this->rabbitMQService->publishMessage($queue_name, $message, $user_id);
         $this->consumeEmailSyncQueue($user_id, $provider_id, $queue_name);
 
-        // Retornar sucesso
         return json_encode(['status' => true, 'message' => 'Sincronização de e-mails iniciada com sucesso.']);
     } catch (Exception $e) {
         error_log("Erro ao adicionar tarefa de sincronização no RabbitMQ: " . $e->getMessage());
         $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__, $user_id);
         
-        // Retornar erro em JSON
         return json_encode(['status' => false, 'message' => 'Erro ao iniciar a sincronização de e-mails.']);
     }
 }
@@ -222,11 +215,18 @@ public function requestNewOAuthToken($emailAccount, $authCode = null)
     $params = [
         'client_id' => $emailAccount['client_id'],
         'client_secret' => $emailAccount['client_secret'],
-        'redirect_uri' => 'http://localhost:3000/callback', // Deve ser a mesma usada na autorização
-        'grant_type' => 'authorization_code',
-        'code' => $authCode,
+        'redirect_uri' => 'http://localhost:3000/callback',
         'scope' => 'https://outlook.office365.com/IMAP.AccessAsUser.All offline_access',
     ];
+
+    // Decide qual grant_type usar
+    if ($authCode) {
+        $params['grant_type'] = 'authorization_code';
+        $params['code'] = $authCode;
+    } else {
+        $params['grant_type'] = 'refresh_token';
+        $params['refresh_token'] = $emailAccount['refresh_token'];
+    }
 
     try {
         $ch = curl_init($token_url);
@@ -244,14 +244,15 @@ public function requestNewOAuthToken($emailAccount, $authCode = null)
         $tokenData = json_decode($response, true);
 
         if (isset($tokenData['access_token'])) {
-            $this->emailAccountModel->updateTokens(
+            // Atualiza o token no banco de dados
+            $this->updateTokens(
                 $emailAccount['id'],
                 $tokenData['access_token'],
                 $tokenData['refresh_token'] ?? $emailAccount['refresh_token']
             );
             error_log("Novo token OAuth2 gerado e salvo.");
         } else {
-            return;
+            error_log("Erro ao gerar novo token: " . json_encode($tokenData));
         }
     } catch (Exception $e) {
         error_log("Erro ao solicitar um novo token OAuth2: " . $e->getMessage());
@@ -259,10 +260,6 @@ public function requestNewOAuthToken($emailAccount, $authCode = null)
         throw $e;
     }
 }
-
-
-
-
 
 
     private function generateQueueName($user_id, $provider_id)
@@ -274,8 +271,22 @@ public function requestNewOAuthToken($emailAccount, $authCode = null)
     {
         error_log("Sincronizando e-mails para o usuário $user_id e provedor $provider_id");
         $this->errorLogController->logError("Oauth2 Token e email " . $oauth2_token . " Email: " . $email, __FILE__, __LINE__, $user_id);
+        
         try {
             $server = new Server($imap_host, $imap_port);
+
+
+            if ($oauth2_token) {
+        $this->errorLogController->logError("Gerando novo token via Refresh Token ", __FILE__, __LINE__, $user_id);
+                if ($oauth2_token) {
+                $emailAccount = $this->getEmailAccountByUserIdAndProviderId($user_id, $provider_id);
+                $this->requestNewOAuthToken($emailAccount);
+                $oauth2_token = $emailAccount['oauth_token'];
+            }
+        }
+        
+
+
             $this->errorLogController->logError("Imap host " . $imap_host . " Imap Pass: " . $imap_port, __FILE__, __LINE__, $user_id);
             if ($oauth2_token) {
                 $connection = $server->authenticate($email, $oauth2_token); 
