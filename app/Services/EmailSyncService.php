@@ -151,9 +151,10 @@ class EmailSyncService
         $params = [
             'client_id' => $emailAccount['client_id'],
             'response_type' => 'code',
-            'redirect_uri' => 'http://localhost:3000/callback', 
+            'redirect_uri' => 'http://localhost:3000/callback', // substitua com a URL de callback registrada
             'response_mode' => 'query',
             'scope' => 'https://outlook.office365.com/IMAP.AccessAsUser.All offline_access',
+            'prompt' => 'consent', // Força o consentimento do usuário
             'state' => base64_encode(json_encode([
                 'user_id' => $emailAccount['user_id'],
                 'provider_id' => $emailAccount['provider_id'],
