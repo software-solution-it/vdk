@@ -267,6 +267,8 @@ public function requestNewOAuthToken($emailAccount, $authCode = null)
                 $tokenData['refresh_token'] ?? $emailAccount['refresh_token']
             );
             $this->errorLogController->logError("Novo token OAuth2 gerado e salvo com sucesso.", __FILE__, __LINE__, $emailAccount['user_id']);
+        } else {
+            $this->errorLogController->logError("Erro ao gerar novo token: " . json_encode($tokenData), __FILE__, __LINE__, $emailAccount['user_id']);
         }
     } catch (Exception $e) {
         $this->errorLogController->logError("Erro ao solicitar um novo token OAuth2: " . $e->getMessage(), __FILE__, __LINE__, $emailAccount['user_id']);
