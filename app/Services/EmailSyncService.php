@@ -207,7 +207,6 @@ public function syncEmailsByUserIdAndProviderId($user_id, $provider_id)
         return json_encode(['status' => false, 'message' => 'Erro ao iniciar a sincronização de e-mails.']);
     }
 }
-
 public function requestNewOAuthToken($emailAccount, $authCode = null)
 {
     $token_url = "https://login.microsoftonline.com/{$emailAccount['tenant_id']}/oauth2/v2.0/token";
@@ -219,30 +218,45 @@ public function requestNewOAuthToken($emailAccount, $authCode = null)
         'scope' => 'https://outlook.office365.com/IMAP.AccessAsUser.All offline_access',
     ];
 
-    // Decide qual grant_type usar
+    // Decide qual grant_type usar e registra o tipo no log
     if ($authCode) {
         $params['grant_type'] = 'authorization_code';
         $params['code'] = $authCode;
+        $this->errorLogController->logError("Usando grant_type 'authorization_code' para gerar novo token.", __FILE__, __LINE__, $emailAccount['user_id']);
     } else {
         $params['grant_type'] = 'refresh_token';
         $params['refresh_token'] = $emailAccount['refresh_token'];
+        $this->errorLogController->logError("Usando grant_type 'refresh_token' para renovar o token.", __FILE__, __LINE__, $emailAccount['user_id']);
     }
 
     try {
+        // Log da URL e dos parâmetros para a solicitação de token
+        $this->errorLogController->logError("URL para solicitação de token: " . $token_url, __FILE__, __LINE__, $emailAccount['user_id']);
+        $this->errorLogController->logError("Parâmetros da solicitação de token: " . json_encode($params), __FILE__, __LINE__, $emailAccount['user_id']);
+
+        // Configuração do cURL
         $ch = curl_init($token_url);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($params));
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         $response = curl_exec($ch);
 
+        // Verifica se houve algum erro no cURL
         if (curl_errno($ch)) {
-            throw new Exception('Erro na requisição cURL: ' . curl_error($ch));
+            $curlError = curl_error($ch);
+            $this->errorLogController->logError("Erro na requisição cURL: " . $curlError, __FILE__, __LINE__, $emailAccount['user_id']);
+            curl_close($ch);
+            throw new Exception('Erro na requisição cURL: ' . $curlError);
         }
 
         curl_close($ch);
 
+        // Log da resposta da API
+        $this->errorLogController->logError("Resposta da solicitação de token: " . $response, __FILE__, __LINE__, $emailAccount['user_id']);
+
         $tokenData = json_decode($response, true);
 
+        // Verifica se o token foi gerado com sucesso e registra o status
         if (isset($tokenData['access_token'])) {
             // Atualiza o token no banco de dados
             $this->updateTokens(
@@ -250,16 +264,16 @@ public function requestNewOAuthToken($emailAccount, $authCode = null)
                 $tokenData['access_token'],
                 $tokenData['refresh_token'] ?? $emailAccount['refresh_token']
             );
-            error_log("Novo token OAuth2 gerado e salvo.");
+            $this->errorLogController->logError("Novo token OAuth2 gerado e salvo com sucesso.", __FILE__, __LINE__, $emailAccount['user_id']);
         } else {
-            error_log("Erro ao gerar novo token: " . json_encode($tokenData));
+            $this->errorLogController->logError("Erro ao gerar novo token: " . json_encode($tokenData), __FILE__, __LINE__, $emailAccount['user_id']);
         }
     } catch (Exception $e) {
-        error_log("Erro ao solicitar um novo token OAuth2: " . $e->getMessage());
         $this->errorLogController->logError("Erro ao solicitar um novo token OAuth2: " . $e->getMessage(), __FILE__, __LINE__, $emailAccount['user_id']);
         throw $e;
     }
 }
+
 
 
     private function generateQueueName($user_id, $provider_id)
