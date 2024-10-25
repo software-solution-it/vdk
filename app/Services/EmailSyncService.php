@@ -22,6 +22,7 @@ class EmailSyncService
     private $webhookService;
     private $errorLogController; 
     private $db;
+    private $isGeneratingToken = false;
 
     public function __construct($db)
     {
@@ -210,6 +211,15 @@ public function syncEmailsByUserIdAndProviderId($user_id, $provider_id)
 }
 public function requestNewOAuthToken($emailAccount, $authCode = null)
 {
+    // Verifica se já está gerando um token
+    if ($this->isGeneratingToken) {
+        $this->errorLogController->logError("Tentativa de gerar token bloqueada: processo já em andamento.", __FILE__, __LINE__, $emailAccount['user_id']);
+        return; // Evita uma segunda tentativa de geração
+    }
+
+    // Define que o processo de geração começou
+    $this->isGeneratingToken = true;
+
     $token_url = "https://login.microsoftonline.com/{$emailAccount['tenant_id']}/oauth2/v2.0/token";
 
     // Definindo parâmetros comuns para ambos os fluxos (autorização e renovação)
@@ -263,6 +273,9 @@ public function requestNewOAuthToken($emailAccount, $authCode = null)
     } catch (Exception $e) {
         $this->errorLogController->logError("Erro ao solicitar um novo token OAuth2: " . $e->getMessage(), __FILE__, __LINE__, $emailAccount['user_id']);
         throw $e;
+    } finally {
+        // Libera o flag para permitir futuras requisições
+        $this->isGeneratingToken = false;
     }
 }
 
@@ -283,7 +296,7 @@ public function requestNewOAuthToken($emailAccount, $authCode = null)
 
 
             if ($oauth2_token) {
-        $this->errorLogController->logError("Gerando novo token via Refresh Token ", __FILE__, __LINE__, $user_id);
+                $this->errorLogController->logError("Gerando novo token via Refresh Token ", __FILE__, __LINE__, $user_id);
                 if ($oauth2_token) {
                 $emailAccount = $this->getEmailAccountByUserIdAndProviderId($user_id, $provider_id);
                 $this->requestNewOAuthToken($emailAccount);
