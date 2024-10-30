@@ -10,6 +10,7 @@ use App\Controllers\ProviderController;
 use App\Controllers\EmailSyncController;
 use App\Controllers\ConnectionController;
 use App\Controllers\WebhookController;
+use App\Controllers\OutlookOAuth2Controller;
 use App\Controllers\ImapTestController;
 use App\Helpers\AuthMiddleware;
 
@@ -41,6 +42,21 @@ switch ($request_uri[0]) {
         $auth = new AuthController();
         $auth->resetPassword();
         break;
+
+        case '/api/outlook/oauth/authorization':
+            $controller = new OutlookOAuth2Controller();
+            $controller->getAuthorizationUrl();
+            break;
+        
+        case '/api/outlook/oauth/token':
+            $controller = new OutlookOAuth2Controller();
+            $controller->getAccessToken();
+            break;
+         
+        case '/api/outlook/oauth/refresh':
+            $controller = new OutlookOAuth2Controller();
+            $controller->refreshAccessToken();
+            break;
 
     case '/api/auth/register':
         $auth = new AuthController();
