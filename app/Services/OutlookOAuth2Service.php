@@ -10,7 +10,7 @@ use App\Models\EmailAccount;
 
 class OutlookOAuth2Service {
     private $emailModel;
-    private $emailAccountModel; 
+    private $emailAccountModel;
     private $oauthProvider;
 
     public function __construct() {
@@ -23,12 +23,15 @@ class OutlookOAuth2Service {
         $this->emailAccountModel = new EmailAccount($db);
     }
 
-    public function initializeOAuthProviderFromEmailAccount($emailAccount) {
-        // Inicializa o provedor OAuth usando as credenciais do emailAccount
+    public function initializeOAuthProviderFromEmailAccount($emailAccount, $user_id, $provider_id) {
+        // Inicializa o provedor OAuth usando as credenciais do emailAccount e adiciona o user_id e provider_id ao redirectUri
+        $state = base64_encode(json_encode(['user_id' => $user_id, 'provider_id' => $provider_id]));
+        $redirectUri = 'http://localhost:3000/callback?state=' . urlencode($state);
+
         $this->oauthProvider = new GenericProvider([
             'clientId'                => $emailAccount['client_id'],
             'clientSecret'            => $emailAccount['client_secret'],
-            'redirectUri'             => 'http://localhost:3000/callback',
+            'redirectUri'             => $redirectUri,
             'urlAuthorize'            => 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
             'urlAccessToken'          => 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
             'urlResourceOwnerDetails' => '',
@@ -45,7 +48,7 @@ class OutlookOAuth2Service {
 
         // Inicializa o OAuthProvider se não estiver configurado
         if (!$this->oauthProvider) {
-            $this->initializeOAuthProviderFromEmailAccount($emailAccount);
+            $this->initializeOAuthProviderFromEmailAccount($emailAccount, $user_id, $provider_id);
         }
 
         // Retorna a URL de autorização
@@ -61,7 +64,7 @@ class OutlookOAuth2Service {
 
         // Inicializa o OAuthProvider se não estiver configurado
         if (!$this->oauthProvider) {
-            $this->initializeOAuthProviderFromEmailAccount($emailAccount);
+            $this->initializeOAuthProviderFromEmailAccount($emailAccount, $user_id, $provider_id);
         }
 
         try {
@@ -103,7 +106,7 @@ class OutlookOAuth2Service {
 
         // Inicializa o OAuthProvider se não estiver configurado
         if (!$this->oauthProvider) {
-            $this->initializeOAuthProviderFromEmailAccount($emailAccount);
+            $this->initializeOAuthProviderFromEmailAccount($emailAccount, $user_id, $provider_id);
         }
 
         try {
