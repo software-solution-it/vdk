@@ -185,6 +185,7 @@ class OutlookOAuth2Service {
 
     public function authenticateImap($user_id, $provider_id) {
         try {
+            $this->errorLogController->logError("Entrou no método: $user_id", __FILE__, __LINE__);
             $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $provider_id);
             if (!$emailAccount) {
                 $this->errorLogController->logError("Conta não encontrada: $user_id", __FILE__, __LINE__);
