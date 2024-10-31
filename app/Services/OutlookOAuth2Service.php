@@ -39,14 +39,12 @@ class OutlookOAuth2Service {
         $this->clientId = $emailAccount['client_id'];
         $this->clientSecret = $emailAccount['client_secret'];
 
-        // Encode user_id and provider_id
         $extraParams = base64_encode(json_encode(['user_id' => $user_id, 'provider_id' => $provider_id]));
 
         $this->redirectUri = 'http://localhost:3000/callback?extra=' . urlencode($extraParams);
     }
 
     public function getAuthorizationUrl($user_id, $provider_id) {
-        // Get the email account
         $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $provider_id);
         if (!$emailAccount) {
             throw new Exception("Email account not found for user ID: $user_id and provider ID: $provider_id");
@@ -169,16 +167,14 @@ class OutlookOAuth2Service {
 
     public function authenticateImap($user_id, $provider_id) {
         try {
-            // Obtém a conta de email
+
             $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $provider_id);
             if (!$emailAccount) {
                 throw new Exception("Email account not found for user ID: $user_id and provider ID: $provider_id");
             }
     
-            // Recupera o token de acesso
             $accessToken = $emailAccount['oauth_token'];
     
-            // Faz a requisição para listar todas as pastas de email
             $foldersResponse = $this->httpClient->get('https://graph.microsoft.com/v1.0/me/mailFolders', [
                 'headers' => [
                     'Authorization' => 'Bearer ' . $accessToken,
@@ -191,12 +187,10 @@ class OutlookOAuth2Service {
             foreach ($folders['value'] as $folder) {
                 $folderName = $folder['displayName'];
     
-                // Ignora a pasta "Todos os emails"
                 if (strtolower($folderName) === 'all mail' || strtolower($folderName) === 'todos os emails') {
                     continue;
                 }
     
-                // Faz a requisição para obter os emails dessa pasta específica
                 $emailsResponse = $this->httpClient->get("https://graph.microsoft.com/v1.0/me/mailFolders/{$folder['id']}/messages", [
                     'headers' => [
                         'Authorization' => 'Bearer ' . $accessToken,
@@ -213,8 +207,6 @@ class OutlookOAuth2Service {
                 foreach ($emails['value'] as $emailData) {
                     $messageId = $emailData['id'];
     
-    
-                    // Extrai os dados do email
                     $subject = $emailData['subject'] ?? '(Sem Assunto)';
                     $fromAddress = $emailData['from']['emailAddress']['address'] ?? '';
                     $date_received = $emailData['receivedDateTime'] ?? null;
@@ -224,7 +216,6 @@ class OutlookOAuth2Service {
                     $references = $emailData['conversationId'] ?? '';
                     $inReplyTo = $emailData['internetMessageId'] ?? '';
     
-                    // Faz uma requisição adicional para obter o conteúdo do corpo do email
                     $messageDetailResponse = $this->httpClient->get("https://graph.microsoft.com/v1.0/me/messages/$messageId", [
                         'headers' => [
                             'Authorization' => 'Bearer ' . $accessToken,
@@ -236,7 +227,6 @@ class OutlookOAuth2Service {
                     $bodyContent = $messageDetails['body']['content'] ?? '';
                     $bodyContentType = $messageDetails['body']['contentType'] ?? '';
     
-                    // Salva o email no banco
                     $emailId = $this->emailModel->saveEmail(
                         $user_id,
                         $messageId,
@@ -248,12 +238,11 @@ class OutlookOAuth2Service {
                         $references,
                         $inReplyTo,
                         $isRead,
-                        $folderName, // Nome da pasta do email
+                        $folderName, 
                         $ccRecipients,
                         $messageId
                     );
     
-                    // Processa e salva anexos
                     if ($emailData['hasAttachments']) {
                         $attachmentsResponse = $this->httpClient->get("https://graph.microsoft.com/v1.0/me/messages/$messageId/attachments", [
                             'headers' => [
@@ -274,7 +263,6 @@ class OutlookOAuth2Service {
                                 continue;
                             }
     
-                            // Salva o anexo no banco de dados
                             $this->emailModel->saveAttachment(
                                 $emailId,
                                 $filename,

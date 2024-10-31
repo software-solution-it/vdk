@@ -20,6 +20,9 @@ class EmailSyncService
     private $webhookService;
     private $errorLogController; 
     private $db;
+
+    private $outlookOAuth2Service;
+
     private $isGeneratingToken = false;
 
     public function __construct($db)
@@ -30,6 +33,7 @@ class EmailSyncService
         $this->rabbitMQService = new RabbitMQService($db);
         $this->webhookService = new WebhookService();
         $this->errorLogController = new ErrorLogController();
+        $this->outlookOAuth2Service  = new OutlookOAuth2Service();
     }
 
     
@@ -78,15 +82,22 @@ class EmailSyncService
             }
 
             try {
+
+                if($task['is_basic']){
+
                 $this->syncEmails(
                     $task['user_id'],
                     $task['provider_id'],
                     $task['email'],
                     $task['imap_host'],
                     $task['imap_port'],
-                    $task['password'],
-                    $task['oauth2_token'] 
+                    $task['password']
                 );
+            }else{
+
+                $this->outlookOAuth2Service->authenticateImap($user_id, $provider_id);
+
+            }
 
                 $msg->ack();
                 error_log("Sincronização concluída para a mensagem na fila.");
@@ -189,14 +200,21 @@ public function syncEmailsByUserIdAndProviderId($user_id, $provider_id)
             'user_id' => $user_id,
             'provider_id' => $provider_id,
             'email' => $emailAccount['email'],
-            'imap_host' => $emailAccount['imap_host'],
-            'imap_port' => $emailAccount['imap_port'],
             'password' => EncryptionHelper::decrypt($emailAccount['password']),
             'oauth2_token' => $emailAccount['oauth_token'] ?? null,
-            'tenant_id' => $emailAccount['tenant_id']
+            'refresh_token' => $emailAccount['refresh_token'] ?? null,
+            'client_id' => $emailAccount['client_id'] ?? null,
+            'client_secret' => $emailAccount['client_secret'] ?? null,
+            'tenant_id' => $emailAccount['tenant_id'] ?? null,
+            'auth_code' => $emailAccount['auth_code'] ?? null,
+            'is_basic' => $emailAccount['is_basic'] ?? 0,
+            'imap_host' => $emailAccount['imap_host'],
+            'imap_port' => $emailAccount['imap_port'],
+            'created_at' => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s'),
         ];
-
         $this->rabbitMQService->publishMessage($queue_name, $message, $user_id);
+
         $this->consumeEmailSyncQueue($user_id, $provider_id, $queue_name);
 
         return json_encode(['status' => true, 'message' => 'Sincronização de e-mails iniciada com sucesso.']);
@@ -207,71 +225,6 @@ public function syncEmailsByUserIdAndProviderId($user_id, $provider_id)
         return json_encode(['status' => false, 'message' => 'Erro ao iniciar a sincronização de e-mails.']);
     }
 }
-public function requestNewOAuthToken($emailAccount, $authCode = null)
-{
-
-    if ($this->isGeneratingToken) {
-        $this->errorLogController->logError("Tentativa de gerar token bloqueada: processo já em andamento.", __FILE__, __LINE__, $emailAccount['user_id']);
-        return; 
-    }
-
-    $this->isGeneratingToken = true;
-
-    $token_url = "https://login.microsoftonline.com/{$emailAccount['tenant_id']}/oauth2/v2.0/token";
-
-    $params = [
-        'client_id' => $emailAccount['client_id'],
-        'client_secret' => $emailAccount['client_secret'],
-        'scope' => 'https://outlook.office365.com/IMAP.AccessAsUser.All offline_access',
-    ];
-
-    if ($authCode) {
-        $params['grant_type'] = 'authorization_code';
-        $params['code'] = $authCode;
-        $params['redirect_uri'] = 'http://localhost:3000/callback'; 
-    } else {
-        $params['grant_type'] = 'refresh_token';
-        $params['refresh_token'] = $emailAccount['refresh_token'];
-    }
-
-    $this->errorLogController->logError("Solicitando novo token com client_id: {$params['client_id']}", __FILE__, __LINE__, $emailAccount['user_id']);
-    $this->errorLogController->logError("Usando grant_type: {$params['grant_type']}", __FILE__, __LINE__, $emailAccount['user_id']);
-
-    try {
-        $ch = curl_init($token_url);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($params));
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        $response = curl_exec($ch);
-
-        if (curl_errno($ch)) {
-            $curlError = curl_error($ch);
-            $this->errorLogController->logError("Erro na requisição cURL: " . $curlError, __FILE__, __LINE__, $emailAccount['user_id']);
-            curl_close($ch);
-            throw new Exception('Erro na requisição cURL: ' . $curlError);
-        }
-
-        curl_close($ch);
-        $tokenData = json_decode($response, true);
-
-        if (isset($tokenData['access_token'])) {
-            $this->updateTokens(
-                $emailAccount['id'],
-                $tokenData['access_token'],
-                $tokenData['refresh_token'] ?? $emailAccount['refresh_token']
-            );
-            $this->errorLogController->logError("Novo token OAuth2 gerado e salvo com sucesso.", __FILE__, __LINE__, $emailAccount['user_id']);
-        } else {
-            $this->errorLogController->logError("Erro ao gerar novo token: " . json_encode($tokenData), __FILE__, __LINE__, $emailAccount['user_id']);
-        }
-    } catch (Exception $e) {
-        $this->errorLogController->logError("Erro ao solicitar um novo token OAuth2: " . $e->getMessage(), __FILE__, __LINE__, $emailAccount['user_id']);
-        throw $e;
-    } finally {
-        $this->isGeneratingToken = false;
-    }
-}
-
 
 
     private function generateQueueName($user_id, $provider_id)
@@ -279,32 +232,17 @@ public function requestNewOAuthToken($emailAccount, $authCode = null)
         return 'email_sync_queue_' . $user_id . '_' . $provider_id . '_' . time();
     }
 
-    private function syncEmails($user_id, $provider_id, $email, $imap_host, $imap_port, $password, $oauth2_token)
+    private function syncEmails($user_id, $provider_id, $email, $imap_host, $imap_port, $password)
     {
         error_log("Sincronizando e-mails para o usuário $user_id e provedor $provider_id");
-        $this->errorLogController->logError("Oauth2 Token e email " . $oauth2_token . " Email: " . $email, __FILE__, __LINE__, $user_id);
+        $this->errorLogController->logError("Oauth2 Token e email " . " Email: " . $email, __FILE__, __LINE__, $user_id);
         
         try {
             $server = new Server($imap_host, $imap_port);
 
 
-            if ($oauth2_token) {
-                $this->errorLogController->logError("Gerando novo token via Refresh Token ", __FILE__, __LINE__, $user_id);
-                if ($oauth2_token) {
-                $emailAccount = $this->getEmailAccountByUserIdAndProviderId($user_id, $provider_id);
-                $this->requestNewOAuthToken($emailAccount);
-                $oauth2_token = $emailAccount['oauth_token'];
-            }
-        }
-        
-
-
             $this->errorLogController->logError("Imap host " . $imap_host . " Imap Pass: " . $imap_port, __FILE__, __LINE__, $user_id);
-            if ($oauth2_token) {
-                $connection = $server->authenticate($email, $oauth2_token); 
-            } else {
                 $connection = $server->authenticate($email, $password);
-            }
 
             $mailboxes = $connection->getMailboxes();
             foreach ($mailboxes as $mailbox) {

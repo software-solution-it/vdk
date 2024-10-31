@@ -24,7 +24,7 @@ class EmailAccountService {
 
 
     public function createEmailAccount($data) {
-        $requiredFields = ['user_id', 'email', 'provider_id', 'password'];
+        $requiredFields = ['user_id', 'email', 'provider_id', 'password', 'is_basic'];
         $missingFields = $this->validateFields($data, $requiredFields);
     
         if (!empty($missingFields)) {
@@ -41,7 +41,8 @@ class EmailAccountService {
             $data['oauth_token'] ?? null,
             $data['refresh_token'] ?? null,
             $data['client_id'] ?? null,
-            $data['client_secret'] ?? null
+            $data['client_secret'] ?? null,
+            $data['is_basic'] ?? true
         );
     
         if ($emailAccountId) {
@@ -52,15 +53,17 @@ class EmailAccountService {
     }
 
     public function updateEmailAccount($id, $data) {
-        $requiredFields = ['email', 'provider_id'];
+        $requiredFields = ['email', 'provider_id', 'password', 'oauth_token', 'refresh_token', 'client_id', 'client_secret', 'is_basic'];
         $missingFields = $this->validateFields($data, $requiredFields);
-
+    
         if (!empty($missingFields)) {
             return ['status' => false, 'message' => 'Missing fields: ' . implode(', ', $missingFields)];
         }
-
+    
         $encryptedPassword = EncryptionHelper::encrypt($data['password']);
-
+    
+        $is_basic = $data['is_basic'] ?? null;
+    
         $updated = $this->emailAccountModel->update(
             $id,
             $data['email'],
@@ -69,16 +72,17 @@ class EmailAccountService {
             $data['oauth_token'] ?? null,
             $data['refresh_token'] ?? null,
             $data['client_id'] ?? null,
-            $data['client_secret'] ?? null
+            $data['client_secret'] ?? null,
+            $is_basic ?? true
         );
-
+    
         if ($updated) {
             return ['status' => true, 'message' => 'Email account updated successfully'];
         }
-
+    
         return ['status' => false, 'message' => 'Failed to update email account'];
     }
-
+    
 
     public function deleteEmailAccount($id) {
         $deleted = $this->emailAccountModel->delete($id);
