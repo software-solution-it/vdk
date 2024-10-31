@@ -3,16 +3,19 @@
 namespace App\Models;
 
 use PDO;
-use App\Helpers;
+use App\Controllers\ErrorLogController; // Importa o controlador de log de erro
+use Exception;
 
 class EmailAccount {
     private $conn;
     private $table = "email_accounts";
     private $userTable = "users";
     private $providerTable = "providers";
+    private $errorLogController; // Controlador de log de erro
 
     public function __construct($db) {
         $this->conn = $db;
+        $this->errorLogController = new ErrorLogController(); // Inicializa o controlador de log de erro
     }
 
     public function create($user_id, $email, $provider_id, $password, $oauth_token, $refresh_token, $client_id, $client_secret, $is_basic) {
@@ -29,13 +32,12 @@ class EmailAccount {
         $stmt->bindParam(':client_id', $client_id); 
         $stmt->bindParam(':client_secret', $client_secret); 
         $stmt->bindParam(':is_basic', $is_basic); 
-    
+
         if ($stmt->execute()) {
             return $this->conn->lastInsertId();
         }
         return false;
     }
-    
 
     public function updateTokens($id, $oauth_token, $refresh_token) {
         $query = "UPDATE " . $this->table . " SET oauth_token = :oauth_token, refresh_token = :refresh_token WHERE id = :id";
@@ -47,7 +49,6 @@ class EmailAccount {
     
         return $stmt->execute();
     }
-    
 
     public function getById($id) {
         $query = "SELECT * FROM " . $this->table . " WHERE id = :id LIMIT 1";
@@ -59,38 +60,39 @@ class EmailAccount {
     }
 
     public function getEmailAccountByUserIdAndProviderId($user_id, $provider_id) {
-        error_log("user_id: $user_id, provider_id: $provider_id");
-    
-        $query = "SELECT ea.id, ea.email, ea.password, 
-                         ea.user_id, ea.provider_id,
-                         p.imap_host, p.imap_port, 
-                         p.smtp_host, p.smtp_port, 
-                         p.encryption,
-                         ea.client_id, ea.client_secret, 
-                         ea.oauth_token, ea.refresh_token,
-                         ea.tenant_id, ea.auth_code,
-                         ea.is_basic
-                  FROM " . $this->table . " ea
-                  INNER JOIN " . $this->userTable . " u ON ea.user_id = u.id
-                  INNER JOIN " . $this->providerTable . " p ON ea.provider_id = p.id
-                  WHERE ea.user_id = :user_id AND ea.provider_id = :provider_id LIMIT 1";
-    
-        $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(':user_id', $user_id);
-        $stmt->bindParam(':provider_id', $provider_id);
-    
-        $stmt->execute();
-        $result = $stmt->fetch(PDO::FETCH_ASSOC);
-    
-        error_log("Resultado da consulta: " . json_encode($result));
-    
-        return $result;
-    }
-    
-    
+        try {
+            $this->errorLogController->logError("Fetching email account for user_id: $user_id, provider_id: $provider_id", __FILE__, __LINE__);
 
+            $query = "SELECT ea.id, ea.email, ea.password, 
+                             ea.user_id, ea.provider_id,
+                             p.imap_host, p.imap_port, 
+                             p.smtp_host, p.smtp_port, 
+                             p.encryption,
+                             ea.client_id, ea.client_secret, 
+                             ea.oauth_token, ea.refresh_token,
+                             ea.tenant_id, ea.auth_code,
+                             ea.is_basic
+                      FROM " . $this->table . " ea
+                      INNER JOIN " . $this->userTable . " u ON ea.user_id = u.id
+                      INNER JOIN " . $this->providerTable . " p ON ea.provider_id = p.id
+                      WHERE ea.user_id = :user_id AND ea.provider_id = :provider_id LIMIT 1";
+
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':user_id', $user_id);
+            $stmt->bindParam(':provider_id', $provider_id);
     
-    
+            $stmt->execute();
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            $this->errorLogController->logError("Query result: " . json_encode($result), __FILE__, __LINE__);
+
+            return $result;
+
+        } catch (Exception $e) {
+            $this->errorLogController->logError('Error fetching email account: ' . $e->getMessage(), __FILE__, __LINE__);
+            throw new Exception('Error fetching email account: ' . $e->getMessage());
+        }
+    }
 
     public function update($id, $email, $provider_id, $password, $oauth_token, $refresh_token, $client_id, $client_secret, $is_basic = null) {
         $query = "UPDATE " . $this->table . " SET email = :email, provider_id = :provider_id, 
@@ -119,7 +121,6 @@ class EmailAccount {
     
         return $stmt->execute();
     }
-    
 
     public function getEmailAccountByUserId($userId) {
         $query = "SELECT * FROM email_accounts WHERE user_id = :user_id";
