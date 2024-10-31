@@ -42,7 +42,7 @@ class OutlookOAuth2Service {
     
         // Gera a URL de autorização
         $authorizationUrl = $this->oauthProvider->getAuthorizationUrl([
-            'scope' => 'https://graph.microsoft.com/.default'
+            'scope' => 'Mail.Read Mail.Send Mail.ReadWrite Mail.Folders.ReadWrite Contacts.Read Contacts.ReadWrite offline_access'
         ]);
     
         // Retorna a URL para o frontend
