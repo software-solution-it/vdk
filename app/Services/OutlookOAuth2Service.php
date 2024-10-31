@@ -30,22 +30,13 @@ class OutlookOAuth2Service {
         // Cria a URI de redirecionamento sem o estado embutido
         $redirectUri = 'http://localhost:3000/callback';
     
-        // Cria o provedor OAuth com o estado separado
-        $this->oauthProvider = new GenericProvider([
-            'clientId'                => $emailAccount['client_id'],
-            'clientSecret'            => $emailAccount['client_secret'],
-            'redirectUri'             => $redirectUri,
-            'urlAuthorize'            => 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
-            'urlAccessToken'          => 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
-            'urlResourceOwnerDetails' => '',
-            'scopes'                  => 'https://graph.microsoft.com/.default'
-        ]);
-    
-        // Gera a URL de autorização com o estado personalizado
-        $authorizationUrl = $this->oauthProvider->getAuthorizationUrl([
-            'state' => $state, // Passa o estado personalizado
-            'scope' => 'https://graph.microsoft.com/.default'
-        ]);
+        // Construa manualmente a URL de autorização
+        $authorizationUrl = 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize' .
+                            '?client_id=' . urlencode($emailAccount['client_id']) .
+                            '&redirect_uri=' . urlencode($redirectUri) .
+                            '&response_type=code' .
+                            '&scope=' . urlencode('https://graph.microsoft.com/.default') .
+                            '&state=' . urlencode($state);
     
         // Retorna a URL para o frontend
         return [
@@ -53,6 +44,7 @@ class OutlookOAuth2Service {
             'authorization_url' => $authorizationUrl
         ];
     }
+    
     
     
 
