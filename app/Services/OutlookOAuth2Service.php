@@ -37,7 +37,7 @@ class OutlookOAuth2Service {
             'urlAuthorize'            => 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
             'urlAccessToken'          => 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
             'urlResourceOwnerDetails' => '',
-            'scopes'                  => 'https://graph.microsoft.com/.default'
+            'scopes'                  => 'https://graph.microsoft.com/.default offline_access'
         ]);
     
         // Gera a URL de autorização
