@@ -27,7 +27,6 @@ class EmailSyncController {
         $data = json_decode(file_get_contents('php://input'), true);
     
         if (!isset($data['user_id']) || !isset($data['provider_id'])) {
-            $this->errorLogController->logError('user_id and provider_id are required.', __FILE__, __LINE__);
             echo json_encode(
                 ['status' => false, 'message' => 'user_id and provider_id are required.'],
                 JSON_UNESCAPED_UNICODE
@@ -46,8 +45,6 @@ class EmailSyncController {
             );
             return;
         }
-    
-        $this->errorLogController->logError("Iniciando a sincronização para user_id: $user_id e provider_id: $provider_id", __FILE__, __LINE__);
     
         $command = sprintf(
             'php %s %d %d > /dev/null 2>&1 &',

@@ -21,7 +21,6 @@ class ProviderController {
         $data = json_decode(file_get_contents('php://input'), true);
         
         if (empty($data['name']) || empty($data['host'])) {
-            $this->errorLogController->logError('Name and host are required for creating a provider.', __FILE__, __LINE__);
             http_response_code(400);
             echo json_encode(['message' => 'Name and host are required.']);
             return;
@@ -35,7 +34,6 @@ class ProviderController {
         $data = json_decode(file_get_contents('php://input'), true);
         
         if (empty($data['name']) || empty($data['host'])) {
-            $this->errorLogController->logError('Name and host are required for updating a provider.', __FILE__, __LINE__);
             http_response_code(400);
             echo json_encode(['message' => 'Name and host are required.']);
             return;

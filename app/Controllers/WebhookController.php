@@ -39,12 +39,10 @@ class WebhookController {
                 http_response_code(201);
                 echo json_encode(['message' => 'Webhook registered successfully']);
             } else {
-                $this->errorLogController->logError('Unable to register webhook.', __FILE__, __LINE__);
                 http_response_code(503);
                 echo json_encode(['message' => 'Unable to register webhook']);
             }
         } else {
-            $this->errorLogController->logError('Incomplete data for webhook registration.', __FILE__, __LINE__);
             http_response_code(400);
             echo json_encode(['message' => 'Incomplete data']);
         }
@@ -58,7 +56,6 @@ class WebhookController {
             http_response_code(200);
             echo json_encode($webhooks);
         } else {
-            $this->errorLogController->logError('User ID is required for fetching webhooks.', __FILE__, __LINE__);
             http_response_code(400);
             echo json_encode(['message' => 'User ID is required']);
         }

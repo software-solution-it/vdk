@@ -38,7 +38,6 @@ class OutlookOAuth2Service {
         $this->errorLogController = new ErrorLogController();
         $this->emailModel = new Email($db);
         $this->emailAccountModel = new EmailAccount($db);
-        $this->errorLogController->logError("Initialized OutlookOAuth2Service with DB.", __FILE__, __LINE__);
     }
 
     public function initializeOAuthParameters($emailAccount, $user_id, $provider_id) {
@@ -48,7 +47,6 @@ class OutlookOAuth2Service {
         $extraParams = base64_encode(json_encode(['user_id' => $user_id, 'provider_id' => $provider_id]));
 
         $this->redirectUri = 'http://localhost:3000/callback?extra=' . urlencode($extraParams);
-        $this->errorLogController->logError("OAuth parameters initialized for user_id: $user_id, provider_id: $provider_id", __FILE__, __LINE__);
     }
 
     public function getAuthorizationUrl($user_id, $provider_id) {
@@ -59,7 +57,7 @@ class OutlookOAuth2Service {
             }
 
             $this->initializeOAuthParameters($emailAccount, $user_id, $provider_id);
-            $this->errorLogController->logError("Generating authorization URL for user ID: $user_id", __FILE__, __LINE__);
+      
 
             $authorizationUrl = 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize?'
                 . http_build_query([
@@ -89,8 +87,7 @@ class OutlookOAuth2Service {
                 throw new Exception("Email account not found for user ID: $user_id and provider ID: $provider_id");
             }
 
-            $this->initializeOAuthParameters($emailAccount, $user_id, $provider_id);
-            $this->errorLogController->logError("Requesting access token for user ID: $user_id", __FILE__, __LINE__);
+            $this->initializeOAuthParameters($emailAccount, $user_id, $provider_id);     
 
             $response = $this->httpClient->post('https://login.microsoftonline.com/common/oauth2/v2.0/token', [
                 'form_params' => [
@@ -142,7 +139,6 @@ class OutlookOAuth2Service {
             }
 
             $this->initializeOAuthParameters($emailAccount, $user_id, $provider_id);
-            $this->errorLogController->logError("Refreshing access token for user ID: $user_id", __FILE__, __LINE__);
 
             $response = $this->httpClient->post('https://login.microsoftonline.com/common/oauth2/v2.0/token', [
                 'form_params' => [
@@ -187,16 +183,13 @@ class OutlookOAuth2Service {
 
     public function authenticateImap($user_id, $provider_id) {
         try {
-            $this->errorLogController->logError("Entrou no método2:", __FILE__, __LINE__);
             $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $provider_id);
 
             if (!$emailAccount) {
-                $this->errorLogController->logError("Conta não encontrada: $user_id", __FILE__, __LINE__);
                 throw new Exception("Email account not found for user ID: $user_id and provider ID: $provider_id");
             }
 
             $accessToken = $emailAccount['oauth_token'];
-            $this->errorLogController->logError("Authenticating IMAP for user ID: $user_id", __FILE__, __LINE__);
 
             $foldersResponse = $this->httpClient->get('https://graph.microsoft.com/v1.0/me/mailFolders', [
                 'headers' => [
@@ -330,7 +323,7 @@ class OutlookOAuth2Service {
                                 $contentBytes = base64_decode($attachment['contentBytes']);
 
                                 if (empty($filename) || $contentBytes === false) {
-                                    $this->errorLogController->logError("Anexo ignorado: nome do arquivo vazio ou falha na decodificação.", __FILE__, __LINE__, $user_id);
+                                
                                     continue;
                                 }
 
@@ -366,7 +359,6 @@ class OutlookOAuth2Service {
             }
 
             $accessToken = $emailAccount['oauth_token'];
-            $this->errorLogController->logError("Moving email for user ID: $user_id", __FILE__, __LINE__);
 
             // Usando a API do Microsoft Graph para mover o e-mail
             $response = $this->httpClient->post("https://graph.microsoft.com/v1.0/me/messages/$messageId/move", [
@@ -444,7 +436,6 @@ class OutlookOAuth2Service {
             }
 
             $accessToken = $emailAccount['oauth_token'];
-            $this->errorLogController->logError("Listing folders for user ID: $user_id", __FILE__, __LINE__);
 
             $foldersResponse = $this->httpClient->get('https://graph.microsoft.com/v1.0/me/mailFolders', [
                 'headers' => [
@@ -471,7 +462,7 @@ class OutlookOAuth2Service {
     public function listEmailsByConversation($user_id, $provider_id, $conversation_id)
     {
         try {
-            $this->errorLogController->logError("Listing emails for conversation_id: $conversation_id, user ID: $user_id", __FILE__, __LINE__);
+           
             $emails = $this->emailModel->getEmailsByConversationId($user_id, $conversation_id);
     
             usort($emails, function($a, $b) {

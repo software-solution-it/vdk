@@ -61,7 +61,6 @@ class EmailAccount {
 
     public function getEmailAccountByUserIdAndProviderId($user_id, $provider_id) {
         try {
-            $this->errorLogController->logError("Fetching email account for user_id: $user_id, provider_id: $provider_id", __FILE__, __LINE__);
 
             $query = "SELECT ea.id, ea.email, ea.password, 
                              ea.user_id, ea.provider_id,
@@ -84,7 +83,6 @@ class EmailAccount {
             $stmt->execute();
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            $this->errorLogController->logError("Query result: " . json_encode($result), __FILE__, __LINE__);
 
             return $result;
 

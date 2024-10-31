@@ -23,7 +23,6 @@ class OutlookOAuth2Controller {
         $data = json_decode(file_get_contents('php://input'), true);
 
         if (!isset($data['user_id']) || !isset($data['provider_id'])) {
-            $this->errorLogController->logError('user_id and provider_id are required.', __FILE__, __LINE__);
             echo json_encode(['status' => false, 'message' => 'user_id and provider_id are required.']);
             return;
         }
@@ -32,7 +31,6 @@ class OutlookOAuth2Controller {
         $provider_id = intval($data['provider_id']);
 
         if ($user_id <= 0 || $provider_id <= 0) {
-            $this->errorLogController->logError('Invalid user_id or provider_id.', __FILE__, __LINE__);
             echo json_encode(['status' => false, 'message' => 'Invalid user_id or provider_id.']);
             return;
         }
@@ -51,7 +49,6 @@ class OutlookOAuth2Controller {
         $data = json_decode(file_get_contents('php://input'), true);
 
         if (!isset($data['user_id']) || !isset($data['provider_id']) || !isset($data['code'])) {
-            $this->errorLogController->logError('user_id, provider_id, and code are required.', __FILE__, __LINE__);
             echo json_encode(['status' => false, 'message' => 'user_id, provider_id, and code are required.']);
             return;
         }
@@ -61,7 +58,6 @@ class OutlookOAuth2Controller {
         $code = $data['code'];
 
         if ($user_id <= 0 || $provider_id <= 0) {
-            $this->errorLogController->logError('Invalid user_id or provider_id.', __FILE__, __LINE__);
             echo json_encode(['status' => false, 'message' => 'Invalid user_id or provider_id.']);
             return;
         }
@@ -80,7 +76,6 @@ class OutlookOAuth2Controller {
         $data = json_decode(file_get_contents('php://input'), true);
 
         if (!isset($data['user_id']) || !isset($data['provider_id'])) {
-            $this->errorLogController->logError('user_id and provider_id are required.', __FILE__, __LINE__);
             echo json_encode(['status' => false, 'message' => 'user_id and provider_id are required.']);
             return;
         }
@@ -89,7 +84,6 @@ class OutlookOAuth2Controller {
         $provider_id = intval($data['provider_id']);
 
         if ($user_id <= 0 || $provider_id <= 0) {
-            $this->errorLogController->logError('Invalid user_id or provider_id.', __FILE__, __LINE__);
             echo json_encode(['status' => false, 'message' => 'Invalid user_id or provider_id.']);
             return;
         }
@@ -108,7 +102,7 @@ class OutlookOAuth2Controller {
         $data = json_decode(file_get_contents('php://input'), true);
 
         if (!isset($data['user_id']) || !isset($data['provider_id'])) {
-            $this->errorLogController->logError('user_id and provider_id are required.', __FILE__, __LINE__);
+
             echo json_encode(['status' => false, 'message' => 'user_id and provider_id are required.']);
             return;
         }
@@ -117,7 +111,6 @@ class OutlookOAuth2Controller {
         $provider_id = intval($data['provider_id']);
 
         if ($user_id <= 0 || $provider_id <= 0) {
-            $this->errorLogController->logError('Invalid user_id or provider_id.', __FILE__, __LINE__);
             echo json_encode(['status' => false, 'message' => 'Invalid user_id or provider_id.']);
             return;
         }
@@ -136,7 +129,7 @@ class OutlookOAuth2Controller {
         $data = json_decode(file_get_contents('php://input'), true);
 
         if (!isset($data['user_id'], $data['provider_id'], $data['message_id'], $data['destination_folder_id'])) {
-            $this->errorLogController->logError('user_id, provider_id, message_id, and destination_folder_id are required.', __FILE__, __LINE__);
+        
             echo json_encode(['status' => false, 'message' => 'user_id, provider_id, message_id, and destination_folder_id are required.']);
             return;
         }
@@ -147,7 +140,6 @@ class OutlookOAuth2Controller {
         $destinationFolderId = $data['destination_folder_id'];
 
         if ($user_id <= 0 || $provider_id <= 0 || empty($messageId) || empty($destinationFolderId)) {
-            $this->errorLogController->logError('Invalid parameters.', __FILE__, __LINE__);
             echo json_encode(['status' => false, 'message' => 'Invalid parameters.']);
             return;
         }
@@ -166,7 +158,6 @@ class OutlookOAuth2Controller {
         $data = json_decode(file_get_contents('php://input'), true);
 
         if (!isset($data['user_id'], $data['provider_id'], $data['message_id'])) {
-            $this->errorLogController->logError('user_id, provider_id, and message_id are required.', __FILE__, __LINE__);
             echo json_encode(['status' => false, 'message' => 'user_id, provider_id, and message_id are required.']);
             return;
         }
@@ -176,8 +167,7 @@ class OutlookOAuth2Controller {
         $messageId = $data['message_id'];
 
         if ($user_id <= 0 || $provider_id <= 0 || empty($messageId)) {
-            $this->errorLogController->logError('Invalid parameters.', __FILE__, __LINE__);
-            echo json_encode(['status' => false, 'message' => 'Invalid parameters.']);
+       echo json_encode(['status' => false, 'message' => 'Invalid parameters.']);
             return;
         }
 
@@ -195,7 +185,6 @@ class OutlookOAuth2Controller {
         $data = json_decode(file_get_contents('php://input'), true);
 
         if (!isset($data['user_id'], $data['provider_id'])) {
-            $this->errorLogController->logError('user_id and provider_id are required.', __FILE__, __LINE__);
             echo json_encode(['status' => false, 'message' => 'user_id and provider_id are required.']);
             return;
         }
@@ -204,7 +193,6 @@ class OutlookOAuth2Controller {
         $provider_id = intval($data['provider_id']);
 
         if ($user_id <= 0 || $provider_id <= 0) {
-            $this->errorLogController->logError('Invalid user_id or provider_id.', __FILE__, __LINE__);
             echo json_encode(['status' => false, 'message' => 'Invalid user_id or provider_id.']);
             return;
         }
@@ -213,7 +201,6 @@ class OutlookOAuth2Controller {
             $folders = $this->outlookOAuth2Service->listFolders($user_id, $provider_id);
             echo json_encode(['status' => true, 'folders' => $folders]);
         } catch (Exception $e) {
-            $this->errorLogController->logError("Erro ao listar pastas: " . $e->getMessage(), __FILE__, __LINE__);
             echo json_encode(['status' => false, 'message' => 'Erro ao listar pastas: ' . $e->getMessage()]);
         }
     }
@@ -223,7 +210,6 @@ class OutlookOAuth2Controller {
         $data = json_decode(file_get_contents('php://input'), true);
     
         if (!isset($data['user_id'], $data['provider_id'], $data['conversation_id'])) {
-            $this->errorLogController->logError('user_id, provider_id, and conversation_id are required.', __FILE__, __LINE__);
             echo json_encode(['status' => false, 'message' => 'user_id, provider_id, and conversation_id are required.']);
             return;
         }
@@ -233,7 +219,6 @@ class OutlookOAuth2Controller {
         $conversation_id = $data['conversation_id'];
     
         if ($user_id <= 0 || $provider_id <= 0 || empty($conversation_id)) {
-            $this->errorLogController->logError('Invalid user_id, provider_id, or conversation_id.', __FILE__, __LINE__);
             echo json_encode(['status' => false, 'message' => 'Invalid user_id, provider_id, or conversation_id.']);
             return;
         }

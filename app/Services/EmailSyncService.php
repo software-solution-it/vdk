@@ -94,11 +94,9 @@ class EmailSyncService
                     $task['password']
                 );
             }else{
-                $this->errorLogController->logError("Iniciando sincronização oauth 2", __FILE__, __LINE__, $user_id);
-                $result = $this->outlookOAuth2Service->authenticateImap($task['user_id'], $task['provider_id']);
+                $this->outlookOAuth2Service->authenticateImap($task['user_id'], $task['provider_id']);
         
-                // Opcional: log do resultado da autenticação
-                $this->errorLogController->logError("Resultado da autenticação IMAP: " . json_encode($result), __FILE__, __LINE__);
+    
 
             }
 
@@ -152,14 +150,6 @@ class EmailSyncService
     {
        $tenant_id = $emailAccount['tenant_id'] ?? 'common'; 
         $authorizeUrl = "https://login.microsoftonline.com/{$tenant_id}/oauth2/v2.0/authorize";
-    
-        if (empty($emailAccount['provider_id'])) {
-            $this->errorLogController->logError('Provider ID está vazio.', __FILE__, __LINE__);
-        }
-    
-        if (empty($emailAccount['client_id'])) {
-            $this->errorLogController->logError('Client ID está vazio.', __FILE__, __LINE__);
-        }
     
         $params = [
             'client_id' => $emailAccount['client_id'],

@@ -55,12 +55,10 @@ class UserController {
                 http_response_code(201);
                 echo json_encode(['message' => 'User created successfully']);
             } else {
-                $this->errorLogController->logError('Failed to create user.', __FILE__, __LINE__);
                 http_response_code(500);
                 echo json_encode(['message' => 'Failed to create user']);
             }
         } else {
-            $this->errorLogController->logError('Incomplete data provided for user creation.', __FILE__, __LINE__);
             http_response_code(400);
             echo json_encode(['message' => 'Incomplete data. Name, email, password, and role_id are required.']);
         }
@@ -83,12 +81,10 @@ class UserController {
             if ($update) {
                 echo json_encode(['message' => 'User updated successfully']);
             } else {
-                $this->errorLogController->logError('Failed to update user.', __FILE__, __LINE__);
                 http_response_code(500);
                 echo json_encode(['message' => 'Failed to update user']);
             }
         } else {
-            $this->errorLogController->logError('Incomplete data provided for user update.', __FILE__, __LINE__);
             http_response_code(400);
             echo json_encode(['message' => 'Incomplete data. ID, name, email, and role_id are required.']);
         }
@@ -111,12 +107,11 @@ class UserController {
             if ($delete) {
                 echo json_encode(['message' => 'User deleted successfully']);
             } else {
-                $this->errorLogController->logError('Failed to delete user.', __FILE__, __LINE__);
+    
                 http_response_code(500);
                 echo json_encode(['message' => 'Failed to delete user']);
             }
         } else {
-            $this->errorLogController->logError('User ID is required for deletion.', __FILE__, __LINE__);
             http_response_code(400);
             echo json_encode(['message' => 'User ID is required']);
         }
@@ -146,7 +141,6 @@ class UserController {
                 echo json_encode(['message' => 'Access denied']);
             }
         } else {
-            $this->errorLogController->logError('User ID and functionality name are required for access check.', __FILE__, __LINE__);
             http_response_code(400);
             echo json_encode(['message' => 'User ID and functionality name are required']);
         }
@@ -167,7 +161,6 @@ class UserController {
                 echo json_encode(['message' => $result['message']]);
             }
         } else {
-            $this->errorLogController->logError('Email and verification code are required for verification.', __FILE__, __LINE__);
             http_response_code(400);
             echo json_encode(['message' => 'Email and verification code are required.']);
         }

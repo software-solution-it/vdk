@@ -33,7 +33,7 @@ class Email {
         $conversation_id // Adicionado
     ) {
         if (is_null($email_id) || is_null($sender)) {
-            $this->errorLogController->logError("Email com dados incompletos: email_id ou sender está nulo. Ignorando...", __FILE__, __LINE__, $user_id);
+        
             return false; 
         }
 
@@ -65,7 +65,6 @@ class Email {
         if ($stmt->execute()) {
             return $this->conn->lastInsertId();
         } else {
-            $this->errorLogController->logError('Erro ao salvar o e-mail.', __FILE__, __LINE__, $user_id);
             return false; 
         }
     }
