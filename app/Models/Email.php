@@ -264,6 +264,24 @@ class Email {
         }
     }
     
+    public function emailExistsByMessageId($messageId, $user_id) {
+        try {
+            $query = "SELECT COUNT(*) as count FROM " . $this->table . " WHERE email_id = :message_id AND user_id = :user_id";
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':message_id', $messageId);
+            $stmt->bindParam(':user_id', $user_id);
+            $stmt->execute();
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+            return $result['count'] > 0;
+    
+        } catch (Exception $e) {
+            $this->errorLogController->logError('Erro ao verificar existência de e-mail por Message-ID: ' . $e->getMessage(), __FILE__, __LINE__, $user_id);
+            throw new Exception('Erro ao verificar existência de e-mail por Message-ID: ' . $e->getMessage());
+        }
+    }
+    
+    
 
     // Método auxiliar para obter e-mails por IDs
     private function getEmailsByIds($emailIds) {

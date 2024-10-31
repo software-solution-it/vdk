@@ -242,70 +242,84 @@ public function syncEmailsByUserIdAndProviderId($user_id, $provider_id)
         
         try {
             $server = new Server($imap_host, $imap_port);
-
-
             $this->errorLogController->logError("Imap host " . $imap_host . " Imap Pass: " . $imap_port, __FILE__, __LINE__, $user_id);
-                $connection = $server->authenticate($email, $password);
-
+    
+            $connection = $server->authenticate($email, $password);
             $mailboxes = $connection->getMailboxes();
+    
             foreach ($mailboxes as $mailbox) {
                 if ($mailbox->getAttributes() & \LATT_NOSELECT) {
                     error_log("Ignorando a pasta de sistema: " . $mailbox->getName());
                     continue;
                 }
-
+    
                 $lastSyncDateForFolder = $this->emailModel->getLastEmailSyncDateByFolder($user_id, $mailbox->getName());
                 $lastSyncDateForFolderFormatted = $lastSyncDateForFolder ? new \DateTime($lastSyncDateForFolder) : null;
-
+    
                 error_log("Última data de sincronização para a pasta " . $mailbox->getName() . ": " . ($lastSyncDateForFolderFormatted ? $lastSyncDateForFolderFormatted->format('d-M-Y') : 'Sincronizando todos os e-mails'));
-
+    
                 $search = $lastSyncDateForFolderFormatted ? new Since($lastSyncDateForFolderFormatted) : null;
-
+    
                 $messages = $search ? $mailbox->getMessages($search) : $mailbox->getMessages();
-
+    
                 $uidCounter = 1;
                 $lastEmailDate = null;
-
+    
                 foreach ($messages as $message) {
-                    $messageId = $message->getId();
+                    // Obter o UID do e-mail (identificador único no servidor IMAP)
+                    $uid = $message->getId();
+    
+                    // Obter o 'Message-ID' do cabeçalho do e-mail
+                    $messageId = $message->getHeaders()->get('message-id');
+    
                     $fromAddress = $message->getFrom()->getAddress();
                     $subject = $message->getSubject() ?? 'Sem Assunto';
                     $date_received = $message->getDate()->format('Y-m-d H:i:s');
                     $isRead = $message->isSeen() ? 1 : 0;
                     $body = $message->getBodyHtml() ?? $message->getBodyText();
-
+    
                     $bcc = $message->getBcc();
                     if ($bcc && count($bcc) > 0) {
                         error_log("E-mail contém CCO (BCC). Ignorando o processamento.");
                         continue;
                     }
-
+    
                     if (!$messageId || !$fromAddress) {
                         error_log("E-mail com Message-ID ou From nulo. Ignorando...");
                         continue;
                     }
-
-                    if ($this->emailModel->emailExistsByMessageId($messageId)) {
+    
+                    if ($this->emailModel->emailExistsByMessageId($messageId, $user_id)) {
                         error_log("E-mail com Message-ID " . $messageId . " já existe, ignorando.");
-                        continue;
+                        continue; 
                     }
-
+    
                     $inReplyTo = $message->getInReplyTo();
                     if (is_array($inReplyTo)) {
                         $inReplyTo = implode(', ', $inReplyTo);
                     }
-
-                    $references = implode(', ', $message->getReferences());
-
+    
+                    $references = $message->getReferences();
+                    if (is_array($references)) {
+                        $references = implode(', ', $references);
+                    }
+    
                     $ccAddresses = $message->getCc();
                     $cc = $ccAddresses ? implode(', ', array_map(fn(EmailAddress $addr) => $addr->getAddress(), $ccAddresses)) : null;
-
+    
+                    // Obter os destinatários
+                    $toAddresses = $message->getTo();
+                    $to = $toAddresses ? implode(', ', array_map(fn(EmailAddress $addr) => $addr->getAddress(), $toAddresses)) : null;
+    
+                    // Como não temos o conversation_id via IMAP, podemos deixá-lo como null ou implementar um algoritmo para gerar um
+                    $conversationId = null;
+    
                     $emailId = $this->emailModel->saveEmail(
                         $user_id,
                         $messageId,
                         $subject,
                         $fromAddress,
-                        implode(', ', array_map(fn(EmailAddress $addr) => $addr->getAddress(), iterator_to_array($message->getTo()))),
+                        $to,
                         $body,
                         $date_received,
                         $references,
@@ -313,32 +327,33 @@ public function syncEmailsByUserIdAndProviderId($user_id, $provider_id)
                         $isRead,
                         $mailbox->getName(),
                         $cc,
-                        $uidCounter
+                        $uid,
+                        $conversationId
                     );
-
+    
                     if ($message->hasAttachments()) {
                         $attachments = $message->getAttachments();
-
+    
                         foreach ($attachments as $attachment) {
                             $filename = $attachment->getFilename();
-
+    
                             if (is_null($filename) || empty($filename)) {
                                 error_log("Anexo ignorado: o nome do arquivo está nulo.");
                                 continue;
                             }
-
+    
                             $mimeTypeName = $attachment->getType();
                             $subtype = $attachment->getSubtype();
-
+    
                             $fullMimeType = $mimeTypeName . '/' . $subtype;
-
+    
                             $contentBytes = $attachment->getDecodedContent();
-
+    
                             if ($contentBytes === false) {
                                 error_log("Falha ao obter o conteúdo do anexo: $filename");
                                 continue;
                             }
-
+    
                             $this->emailModel->saveAttachment(
                                 $emailId,
                                 $filename,
@@ -348,32 +363,32 @@ public function syncEmailsByUserIdAndProviderId($user_id, $provider_id)
                             );
                         }
                     }
-
+    
                     $event = [
                         'type' => 'email_received',
                         'email_id' => $messageId,
                         'subject' => $subject,
                         'from' => $fromAddress,
-                        'to' => array_map(fn(EmailAddress $addr) => $addr->getAddress(), iterator_to_array($message->getTo())),
+                        'to' => $toAddresses ? array_map(fn(EmailAddress $addr) => $addr->getAddress(), $toAddresses) : [],
                         'received_at' => $date_received,
                         'user_id' => $user_id,
                         'folder' => $mailbox->getName(),
                         'uuid' => uniqid(),
                     ];
-
+    
                     $this->webhookService->triggerEvent($event, $user_id);
-
+    
                     $uidCounter++;
-
+    
                     if ($date_received) {
                         $lastEmailDate = $date_received;
                     }
                 }
-
+    
                 if ($lastEmailDate) {
                     $this->emailModel->updateLastEmailSyncDateByFolder($user_id, $mailbox->getName(), $lastEmailDate);
                 }
-
+    
                 error_log("Sincronização de e-mails concluída para a pasta " . $mailbox->getName());
             }
         } catch (Exception $e) {
@@ -381,7 +396,8 @@ public function syncEmailsByUserIdAndProviderId($user_id, $provider_id)
             $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__, $user_id);
             throw $e;
         }
-
+    
         error_log("Sincronização de e-mails concluída para o usuário $user_id e provedor $provider_id");
     }
+    
 }
