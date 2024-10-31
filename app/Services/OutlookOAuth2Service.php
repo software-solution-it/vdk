@@ -9,6 +9,7 @@ use GuzzleHttp\Exception\RequestException;
 use App\Models\Email;
 use App\Models\EmailAccount;
 use Exception;
+use App\Controllers\ErrorLogController; // Importe seu controlador de log de erro
 
 class OutlookOAuth2Service {
     private $emailModel;
@@ -25,9 +26,11 @@ class OutlookOAuth2Service {
         'IMAP.AccessAsUser.All',
         'SMTP.Send'
     ];
+    private $errorLogController; // Controlador de log de erro
 
     public function __construct() {
         $this->httpClient = new Client();
+        $this->errorLogController = new ErrorLogController(); // Inicializa o controlador de log de erro
     }
 
     public function initialize($db) {
@@ -45,39 +48,44 @@ class OutlookOAuth2Service {
     }
 
     public function getAuthorizationUrl($user_id, $provider_id) {
-        $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $provider_id);
-        if (!$emailAccount) {
-            throw new Exception("Email account not found for user ID: $user_id and provider ID: $provider_id");
+        try {
+            $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $provider_id);
+            if (!$emailAccount) {
+                throw new Exception("Email account not found for user ID: $user_id and provider ID: $provider_id");
+            }
+
+            $this->initializeOAuthParameters($emailAccount, $user_id, $provider_id);
+
+            $authorizationUrl = 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize?'
+                . http_build_query([
+                    'client_id' => $this->clientId,
+                    'response_type' => 'code',
+                    'redirect_uri' => $this->redirectUri,
+                    'scope' => implode(' ', $this->scopes),
+                    'response_mode' => 'query',
+                    'state' => base64_encode(random_bytes(10))
+                ]);
+
+            return [
+                'status' => true,
+                'authorization_url' => $authorizationUrl
+            ];
+
+        } catch (Exception $e) {
+            $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__, $user_id); // Log de erro
+            throw new Exception('Error generating authorization URL: ' . $e->getMessage());
         }
-
-        $this->initializeOAuthParameters($emailAccount, $user_id, $provider_id);
-
-        $authorizationUrl = 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize?'
-            . http_build_query([
-                'client_id' => $this->clientId,
-                'response_type' => 'code',
-                'redirect_uri' => $this->redirectUri,
-                'scope' => implode(' ', $this->scopes),
-                'response_mode' => 'query',
-                'state' => base64_encode(random_bytes(10))
-            ]);
-
-        return [
-            'status' => true,
-            'authorization_url' => $authorizationUrl
-        ];
     }
 
     public function getAccessToken($user_id, $provider_id, $code) {
-        // Get the email account
-        $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $provider_id);
-        if (!$emailAccount) {
-            throw new Exception("Email account not found for user ID: $user_id and provider ID: $provider_id");
-        }
-
-        $this->initializeOAuthParameters($emailAccount, $user_id, $provider_id);
-
         try {
+            $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $provider_id);
+            if (!$emailAccount) {
+                throw new Exception("Email account not found for user ID: $user_id and provider ID: $provider_id");
+            }
+
+            $this->initializeOAuthParameters($emailAccount, $user_id, $provider_id);
+
             $response = $this->httpClient->post('https://login.microsoftonline.com/common/oauth2/v2.0/token', [
                 'form_params' => [
                     'client_id' => $this->clientId,
@@ -92,7 +100,6 @@ class OutlookOAuth2Service {
             $body = json_decode($response->getBody(), true);
 
             if (isset($body['access_token']) && isset($body['refresh_token'])) {
-                // Update the email account with new tokens
                 $this->emailAccountModel->update(
                     $emailAccount['id'],
                     $emailAccount['email'],
@@ -113,20 +120,23 @@ class OutlookOAuth2Service {
             }
 
         } catch (RequestException $e) {
+            $this->errorLogController->logError('Failed to get access token: ' . $e->getMessage(), __FILE__, __LINE__, $user_id); // Log de erro
             throw new Exception('Failed to get access token: ' . $e->getMessage());
+        } catch (Exception $e) {
+            $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__, $user_id); // Log de erro
+            throw new Exception('Error during access token retrieval: ' . $e->getMessage());
         }
     }
 
     public function refreshAccessToken($user_id, $provider_id) {
-        // Get the email account
-        $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $provider_id);
-        if (!$emailAccount) {
-            throw new Exception("Email account not found for user ID: $user_id and provider ID: $provider_id");
-        }
-
-        $this->initializeOAuthParameters($emailAccount, $user_id, $provider_id);
-
         try {
+            $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $provider_id);
+            if (!$emailAccount) {
+                throw new Exception("Email account not found for user ID: $user_id and provider ID: $provider_id");
+            }
+
+            $this->initializeOAuthParameters($emailAccount, $user_id, $provider_id);
+
             $response = $this->httpClient->post('https://login.microsoftonline.com/common/oauth2/v2.0/token', [
                 'form_params' => [
                     'client_id' => $this->clientId,
@@ -140,7 +150,6 @@ class OutlookOAuth2Service {
             $body = json_decode($response->getBody(), true);
 
             if (isset($body['access_token'])) {
-                // Update the email account with new tokens
                 $this->emailAccountModel->update(
                     $emailAccount['id'],
                     $emailAccount['email'],
@@ -161,36 +170,39 @@ class OutlookOAuth2Service {
             }
 
         } catch (RequestException $e) {
+            $this->errorLogController->logError('Failed to refresh access token: ' . $e->getMessage(), __FILE__, __LINE__, $user_id); // Log de erro
             throw new Exception('Failed to refresh access token: ' . $e->getMessage());
+        } catch (Exception $e) {
+            $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__, $user_id); // Log de erro
+            throw new Exception('Error during token refresh: ' . $e->getMessage());
         }
     }
 
     public function authenticateImap($user_id, $provider_id) {
         try {
-
             $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $provider_id);
             if (!$emailAccount) {
                 throw new Exception("Email account not found for user ID: $user_id and provider ID: $provider_id");
             }
-    
+
             $accessToken = $emailAccount['oauth_token'];
-    
+
             $foldersResponse = $this->httpClient->get('https://graph.microsoft.com/v1.0/me/mailFolders', [
                 'headers' => [
                     'Authorization' => 'Bearer ' . $accessToken,
                     'Accept' => 'application/json'
                 ]
             ]);
-    
+
             $folders = json_decode($foldersResponse->getBody(), true);
-    
+
             foreach ($folders['value'] as $folder) {
                 $folderName = $folder['displayName'];
-    
+
                 if (strtolower($folderName) === 'all mail' || strtolower($folderName) === 'todos os emails') {
                     continue;
                 }
-    
+
                 $emailsResponse = $this->httpClient->get("https://graph.microsoft.com/v1.0/me/mailFolders/{$folder['id']}/messages", [
                     'headers' => [
                         'Authorization' => 'Bearer ' . $accessToken,
@@ -201,12 +213,11 @@ class OutlookOAuth2Service {
                         '$select' => 'id,subject,from,receivedDateTime,hasAttachments,toRecipients,ccRecipients,isRead,internetMessageId,conversationId'
                     ]
                 ]);
-    
+
                 $emails = json_decode($emailsResponse->getBody(), true);
-    
+
                 foreach ($emails['value'] as $emailData) {
                     $messageId = $emailData['id'];
-    
                     $subject = $emailData['subject'] ?? '(Sem Assunto)';
                     $fromAddress = $emailData['from']['emailAddress']['address'] ?? '';
                     $date_received = $emailData['receivedDateTime'] ?? null;
@@ -215,18 +226,18 @@ class OutlookOAuth2Service {
                     $ccRecipients = implode(', ', array_map(fn($addr) => $addr['emailAddress']['address'], $emailData['ccRecipients'] ?? []));
                     $references = $emailData['conversationId'] ?? '';
                     $inReplyTo = $emailData['internetMessageId'] ?? '';
-    
+
                     $messageDetailResponse = $this->httpClient->get("https://graph.microsoft.com/v1.0/me/messages/$messageId", [
                         'headers' => [
                             'Authorization' => 'Bearer ' . $accessToken,
                             'Accept' => 'application/json'
                         ]
                     ]);
-    
+
                     $messageDetails = json_decode($messageDetailResponse->getBody(), true);
                     $bodyContent = $messageDetails['body']['content'] ?? '';
                     $bodyContentType = $messageDetails['body']['contentType'] ?? '';
-    
+
                     $emailId = $this->emailModel->saveEmail(
                         $user_id,
                         $messageId,
@@ -242,7 +253,7 @@ class OutlookOAuth2Service {
                         $ccRecipients,
                         $messageId
                     );
-    
+
                     if ($emailData['hasAttachments']) {
                         $attachmentsResponse = $this->httpClient->get("https://graph.microsoft.com/v1.0/me/messages/$messageId/attachments", [
                             'headers' => [
@@ -250,19 +261,19 @@ class OutlookOAuth2Service {
                                 'Accept' => 'application/json'
                             ]
                         ]);
-    
+
                         $attachments = json_decode($attachmentsResponse->getBody(), true);
-    
+
                         foreach ($attachments['value'] as $attachment) {
                             $filename = $attachment['name'] ?? '';
                             $mimeTypeName = $attachment['contentType'] ?? '';
                             $contentBytes = base64_decode($attachment['contentBytes']);
-    
+
                             if (empty($filename) || $contentBytes === false) {
-                                error_log("Anexo ignorado: nome do arquivo vazio ou falha na decodificação.");
+                                $this->errorLogController->logError("Anexo ignorado: nome do arquivo vazio ou falha na decodificação.", __FILE__, __LINE__, $user_id);
                                 continue;
                             }
-    
+
                             $this->emailModel->saveAttachment(
                                 $emailId,
                                 $filename,
@@ -274,15 +285,15 @@ class OutlookOAuth2Service {
                     }
                 }
             }
-    
+
             return true;
-    
+
         } catch (RequestException $e) {
-            throw new Exception('Erro ao listar emails: ' . $e->getMessage());
+            $this->errorLogController->logError('Error while listing emails: ' . $e->getMessage(), __FILE__, __LINE__, $user_id); // Log de erro
+            throw new Exception('Error while listing emails: ' . $e->getMessage());
         } catch (Exception $e) {
-            throw new Exception('Erro ao salvar emails e anexos: ' . $e->getMessage());
+            $this->errorLogController->logError('Error while saving emails and attachments: ' . $e->getMessage(), __FILE__, __LINE__, $user_id); // Log de erro
+            throw new Exception('Error while saving emails and attachments: ' . $e->getMessage());
         }
     }
-    
-    
 }
