@@ -188,7 +188,7 @@ class OutlookOAuth2Service {
             $emailAccount = null;
             $this->errorLogController->logError("Entrou no método: $user_id", __FILE__, __LINE__);
              $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $provider_id);
-            $this->errorLogController->logError("Email account fetched: " . json_encode($emailAccount), __FILE__, __LINE__);
+            $this->errorLogController->logError("Email account fetched: " , __FILE__, __LINE__);
 
             if (!$emailAccount) {
                 $this->errorLogController->logError("Conta não encontrada: $user_id", __FILE__, __LINE__);
