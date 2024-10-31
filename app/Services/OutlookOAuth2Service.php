@@ -28,7 +28,7 @@ class OutlookOAuth2Service {
         $this->oauthProvider = new GenericProvider([
             'clientId'                => $emailAccount['client_id'],
             'clientSecret'            => $emailAccount['client_secret'],
-            'redirectUri'             => 'http://149.18.103.156/callback',
+            'redirectUri'             => 'http://localhost:3000/callback',
             'urlAuthorize'            => 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
             'urlAccessToken'          => 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
             'urlResourceOwnerDetails' => '',

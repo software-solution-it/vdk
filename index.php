@@ -41,19 +41,19 @@ switch ($request_uri[0]) {
     case '/api/auth/reset-password':
         $auth = new AuthController();
         $auth->resetPassword();
-        break;
+        break; 
 
-    case '/api/teste':
+    case '/api/outlook/oauth/authorization':
         $controller = new OutlookOAuth2Controller();
         $controller->getAuthorizationUrl();
         break;
 
-    case '/api/teste1':
+    case '/api/outlook/oauth/token':
         $controller = new OutlookOAuth2Controller();
         $controller->getAccessToken();
         break;
 
-    case '/api/teste2':
+    case '/api/outlook/oauth/refresh':
         $controller = new OutlookOAuth2Controller();
         $controller->refreshAccessToken();
         break;
