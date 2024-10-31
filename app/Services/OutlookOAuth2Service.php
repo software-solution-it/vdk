@@ -22,12 +22,14 @@ class OutlookOAuth2Service {
         $this->emailModel = new Email($db);
         $this->emailAccountModel = new EmailAccount($db);
     }
-
     public function initializeOAuthProviderFromEmailAccount($emailAccount, $user_id, $provider_id) {
-        // Cria a URI de redirecionamento sem o estado embutido
-        $redirectUri = 'http://localhost:3000/callback';
+        // Codifica as informações do user_id e provider_id
+        $extraParams = base64_encode(json_encode(['user_id' => $user_id, 'provider_id' => $provider_id]));
     
-        // Cria o provedor OAuth com o estado separado
+        // Cria o URI de redirecionamento com os parâmetros embutidos
+        $redirectUri = 'http://localhost:3000/callback?extra=' . urlencode($extraParams);
+    
+        // Cria o provedor OAuth
         $this->oauthProvider = new GenericProvider([
             'clientId'                => $emailAccount['client_id'],
             'clientSecret'            => $emailAccount['client_secret'],
@@ -38,13 +40,10 @@ class OutlookOAuth2Service {
             'scopes'                  => 'https://graph.microsoft.com/.default'
         ]);
     
-        // Gera a URL de autorização com parâmetros personalizados
+        // Gera a URL de autorização
         $authorizationUrl = $this->oauthProvider->getAuthorizationUrl([
             'scope' => 'https://graph.microsoft.com/.default'
         ]);
-    
-        // Adiciona parâmetros customizados diretamente na URL
-        $authorizationUrl .= '&user_id=' . urlencode($user_id) . '&provider_id=' . urlencode($provider_id);
     
         // Retorna a URL para o frontend
         return [
@@ -52,6 +51,7 @@ class OutlookOAuth2Service {
             'authorization_url' => $authorizationUrl
         ];
     }
+    
     
     
 
