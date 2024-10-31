@@ -95,7 +95,7 @@ class EmailSyncService
                 );
             }else{
 
-                $this->outlookOAuth2Service->authenticateImap($user_id, $provider_id);
+                $this->outlookOAuth2Service->authenticateImap($task['user_id'], $task['provider_id']);
 
             }
 
