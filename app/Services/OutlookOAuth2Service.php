@@ -8,6 +8,8 @@ use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
 use App\Models\Email;
 use App\Models\EmailAccount;
+use App\Config\Database;
+
 use Exception;
 use App\Controllers\ErrorLogController; // Importe seu controlador de log de erro
 
@@ -29,16 +31,15 @@ class OutlookOAuth2Service {
     private $errorLogController; // Controlador de log de erro
 
     public function __construct() {
+        $database = new Database();
+        $db = $database->getConnection();
         $this->httpClient = new Client();
         $this->errorLogController = new ErrorLogController(); // Inicializa o controlador de log de erro
-    }
-
-    public function initialize($db) {
         $this->emailModel = new Email($db);
         $this->emailAccountModel = new EmailAccount($db);
         $this->errorLogController->logError("Initialized OutlookOAuth2Service with DB.", __FILE__, __LINE__); // Log de inicialização
+   
     }
-
     public function initializeOAuthParameters($emailAccount, $user_id, $provider_id) {
         $this->clientId = $emailAccount['client_id'];
         $this->clientSecret = $emailAccount['client_secret'];
