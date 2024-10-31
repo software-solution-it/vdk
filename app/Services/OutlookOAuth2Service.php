@@ -7,6 +7,7 @@ use League\OAuth2\Client\Provider\GenericProvider;
 use App\Models\Email;
 use PHPMailer\PHPMailer\Exception;
 use App\Models\EmailAccount;
+use PhpImap\Mailbox;
 
 class OutlookOAuth2Service {
     private $emailModel;
@@ -161,21 +162,19 @@ class OutlookOAuth2Service {
             throw new Exception("Email account not found for user ID: $user_id and provider ID: $provider_id");
         }
     
+        // Inicializando o mailbox com o token OAuth2
         $imapServer = '{outlook.office365.com:993/imap/ssl}INBOX';
-        $options = '/auth=Bearer';
+        $accessToken = $emailAccount['oauth_token']; // O token OAuth2 que você obteve
     
-        // Teste para garantir que o token esteja definido
-        if (empty($emailAccount['oauth_token'])) {
-            throw new Exception("OAuth token is missing.");
+        // Criando uma nova instância do Mailbox
+        $mailbox = new Mailbox($imapServer, $emailAccount['email'], $accessToken, 'OAuth2');
+    
+        try { 
+            // Tentando conectar
+            $mailbox->checkMailbox();
+            return $mailbox; // Retorna a instância do mailbox se a autenticação for bem-sucedida
+        } catch (Exception $e) {
+            throw new Exception('Falha ao autenticar no IMAP: ' . $e->getMessage());
         }
-    
-        $inbox = @imap_open($imapServer . $options, $emailAccount['email'], $emailAccount['oauth_token']);
-    
-        if (!$inbox) {
-            $error = imap_last_error();
-            throw new Exception('Falha ao autenticar no IMAP: ' . $error);
-        }
-    
-        return $inbox;
     }
 }
