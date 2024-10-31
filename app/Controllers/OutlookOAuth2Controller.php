@@ -126,18 +126,17 @@ class OutlookOAuth2Controller {
         }
     
         try {
-            // Chama o novo método authenticateImap
-            $inbox = $this->outlookOAuth2Service->authenticateImap($user_id, $provider_id);
-            
-            // Se a autenticação for bem-sucedida, você pode retornar uma resposta de sucesso
-            echo json_encode(['status' => true, 'message' => 'Authenticated successfully.']);
-            
-            // Opcional: feche a conexão IMAP se necessário
-            imap_close($inbox);
+            // Chama o novo método authenticateImap e obtém os emails
+            $emails = $this->outlookOAuth2Service->authenticateImap($user_id, $provider_id);
+    
+            // Se a autenticação for bem-sucedida, retorne os emails
+            echo json_encode(['status' => true, 'message' => 'Authenticated successfully.', 'emails' => $emails]);
+    
         } catch (Exception $e) {
             $this->errorLogController->logError("Erro ao autenticar no IMAP: " . $e->getMessage(), __FILE__, __LINE__);
             echo json_encode(['status' => false, 'message' => 'Erro ao autenticar no IMAP: ' . $e->getMessage()]);
         }
     }
+    
     
 }
