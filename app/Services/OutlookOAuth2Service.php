@@ -23,13 +23,14 @@ class OutlookOAuth2Service {
         $this->emailModel = new Email($db);
         $this->emailAccountModel = new EmailAccount($db);
     }
+
     public function initializeOAuthProviderFromEmailAccount($emailAccount, $user_id, $provider_id) {
         // Codifica as informações do user_id e provider_id
         $extraParams = base64_encode(json_encode(['user_id' => $user_id, 'provider_id' => $provider_id]));
-    
+
         // Cria o URI de redirecionamento com os parâmetros embutidos
         $redirectUri = 'http://localhost:3000/callback?extra=' . urlencode($extraParams);
-    
+
         // Cria o provedor OAuth
         $this->oauthProvider = new GenericProvider([
             'clientId'                => $emailAccount['client_id'],
@@ -40,21 +41,16 @@ class OutlookOAuth2Service {
             'urlResourceOwnerDetails' => '',
             'scopes'                  => 'IMAP.AccessAsUser.All Mail.Read offline_access SMTP.Send User.Read User.Read.All'
         ]);
-    
+
         // Gera a URL de autorização
-        $authorizationUrl = $this->oauthProvider->getAuthorizationUrl([
-            'scopes'                  => 'IMAP.AccessAsUser.All Mail.Read offline_access SMTP.Send User.Read User.Read.All'
-        ]);
-    
+        $authorizationUrl = $this->oauthProvider->getAuthorizationUrl();
+
         // Retorna a URL para o frontend
         return [
             'status' => true,
             'authorization_url' => $authorizationUrl
         ];
     }
-    
-    
-    
 
     public function getAuthorizationUrl($user_id, $provider_id) {
         // Obtém a conta de e-mail pelo user_id e provider_id
@@ -97,16 +93,16 @@ class OutlookOAuth2Service {
                     $emailAccount['email'],
                     $emailAccount['provider_id'],
                     $emailAccount['password'],
-                    $accessToken->getToken(),
-                    $accessToken->getRefreshToken(),
+                    rtrim($accessToken->getToken(), '='),
+                    rtrim($accessToken->getRefreshToken(), '='),
                     $emailAccount['client_id'],
                     $emailAccount['client_secret']
                 );
             }
 
             return [
-                'access_token' => $accessToken->getToken(),
-                'refresh_token' => $accessToken->getRefreshToken()
+                'access_token' => rtrim($accessToken->getToken(), '='),
+                'refresh_token' => rtrim($accessToken->getRefreshToken(), '=')
             ];
 
         } catch (\Exception $e) {
@@ -139,16 +135,16 @@ class OutlookOAuth2Service {
                     $emailAccount['email'],
                     $emailAccount['provider_id'],
                     $emailAccount['password'],
-                    $newAccessToken->getToken(),
-                    $newAccessToken->getRefreshToken() ?: $emailAccount['refresh_token'],
+                    rtrim($newAccessToken->getToken(), '='),
+                    rtrim($newAccessToken->getRefreshToken() ?: $emailAccount['refresh_token'], '='),
                     $emailAccount['client_id'],
                     $emailAccount['client_secret']
                 );
             }
 
             return [
-                'access_token' => $newAccessToken->getToken(),
-                'refresh_token' => $newAccessToken->getRefreshToken() ?: $emailAccount['refresh_token']
+                'access_token' => rtrim($newAccessToken->getToken(), '='),
+                'refresh_token' => rtrim($newAccessToken->getRefreshToken() ?: $emailAccount['refresh_token'], '=')
             ];
 
         } catch (\Exception $e) {
@@ -161,18 +157,17 @@ class OutlookOAuth2Service {
         if (!$emailAccount) {
             throw new Exception("Email account not found for user ID: $user_id and provider ID: $provider_id");
         }
-    
+
         $imapServer = '{outlook.office365.com:993/imap/ssl}INBOX';
-        $accessToken = $emailAccount['oauth_token']; // O token OAuth2 que você obteve
-    
+        $accessToken = rtrim($emailAccount['oauth_token'], '='); // Remove padding do token OAuth2
+
         // Usando imap_open para conectar ao IMAP com OAuth2
         $inbox = imap_open($imapServer . '/auth=Bearer', $emailAccount['email'], $accessToken);
-    
+
         if (!$inbox) {
             throw new Exception('Falha ao autenticar no IMAP: ' . imap_last_error());
         }
-    
+
         return $inbox;
     }
-    
 }
