@@ -25,9 +25,13 @@ class OutlookOAuth2Service {
 
     public function initializeOAuthProviderFromEmailAccount($emailAccount, $user_id, $provider_id) {
         // Inicializa o provedor OAuth usando as credenciais do emailAccount e adiciona o user_id e provider_id ao redirectUri
-        $state = urlencode(base64_encode(json_encode(['user_id' => $user_id, 'provider_id' => $provider_id])));
-        $redirectUri = 'http://localhost:3000/callback?state=' . urlencode($state);
-
+        $stateArray = ['user_id' => $user_id, 'provider_id' => $provider_id];
+        $stateJson = json_encode($stateArray);
+        $stateBase64 = base64_encode($stateJson);
+        $stateEncoded = urlencode($stateBase64); // Aplicar urlencode no Base64
+    
+        $redirectUri = 'http://localhost:3000/callback?state=' . $stateEncoded;
+    
         $this->oauthProvider = new GenericProvider([
             'clientId'                => $emailAccount['client_id'],
             'clientSecret'            => $emailAccount['client_secret'],
@@ -38,6 +42,7 @@ class OutlookOAuth2Service {
             'scopes'                  => 'https://graph.microsoft.com/.default'
         ]);
     }
+    
 
     public function getAuthorizationUrl($user_id, $provider_id) {
         // Obtém a conta de e-mail pelo user_id e provider_id
