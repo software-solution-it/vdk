@@ -36,6 +36,7 @@ class OutlookOAuth2Service {
     public function initialize($db) {
         $this->emailModel = new Email($db);
         $this->emailAccountModel = new EmailAccount($db);
+        $this->errorLogController->logError("Initialized OutlookOAuth2Service with DB.", __FILE__, __LINE__); // Log de inicialização
     }
 
     public function initializeOAuthParameters($emailAccount, $user_id, $provider_id) {
@@ -45,6 +46,7 @@ class OutlookOAuth2Service {
         $extraParams = base64_encode(json_encode(['user_id' => $user_id, 'provider_id' => $provider_id]));
 
         $this->redirectUri = 'http://localhost:3000/callback?extra=' . urlencode($extraParams);
+        $this->errorLogController->logError("OAuth parameters initialized for user_id: $user_id, provider_id: $provider_id", __FILE__, __LINE__); // Log de parâmetros
     }
 
     public function getAuthorizationUrl($user_id, $provider_id) {
@@ -55,6 +57,7 @@ class OutlookOAuth2Service {
             }
 
             $this->initializeOAuthParameters($emailAccount, $user_id, $provider_id);
+            $this->errorLogController->logError("Generating authorization URL for user ID: $user_id", __FILE__, __LINE__);
 
             $authorizationUrl = 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize?'
                 . http_build_query([
@@ -85,6 +88,7 @@ class OutlookOAuth2Service {
             }
 
             $this->initializeOAuthParameters($emailAccount, $user_id, $provider_id);
+            $this->errorLogController->logError("Requesting access token for user ID: $user_id", __FILE__, __LINE__);
 
             $response = $this->httpClient->post('https://login.microsoftonline.com/common/oauth2/v2.0/token', [
                 'form_params' => [
@@ -136,6 +140,7 @@ class OutlookOAuth2Service {
             }
 
             $this->initializeOAuthParameters($emailAccount, $user_id, $provider_id);
+            $this->errorLogController->logError("Refreshing access token for user ID: $user_id", __FILE__, __LINE__);
 
             $response = $this->httpClient->post('https://login.microsoftonline.com/common/oauth2/v2.0/token', [
                 'form_params' => [
@@ -186,6 +191,7 @@ class OutlookOAuth2Service {
             }
 
             $accessToken = $emailAccount['oauth_token'];
+            $this->errorLogController->logError("Authenticating IMAP for user ID: $user_id", __FILE__, __LINE__);
 
             $foldersResponse = $this->httpClient->get('https://graph.microsoft.com/v1.0/me/mailFolders', [
                 'headers' => [
