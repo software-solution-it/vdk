@@ -185,8 +185,9 @@ class OutlookOAuth2Service {
 
     public function authenticateImap($user_id, $provider_id) {
         try {
+            $emailAccount = null;
             $this->errorLogController->logError("Entrou no método: $user_id", __FILE__, __LINE__);
-            $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $provider_id);
+             $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $provider_id);
             $this->errorLogController->logError("Email account fetched: " . json_encode($emailAccount), __FILE__, __LINE__);
 
             if (!$emailAccount) {
