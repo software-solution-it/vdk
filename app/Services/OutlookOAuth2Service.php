@@ -41,8 +41,11 @@ class OutlookOAuth2Service {
             'scopes'                  => 'https://graph.microsoft.com/.default'
         ]);
     
-        // Gera a URL de autorização
-        $authorizationUrl = $this->oauthProvider->getAuthorizationUrl(['state' => $state]);
+        // Gera a URL de autorização com o estado personalizado
+        $authorizationUrl = $this->oauthProvider->getAuthorizationUrl([
+            'state' => $state, // Passa o estado personalizado
+            'scope' => 'https://graph.microsoft.com/.default'
+        ]);
     
         // Retorna a URL para o frontend
         return [
