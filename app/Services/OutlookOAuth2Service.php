@@ -167,37 +167,100 @@ class OutlookOAuth2Service {
         }
     }
 
-
     public function authenticateImap($user_id, $provider_id) {
         try {
-        $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $provider_id);
-        if (!$emailAccount) {
-            throw new Exception("Email account not found for user ID: $user_id and provider ID: $provider_id");
-        }
-
-        $accessToken = $emailAccount['oauth_token'];
-
-
+            // Obtém a conta de email
+            $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $provider_id);
+            if (!$emailAccount) {
+                throw new Exception("Email account not found for user ID: $user_id and provider ID: $provider_id");
+            }
+    
+            // Recupera o token de acesso
+            $accessToken = $emailAccount['oauth_token'];
+    
+            // Faz a requisição para obter os emails
             $response = $this->httpClient->get('https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages', [
                 'headers' => [
                     'Authorization' => 'Bearer ' . $accessToken,
                     'Accept' => 'application/json'
                 ],
                 'query' => [
-                    // Opcional: parâmetros para paginação ou filtros
-                    '$top' => 10, // Obtém os 10 emails mais recentes
-                    '$select' => 'subject,from,receivedDateTime' // Campos selecionados
+                    '$top' => 10, // Número de emails a serem obtidos
+                    '$select' => 'id,subject,from,receivedDateTime,hasAttachments,toRecipients,ccRecipients' // Campos necessários
                 ]
             ]);
-
+    
             $emails = json_decode($response->getBody(), true);
-            return $emails['value'];
-
+    
+            foreach ($emails['value'] as $emailData) {
+                // Extrai dados básicos do email
+                $messageId = $emailData['id'];
+                $subject = $emailData['subject'] ?? '(Sem Assunto)';
+                $fromAddress = $emailData['from']['emailAddress']['address'] ?? '';
+                $date_received = $emailData['receivedDateTime'] ?? null;
+                $isRead = $emailData['isRead'] ?? false;
+    
+                // Endereços 'To' e 'CC'
+                $toRecipients = implode(', ', array_map(fn($addr) => $addr['emailAddress']['address'], $emailData['toRecipients']));
+                $ccRecipients = implode(', ', array_map(fn($addr) => $addr['emailAddress']['address'], $emailData['ccRecipients'] ?? []));
+    
+                // Salva o email no banco
+                $emailId = $this->emailModel->saveEmail(
+                    $user_id,
+                    $messageId,
+                    $subject,
+                    $fromAddress,
+                    $toRecipients,
+                    $emailData['body']['content'] ?? '', // Supondo que o corpo do email foi obtido em outro ponto
+                    $date_received,
+                    $emailData['conversationId'] ?? '', // Assumindo que seja o campo "references"
+                    $emailData['internetMessageId'] ?? '', // Assumindo que seja o campo "inReplyTo"
+                    $isRead,
+                    'INBOX', // Nome da caixa de entrada
+                    $ccRecipients,
+                    $messageId // UID como o próprio ID da mensagem no Graph API
+                );
+    
+                // Processa anexos se o email tiver
+                if ($emailData['hasAttachments']) {
+                    $attachmentsResponse = $this->httpClient->get("https://graph.microsoft.com/v1.0/me/messages/$messageId/attachments", [
+                        'headers' => [
+                            'Authorization' => 'Bearer ' . $accessToken,
+                            'Accept' => 'application/json'
+                        ]
+                    ]);
+    
+                    $attachments = json_decode($attachmentsResponse->getBody(), true);
+    
+                    foreach ($attachments['value'] as $attachment) {
+                        $filename = $attachment['name'] ?? '';
+                        $mimeTypeName = $attachment['contentType'] ?? '';
+                        $contentBytes = base64_decode($attachment['contentBytes']);
+    
+                        if (empty($filename) || $contentBytes === false) {
+                            error_log("Anexo ignorado: nome do arquivo vazio ou falha na decodificação.");
+                            continue;
+                        }
+    
+                        // Salva o anexo no banco de dados
+                        $this->emailModel->saveAttachment(
+                            $emailId,
+                            $filename,
+                            $mimeTypeName,
+                            strlen($contentBytes),
+                            $contentBytes
+                        );
+                    }
+                }
+            }
+    
+            return true;
+    
         } catch (RequestException $e) {
             throw new Exception('Erro ao listar emails: ' . $e->getMessage());
+        } catch (Exception $e) {
+            throw new Exception('Erro ao salvar emails e anexos: ' . $e->getMessage());
         }
-
-      
     }
-
+    
 }
