@@ -167,6 +167,28 @@ class OutlookOAuth2Service {
         }
     }
 
+    public function listInboxEmails($accessToken) {
+        try {
+            $response = $this->httpClient->get('https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages', [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $accessToken,
+                    'Accept' => 'application/json'
+                ],
+                'query' => [
+                    // Opcional: parâmetros para paginação ou filtros
+                    '$top' => 10, // Obtém os 10 emails mais recentes
+                    '$select' => 'subject,from,receivedDateTime' // Campos selecionados
+                ]
+            ]);
+
+            $emails = json_decode($response->getBody(), true);
+            return $emails['value'];
+
+        } catch (RequestException $e) {
+            throw new Exception('Erro ao listar emails: ' . $e->getMessage());
+        }
+    }
+
     public function authenticateImap($user_id, $provider_id) {
         $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $provider_id);
         if (!$emailAccount) {
@@ -175,29 +197,11 @@ class OutlookOAuth2Service {
 
         $accessToken = $emailAccount['oauth_token'];
 
-        // Build the SASL XOAUTH2 authentication string
-        $authString = $this->buildSaslXOAuth2String($emailAccount['email'], $accessToken);
+        $result = $this->listInboxEmails($accessToken);
 
-        // Use imap_open with the XOAUTH2 authentication
-        $imapServer = '{outlook.office365.com:993/imap/ssl}INBOX';
+        return $result;
 
-        $imapStream = imap_open(
-            $imapServer,
-            $emailAccount['email'],
-            $authString,
-            0,
-            1,
-            ['DISABLE_AUTHENTICATOR' => 'GSSAPI']
-        );
-
-        if (!$imapStream) {
-            throw new Exception('Failed to authenticate with IMAP: ' . imap_last_error());
-        }
-
-        return $imapStream;
+      
     }
 
-    private function buildSaslXOAuth2String($email, $accessToken) {
-        return base64_encode("user=$email\001auth=Bearer $accessToken\001\001");
-    }
 }
