@@ -187,6 +187,7 @@ class OutlookOAuth2Service {
         try {
             $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $provider_id);
             if (!$emailAccount) {
+                $this->errorLogController->logError("Conta não encontrada: $user_id", __FILE__, __LINE__);
                 throw new Exception("Email account not found for user ID: $user_id and provider ID: $provider_id");
             }
 
