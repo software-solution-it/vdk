@@ -178,94 +178,111 @@ class OutlookOAuth2Service {
             // Recupera o token de acesso
             $accessToken = $emailAccount['oauth_token'];
     
-            // Faz a requisição para obter os emails com campos básicos
-            $response = $this->httpClient->get('https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages', [
+            // Faz a requisição para listar todas as pastas de email
+            $foldersResponse = $this->httpClient->get('https://graph.microsoft.com/v1.0/me/mailFolders', [
                 'headers' => [
                     'Authorization' => 'Bearer ' . $accessToken,
                     'Accept' => 'application/json'
-                ],
-                'query' => [
-                    '$top' => 10, // Número de emails a serem obtidos
-                    '$select' => 'id,subject,from,receivedDateTime,hasAttachments,toRecipients,ccRecipients,isRead,internetMessageId,conversationId'
                 ]
             ]);
     
-            $emails = json_decode($response->getBody(), true);
+            $folders = json_decode($foldersResponse->getBody(), true);
     
-            foreach ($emails['value'] as $emailData) {
-                // Extrai dados básicos do email
-                $messageId = $emailData['id'];
-                $subject = $emailData['subject'] ?? '(Sem Assunto)';
-                $fromAddress = $emailData['from']['emailAddress']['address'] ?? '';
-                $date_received = $emailData['receivedDateTime'] ?? null;
-                $isRead = $emailData['isRead'] ?? false;
+            foreach ($folders['value'] as $folder) {
+                $folderName = $folder['displayName'];
     
-                // Endereços 'To' e 'CC'
-                $toRecipients = implode(', ', array_map(fn($addr) => $addr['emailAddress']['address'], $emailData['toRecipients']));
-                $ccRecipients = implode(', ', array_map(fn($addr) => $addr['emailAddress']['address'], $emailData['ccRecipients'] ?? []));
+                // Ignora a pasta "Todos os emails"
+                if (strtolower($folderName) === 'all mail' || strtolower($folderName) === 'todos os emails') {
+                    continue;
+                }
     
-                // Campos "References" e "In-Reply-To"
-                $references = $emailData['conversationId'] ?? '';
-                $inReplyTo = $emailData['internetMessageId'] ?? '';
-    
-                // Requisição adicional para obter o conteúdo do corpo do email
-                $messageDetailResponse = $this->httpClient->get("https://graph.microsoft.com/v1.0/me/messages/$messageId", [
+                // Faz a requisição para obter os emails dessa pasta específica
+                $emailsResponse = $this->httpClient->get("https://graph.microsoft.com/v1.0/me/mailFolders/{$folder['id']}/messages", [
                     'headers' => [
                         'Authorization' => 'Bearer ' . $accessToken,
                         'Accept' => 'application/json'
+                    ],
+                    'query' => [
+                        '$top' => 10,
+                        '$select' => 'id,subject,from,receivedDateTime,hasAttachments,toRecipients,ccRecipients,isRead,internetMessageId,conversationId'
                     ]
                 ]);
     
-                $messageDetails = json_decode($messageDetailResponse->getBody(), true);
-                $bodyContent = $messageDetails['body']['content'] ?? '';
-                $bodyContentType = $messageDetails['body']['contentType'] ?? '';
+                $emails = json_decode($emailsResponse->getBody(), true);
     
-                // Salva o email no banco
-                $emailId = $this->emailModel->saveEmail(
-                    $user_id,
-                    $messageId,
-                    $subject,
-                    $fromAddress,
-                    $toRecipients,
-                    $bodyContent, // Conteúdo do corpo do email
-                    $date_received,
-                    $references, // Campo de referência (ex: thread/conversa)
-                    $inReplyTo, // Campo de resposta (In-Reply-To)
-                    $isRead,
-                    'INBOX', // Nome da caixa de entrada
-                    $ccRecipients,
-                    $messageId // UID como o próprio ID da mensagem no Graph API
-                );
+                foreach ($emails['value'] as $emailData) {
+                    $messageId = $emailData['id'];
     
-                // Processa anexos se o email tiver
-                if ($emailData['hasAttachments']) {
-                    $attachmentsResponse = $this->httpClient->get("https://graph.microsoft.com/v1.0/me/messages/$messageId/attachments", [
+    
+                    // Extrai os dados do email
+                    $subject = $emailData['subject'] ?? '(Sem Assunto)';
+                    $fromAddress = $emailData['from']['emailAddress']['address'] ?? '';
+                    $date_received = $emailData['receivedDateTime'] ?? null;
+                    $isRead = $emailData['isRead'] ?? false;
+                    $toRecipients = implode(', ', array_map(fn($addr) => $addr['emailAddress']['address'], $emailData['toRecipients']));
+                    $ccRecipients = implode(', ', array_map(fn($addr) => $addr['emailAddress']['address'], $emailData['ccRecipients'] ?? []));
+                    $references = $emailData['conversationId'] ?? '';
+                    $inReplyTo = $emailData['internetMessageId'] ?? '';
+    
+                    // Faz uma requisição adicional para obter o conteúdo do corpo do email
+                    $messageDetailResponse = $this->httpClient->get("https://graph.microsoft.com/v1.0/me/messages/$messageId", [
                         'headers' => [
                             'Authorization' => 'Bearer ' . $accessToken,
                             'Accept' => 'application/json'
                         ]
                     ]);
     
-                    $attachments = json_decode($attachmentsResponse->getBody(), true);
+                    $messageDetails = json_decode($messageDetailResponse->getBody(), true);
+                    $bodyContent = $messageDetails['body']['content'] ?? '';
+                    $bodyContentType = $messageDetails['body']['contentType'] ?? '';
     
-                    foreach ($attachments['value'] as $attachment) {
-                        $filename = $attachment['name'] ?? '';
-                        $mimeTypeName = $attachment['contentType'] ?? '';
-                        $contentBytes = base64_decode($attachment['contentBytes']);
+                    // Salva o email no banco
+                    $emailId = $this->emailModel->saveEmail(
+                        $user_id,
+                        $messageId,
+                        $subject,
+                        $fromAddress,
+                        $toRecipients,
+                        $bodyContent,
+                        $date_received,
+                        $references,
+                        $inReplyTo,
+                        $isRead,
+                        $folderName, // Nome da pasta do email
+                        $ccRecipients,
+                        $messageId
+                    );
     
-                        if (empty($filename) || $contentBytes === false) {
-                            error_log("Anexo ignorado: nome do arquivo vazio ou falha na decodificação.");
-                            continue;
+                    // Processa e salva anexos
+                    if ($emailData['hasAttachments']) {
+                        $attachmentsResponse = $this->httpClient->get("https://graph.microsoft.com/v1.0/me/messages/$messageId/attachments", [
+                            'headers' => [
+                                'Authorization' => 'Bearer ' . $accessToken,
+                                'Accept' => 'application/json'
+                            ]
+                        ]);
+    
+                        $attachments = json_decode($attachmentsResponse->getBody(), true);
+    
+                        foreach ($attachments['value'] as $attachment) {
+                            $filename = $attachment['name'] ?? '';
+                            $mimeTypeName = $attachment['contentType'] ?? '';
+                            $contentBytes = base64_decode($attachment['contentBytes']);
+    
+                            if (empty($filename) || $contentBytes === false) {
+                                error_log("Anexo ignorado: nome do arquivo vazio ou falha na decodificação.");
+                                continue;
+                            }
+    
+                            // Salva o anexo no banco de dados
+                            $this->emailModel->saveAttachment(
+                                $emailId,
+                                $filename,
+                                $mimeTypeName,
+                                strlen($contentBytes),
+                                $contentBytes
+                            );
                         }
-    
-                        // Salva o anexo no banco de dados
-                        $this->emailModel->saveAttachment(
-                            $emailId,
-                            $filename,
-                            $mimeTypeName,
-                            strlen($contentBytes),
-                            $contentBytes
-                        );
                     }
                 }
             }
