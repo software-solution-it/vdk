@@ -41,7 +41,7 @@ switch ($request_uri[0]) {
     case '/api/auth/reset-password':
         $auth = new AuthController();
         $auth->resetPassword();
-        break; 
+        break;
 
     case '/api/outlook/oauth/authorization':
         $controller = new OutlookOAuth2Controller();
@@ -58,10 +58,28 @@ switch ($request_uri[0]) {
         $controller->refreshAccessToken();
         break;
 
-        case '/api/outlook/oauth/autenticate':
-            $controller = new OutlookOAuth2Controller();
-            $controller->autenticateImap();
-            break;
+    case '/api/outlook/oauth/move':
+        $controller = new OutlookOAuth2Controller();
+        $controller->moveEmail();
+        break;
+
+
+    case '/api/outlook/oauth/delete':
+        $controller = new OutlookOAuth2Controller();
+        $controller->deleteEmail();
+        break;
+
+
+    case '/api/outlook/oauth/list':
+        $controller = new OutlookOAuth2Controller();
+        $controller->listFolders();
+        break;
+
+
+    case '/api/outlook/oauth/list/conversation':
+        $controller = new OutlookOAuth2Controller();
+        $controller->listEmailsByConversation();
+        break;
 
     case '/api/auth/register':
         $auth = new AuthController();
@@ -203,16 +221,6 @@ switch ($request_uri[0]) {
     case '/api/email/sync/consume':
         $emailSync = new EmailSyncController();
         $emailSync->startConsumer();
-        break;
-
-    case '/api/email/authorization':
-        $emailSync = new EmailSyncController();
-        $emailSync->getAuthorizationUrl();
-        break;
-
-    case '/api/email/callback':
-        $emailSync = new EmailSyncController();
-        $emailSync->oauthCallback();
         break;
 
     case '/api/test/smtp':
