@@ -229,6 +229,9 @@ class OutlookOAuth2Service {
                 $emails = json_decode($emailsResponse->getBody(), true);
 
                 foreach ($emails['value'] as $emailData) {
+                    if ($this->emailAccountModel->emailExists($emailData['id'], $user_id)) {
+                        continue; 
+                    }
                     $messageId = $emailData['id'];
                     $subject = $emailData['subject'] ?? '(Sem Assunto)';
                     $fromAddress = $emailData['from']['emailAddress']['address'] ?? '';

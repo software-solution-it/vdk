@@ -161,6 +161,18 @@ class EmailAccount {
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
+    public function emailExists($email_id, $user_id) {
+        $query = "SELECT COUNT(*) FROM emails WHERE email_id = :email_id AND user_id = :user_id";
+        
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':email_id', $email_id);
+        $stmt->bindParam(':user_id', $user_id);
+        $stmt->execute();
+        
+        return $stmt->fetchColumn() > 0;
+    }
+    
+
     public function delete($id) {
         $query = "DELETE FROM " . $this->table . " WHERE id = :id";
         $stmt = $this->conn->prepare($query);
