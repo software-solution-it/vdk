@@ -43,20 +43,20 @@ switch ($request_uri[0]) {
         $auth->resetPassword();
         break;
 
-        case '/api/outlook/oauth/authorization':
-            $controller = new OutlookOAuth2Controller();
-            $controller->getAuthorizationUrl();
-            break;
-        
-        case '/api/outlook/oauth/token':
-            $controller = new OutlookOAuth2Controller();
-            $controller->getAccessToken();
-            break;
-         
-        case '/api/outlook/oauth/refresh':
-            $controller = new OutlookOAuth2Controller();
-            $controller->refreshAccessToken();
-            break;
+    case '/api/teste':
+        $controller = new OutlookOAuth2Controller();
+        $controller->getAuthorizationUrl();
+        break;
+
+    case '/api/teste1':
+        $controller = new OutlookOAuth2Controller();
+        $controller->getAccessToken();
+        break;
+
+    case '/api/teste2':
+        $controller = new OutlookOAuth2Controller();
+        $controller->refreshAccessToken();
+        break;
 
     case '/api/auth/register':
         $auth = new AuthController();
@@ -99,9 +99,9 @@ switch ($request_uri[0]) {
         break;
 
     case '/api/email/check':
-        $domain = $_GET['domain'] ?? null; 
+        $domain = $_GET['domain'] ?? null;
         $emailController = new EmailController();
-        $emailController->checkDomain($domain); 
+        $emailController->checkDomain($domain);
         break;
 
     case '/api/email/sendMultiple':
@@ -150,10 +150,10 @@ switch ($request_uri[0]) {
         break;
 
     case '/api/email/account':
-        $userId = $_GET['user_id'] ?? null; 
+        $userId = $_GET['user_id'] ?? null;
         if ($userId) {
             $controller = new EmailAccountController();
-            $controller->getEmailAccountByUserId($userId); 
+            $controller->getEmailAccountByUserId($userId);
         } else {
             http_response_code(400);
             echo json_encode(['message' => 'User ID is required']);
@@ -200,15 +200,15 @@ switch ($request_uri[0]) {
         $emailSync->startConsumer();
         break;
 
-        case '/api/email/authorization':
-            $emailSync = new EmailSyncController();
-            $emailSync->getAuthorizationUrl();
-            break;
+    case '/api/email/authorization':
+        $emailSync = new EmailSyncController();
+        $emailSync->getAuthorizationUrl();
+        break;
 
-            case '/api/email/callback':
-                $emailSync = new EmailSyncController();
-                $emailSync->oauthCallback();
-                break;
+    case '/api/email/callback':
+        $emailSync = new EmailSyncController();
+        $emailSync->oauthCallback();
+        break;
 
     case '/api/test/smtp':
         $connection = new ConnectionController();
