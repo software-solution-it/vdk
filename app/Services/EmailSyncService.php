@@ -94,7 +94,7 @@ class EmailSyncService
                     $task['password']
                 );
             }else{
-
+                $this->errorLogController->logError("Iniciando sincronização oauth 2", __FILE__, __LINE__, $user_id);
                 $this->outlookOAuth2Service->authenticateImap($task['user_id'], $task['provider_id']);
 
             }
