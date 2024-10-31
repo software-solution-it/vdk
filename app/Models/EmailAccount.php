@@ -69,7 +69,7 @@ class EmailAccount {
                          ea.client_id, ea.client_secret, 
                          ea.oauth_token, ea.refresh_token,
                          ea.tenant_id, ea.auth_code,
-                         ea.is_basic 
+                         ea.is_basic
                   FROM " . $this->table . " ea
                   INNER JOIN " . $this->userTable . " u ON ea.user_id = u.id
                   INNER JOIN " . $this->providerTable . " p ON ea.provider_id = p.id
