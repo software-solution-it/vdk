@@ -188,6 +188,7 @@ class OutlookOAuth2Service {
         try {
             $this->errorLogController->logError("Entrou no método2:", __FILE__, __LINE__);
             $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $provider_id);
+            $lastReceivedDate = $emailAccount['date_received'] ? $emailAccount['date_received'] : '1900-01-01T00:00:00Z';
             $this->errorLogController->logError("Entrou no método2:", __FILE__, __LINE__);
 
             if (!$emailAccount) {
@@ -220,8 +221,8 @@ class OutlookOAuth2Service {
                         'Accept' => 'application/json'
                     ],
                     'query' => [
-                        '$top' => 10,
-                        '$select' => 'id,subject,from,receivedDateTime,hasAttachments,toRecipients,ccRecipients,isRead,internetMessageId,conversationId'
+                        '$select' => 'id,subject,from,receivedDateTime,hasAttachments,toRecipients,ccRecipients,isRead,internetMessageId,conversationId',
+                        '$filter' => "receivedDateTime gt {$lastReceivedDate}"
                     ]
                 ]);
 
