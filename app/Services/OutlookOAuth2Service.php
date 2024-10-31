@@ -342,7 +342,7 @@ class OutlookOAuth2Service {
                                     $contentBytes
                                 );
                             }
-                        }
+                        } 
                     }
                 }
             }
