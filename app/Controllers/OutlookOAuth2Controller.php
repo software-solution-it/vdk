@@ -14,9 +14,7 @@ class OutlookOAuth2Controller {
     public function __construct() {
         $database = new Database();
         $db = $database->getConnection();
-
         $this->outlookOAuth2Service = new OutlookOAuth2Service();
-        $this->outlookOAuth2Service->initialize($db);
         $this->errorLogController = new ErrorLogController();
     }
 
