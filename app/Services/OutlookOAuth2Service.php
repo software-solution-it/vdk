@@ -165,21 +165,14 @@ class OutlookOAuth2Service {
         $imapServer = '{outlook.office365.com:993/imap/ssl}INBOX';
         $accessToken = $emailAccount['oauth_token']; // O token OAuth2 que você obteve
     
-        // Criando uma nova instância do Mailbox
-        $mailbox = new Mailbox($imapServer, $emailAccount['email'], $accessToken, 'OAuth2');
+        // Usando imap_open para conectar ao IMAP com OAuth2
+        $inbox = imap_open($imapServer . '/auth=Bearer', $emailAccount['email'], $accessToken);
     
-        try {
-            // Interaja diretamente com o mailbox sem uma chamada de conexão separada
-            $messages = $mailbox->searchMailbox('ALL'); // Por exemplo, buscando todas as mensagens
-    
-            if (empty($messages)) {
-                return "No messages found.";
-            }
-    
-            return $messages; // Retorne as mensagens ou o que você precisar
-        } catch (Exception $e) {
-            throw new Exception('Falha ao autenticar no IMAP: ' . $e->getMessage());
+        if (!$inbox) {
+            throw new Exception('Falha ao autenticar no IMAP: ' . imap_last_error());
         }
+    
+        return $inbox;
     }
     
 }
