@@ -24,19 +24,27 @@ class OutlookOAuth2Service {
     }
 
     public function initializeOAuthProviderFromEmailAccount($emailAccount, $user_id, $provider_id) {
-        // Cria o estado como uma string JSON codificada em base64
-        $state = base64_encode(json_encode(['user_id' => $user_id, 'provider_id' => $provider_id]));
-    
         // Cria a URI de redirecionamento sem o estado embutido
         $redirectUri = 'http://localhost:3000/callback';
     
-        // Construa manualmente a URL de autorização
-        $authorizationUrl = 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize' .
-                            '?client_id=' . urlencode($emailAccount['client_id']) .
-                            '&redirect_uri=' . urlencode($redirectUri) .
-                            '&response_type=code' .
-                            '&scope=' . urlencode('https://graph.microsoft.com/.default') .
-                            '&state=' . urlencode($state);
+        // Cria o provedor OAuth com o estado separado
+        $this->oauthProvider = new GenericProvider([
+            'clientId'                => $emailAccount['client_id'],
+            'clientSecret'            => $emailAccount['client_secret'],
+            'redirectUri'             => $redirectUri,
+            'urlAuthorize'            => 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
+            'urlAccessToken'          => 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+            'urlResourceOwnerDetails' => '',
+            'scopes'                  => 'https://graph.microsoft.com/.default'
+        ]);
+    
+        // Gera a URL de autorização com parâmetros personalizados
+        $authorizationUrl = $this->oauthProvider->getAuthorizationUrl([
+            'scope' => 'https://graph.microsoft.com/.default'
+        ]);
+    
+        // Adiciona parâmetros customizados diretamente na URL
+        $authorizationUrl .= '&user_id=' . urlencode($user_id) . '&provider_id=' . urlencode($provider_id);
     
         // Retorna a URL para o frontend
         return [
@@ -44,7 +52,6 @@ class OutlookOAuth2Service {
             'authorization_url' => $authorizationUrl
         ];
     }
-    
     
     
 
