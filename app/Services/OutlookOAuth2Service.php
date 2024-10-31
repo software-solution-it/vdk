@@ -37,12 +37,12 @@ class OutlookOAuth2Service {
             'urlAuthorize'            => 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
             'urlAccessToken'          => 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
             'urlResourceOwnerDetails' => '',
-            'scopes'                  => 'Mail.Read Mail.Send Mail.ReadWrite Mail.Folders.ReadWrite Contacts.Read Contacts.ReadWrite offline_access'
+            'scopes'                  => 'IMAP.AccessAsUser.All Mail.Read offline_access SMTP.Send User.Read User.Read.All'
         ]);
     
         // Gera a URL de autorização
         $authorizationUrl = $this->oauthProvider->getAuthorizationUrl([
-            'scope' => 'Mail.Read Mail.Send Mail.ReadWrite Mail.Folders.ReadWrite Contacts.Read Contacts.ReadWrite offline_access'
+            'scopes'                  => 'IMAP.AccessAsUser.All Mail.Read offline_access SMTP.Send User.Read User.Read.All'
         ]);
     
         // Retorna a URL para o frontend
