@@ -37,14 +37,13 @@ class EmailAccount {
     }
     
 
-    public function updateTokens($id, $oauth_token, $refresh_token, $is_basic) {
-        $query = "UPDATE " . $this->table . " SET oauth_token = :oauth_token, refresh_token = :refresh_token, is_basic = :is_basic WHERE id = :id";
+    public function updateTokens($id, $oauth_token, $refresh_token) {
+        $query = "UPDATE " . $this->table . " SET oauth_token = :oauth_token, refresh_token = :refresh_token WHERE id = :id";
         
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':id', $id);
         $stmt->bindParam(':oauth_token', $oauth_token);
         $stmt->bindParam(':refresh_token', $refresh_token);
-        $stmt->bindParam(':is_basic', $is_basic); 
     
         return $stmt->execute();
     }

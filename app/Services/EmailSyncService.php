@@ -52,7 +52,7 @@ class EmailSyncService
     public function updateTokens($emailAccountId, $access_token, $refresh_token = null)
 {
     try {
-        $this->emailAccountModel->updateTokens(
+        $this->emailAccountModel->updateTokens( 
             $emailAccountId,
             $access_token,
             $refresh_token
