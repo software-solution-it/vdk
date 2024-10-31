@@ -154,4 +154,24 @@ class OutlookOAuth2Service {
             exit('Failed to refresh access token: ' . $e->getMessage());
         }
     }
+
+    public function authenticateImap($user_id, $provider_id) {
+
+
+        $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $provider_id);
+        if (!$emailAccount) {
+            throw new Exception("Email account not found for user ID: $user_id and provider ID: $provider_id");
+        }
+
+        $imapServer = '{outlook.office365.com:993/imap/ssl}INBOX';
+        
+        $options = '/auth=Bearer';
+        $inbox = imap_open($imapServer . $options, $emailAccount['email'], $emailAccount['oauth_token']);
+        
+        if (!$inbox) {
+            throw new Exception('Falha ao autenticar no IMAP: ' . imap_last_error());
+        }
+        
+        return $inbox;
+    }
 }

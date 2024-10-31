@@ -104,4 +104,40 @@ class OutlookOAuth2Controller {
             echo json_encode(['status' => false, 'message' => 'Erro ao atualizar token de acesso: ' . $e->getMessage()]);
         }
     }
+
+
+    public function autenticateImap()
+    {
+        $data = json_decode(file_get_contents('php://input'), true);
+    
+        if (!isset($data['user_id']) || !isset($data['provider_id'])) {
+            $this->errorLogController->logError('user_id and provider_id are required.', __FILE__, __LINE__);
+            echo json_encode(['status' => false, 'message' => 'user_id and provider_id are required.']);
+            return;
+        }
+    
+        $user_id = intval($data['user_id']);
+        $provider_id = intval($data['provider_id']);
+    
+        if ($user_id <= 0 || $provider_id <= 0) {
+            $this->errorLogController->logError('Invalid user_id or provider_id.', __FILE__, __LINE__);
+            echo json_encode(['status' => false, 'message' => 'Invalid user_id or provider_id.']);
+            return;
+        }
+    
+        try {
+            // Chama o novo método authenticateImap
+            $inbox = $this->outlookOAuth2Service->authenticateImap($user_id, $provider_id);
+            
+            // Se a autenticação for bem-sucedida, você pode retornar uma resposta de sucesso
+            echo json_encode(['status' => true, 'message' => 'Authenticated successfully.']);
+            
+            // Opcional: feche a conexão IMAP se necessário
+            imap_close($inbox);
+        } catch (Exception $e) {
+            $this->errorLogController->logError("Erro ao autenticar no IMAP: " . $e->getMessage(), __FILE__, __LINE__);
+            echo json_encode(['status' => false, 'message' => 'Erro ao autenticar no IMAP: ' . $e->getMessage()]);
+        }
+    }
+    
 }
