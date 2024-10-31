@@ -37,7 +37,7 @@ class OutlookOAuth2Service {
             'urlAuthorize'            => 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
             'urlAccessToken'          => 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
             'urlResourceOwnerDetails' => '',
-            'scopes'                  => 'https://graph.microsoft.com/.default offline_access'
+            'scopes'                  => 'Mail.Read Mail.Send Mail.ReadWrite Mail.Folders.ReadWrite Contacts.Read Contacts.ReadWrite offline_access'
         ]);
     
         // Gera a URL de autorização
