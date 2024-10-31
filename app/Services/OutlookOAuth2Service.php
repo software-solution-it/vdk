@@ -197,9 +197,7 @@ class OutlookOAuth2Service {
 
         $accessToken = $emailAccount['oauth_token'];
 
-        $result = $this->listInboxEmails($accessToken);
-
-        return $result;
+        $this->listInboxEmails($accessToken);
 
       
     }
