@@ -178,7 +178,7 @@ class OutlookOAuth2Service {
             // Recupera o token de acesso
             $accessToken = $emailAccount['oauth_token'];
     
-            // Faz a requisição para obter os emails com todos os campos necessários
+            // Faz a requisição para obter os emails com campos básicos
             $response = $this->httpClient->get('https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages', [
                 'headers' => [
                     'Authorization' => 'Bearer ' . $accessToken,
@@ -186,8 +186,7 @@ class OutlookOAuth2Service {
                 ],
                 'query' => [
                     '$top' => 10, // Número de emails a serem obtidos
-                    '$select' => 'id,subject,from,receivedDateTime,hasAttachments,toRecipients,ccRecipients,isRead,internetMessageId,conversationId',
-                    '$expand' => 'body' // Expande para incluir o conteúdo do corpo do email
+                    '$select' => 'id,subject,from,receivedDateTime,hasAttachments,toRecipients,ccRecipients,isRead,internetMessageId,conversationId'
                 ]
             ]);
     
@@ -200,16 +199,26 @@ class OutlookOAuth2Service {
                 $fromAddress = $emailData['from']['emailAddress']['address'] ?? '';
                 $date_received = $emailData['receivedDateTime'] ?? null;
                 $isRead = $emailData['isRead'] ?? false;
-                $bodyContent = $emailData['body']['content'] ?? '';
-                $bodyContentType = $emailData['body']['contentType'] ?? '';
     
                 // Endereços 'To' e 'CC'
                 $toRecipients = implode(', ', array_map(fn($addr) => $addr['emailAddress']['address'], $emailData['toRecipients']));
                 $ccRecipients = implode(', ', array_map(fn($addr) => $addr['emailAddress']['address'], $emailData['ccRecipients'] ?? []));
     
                 // Campos "References" e "In-Reply-To"
-                $references = $emailData['conversationId'] ?? ''; // Utilizando o conversationId como "References"
-                $inReplyTo = $emailData['internetMessageId'] ?? ''; // Utilizando o internetMessageId como "In-Reply-To"
+                $references = $emailData['conversationId'] ?? '';
+                $inReplyTo = $emailData['internetMessageId'] ?? '';
+    
+                // Requisição adicional para obter o conteúdo do corpo do email
+                $messageDetailResponse = $this->httpClient->get("https://graph.microsoft.com/v1.0/me/messages/$messageId", [
+                    'headers' => [
+                        'Authorization' => 'Bearer ' . $accessToken,
+                        'Accept' => 'application/json'
+                    ]
+                ]);
+    
+                $messageDetails = json_decode($messageDetailResponse->getBody(), true);
+                $bodyContent = $messageDetails['body']['content'] ?? '';
+                $bodyContentType = $messageDetails['body']['contentType'] ?? '';
     
                 // Salva o email no banco
                 $emailId = $this->emailModel->saveEmail(
