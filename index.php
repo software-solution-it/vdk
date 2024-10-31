@@ -58,6 +58,11 @@ switch ($request_uri[0]) {
         $controller->refreshAccessToken();
         break;
 
+        case '/api/outlook/oauth/autenticate':
+            $controller = new OutlookOAuth2Controller();
+            $controller->autenticateImap();
+            break;
+
     case '/api/auth/register':
         $auth = new AuthController();
         $auth->preRegister();
