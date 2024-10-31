@@ -24,14 +24,13 @@ class OutlookOAuth2Service {
     }
 
     public function initializeOAuthProviderFromEmailAccount($emailAccount, $user_id, $provider_id) {
-        // Inicializa o provedor OAuth usando as credenciais do emailAccount e adiciona o user_id e provider_id ao redirectUri
-        $stateArray = ['user_id' => $user_id, 'provider_id' => $provider_id];
-        $stateJson = json_encode($stateArray);
-        $stateBase64 = base64_encode($stateJson);
-        $stateEncoded = urlencode($stateBase64); // Aplicar urlencode no Base64
+        // Cria o estado como uma string JSON codificada em base64
+        $state = base64_encode(json_encode(['user_id' => $user_id, 'provider_id' => $provider_id]));
     
-        $redirectUri = 'http://localhost:3000/callback?state=' . $stateEncoded;
+        // Cria a URI de redirecionamento sem o estado embutido
+        $redirectUri = 'http://localhost:3000/callback';
     
+        // Cria o provedor OAuth com o estado separado
         $this->oauthProvider = new GenericProvider([
             'clientId'                => $emailAccount['client_id'],
             'clientSecret'            => $emailAccount['client_secret'],
@@ -41,7 +40,17 @@ class OutlookOAuth2Service {
             'urlResourceOwnerDetails' => '',
             'scopes'                  => 'https://graph.microsoft.com/.default'
         ]);
+    
+        // Gera a URL de autorização
+        $authorizationUrl = $this->oauthProvider->getAuthorizationUrl(['state' => $state]);
+    
+        // Retorna a URL para o frontend
+        return [
+            'status' => true,
+            'authorization_url' => $authorizationUrl
+        ];
     }
+    
     
 
     public function getAuthorizationUrl($user_id, $provider_id) {
