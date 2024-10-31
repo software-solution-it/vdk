@@ -167,8 +167,17 @@ class OutlookOAuth2Service {
         }
     }
 
-    public function listInboxEmails($accessToken) {
+
+    public function authenticateImap($user_id, $provider_id) {
         try {
+        $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $provider_id);
+        if (!$emailAccount) {
+            throw new Exception("Email account not found for user ID: $user_id and provider ID: $provider_id");
+        }
+
+        $accessToken = $emailAccount['oauth_token'];
+
+
             $response = $this->httpClient->get('https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages', [
                 'headers' => [
                     'Authorization' => 'Bearer ' . $accessToken,
@@ -187,17 +196,6 @@ class OutlookOAuth2Service {
         } catch (RequestException $e) {
             throw new Exception('Erro ao listar emails: ' . $e->getMessage());
         }
-    }
-
-    public function authenticateImap($user_id, $provider_id) {
-        $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $provider_id);
-        if (!$emailAccount) {
-            throw new Exception("Email account not found for user ID: $user_id and provider ID: $provider_id");
-        }
-
-        $accessToken = $emailAccount['oauth_token'];
-
-        $this->listInboxEmails($accessToken);
 
       
     }
