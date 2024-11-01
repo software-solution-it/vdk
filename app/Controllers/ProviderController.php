@@ -20,30 +20,49 @@ class ProviderController {
     public function createProvider() {
         header('Content-Type: application/json');
         $data = json_decode(file_get_contents('php://input'), true);
-        
-        if (empty($data['name']) || empty($data['host'])) {
+    
+        $requiredFields = ['name', 'smtp_host', 'smtp_port', 'imap_host', 'imap_port', 'encryption'];
+        $missingFields = [];
+    
+        foreach ($requiredFields as $field) {
+            if (empty($data[$field])) {
+                $missingFields[] = $field;
+            }
+        }
+    
+        if (!empty($missingFields)) {
             http_response_code(400);
-            echo json_encode(['message' => 'Name and host are required.']);
+            echo json_encode(['message' => 'Missing fields: ' . implode(', ', $missingFields)]);
             return;
         }
-
+    
         $response = $this->providerService->createProvider($data);
         echo json_encode($response);
     }
-
+    
     public function updateProvider($id) {
         header('Content-Type: application/json');
         $data = json_decode(file_get_contents('php://input'), true);
-        
-        if (empty($data['name']) || empty($data['host'])) {
+    
+        $requiredFields = ['name', 'smtp_host', 'smtp_port', 'imap_host', 'imap_port', 'encryption'];
+        $missingFields = [];
+    
+        foreach ($requiredFields as $field) {
+            if (empty($data[$field])) {
+                $missingFields[] = $field;
+            }
+        }
+    
+        if (!empty($missingFields)) {
             http_response_code(400);
-            echo json_encode(['message' => 'Name and host are required.']);
+            echo json_encode(['message' => 'Missing fields: ' . implode(', ', $missingFields)]);
             return;
         }
-
+    
         $response = $this->providerService->updateProvider($id, $data);
         echo json_encode($response);
     }
+    
 
     public function deleteProvider($id) {
         header('Content-Type: application/json');

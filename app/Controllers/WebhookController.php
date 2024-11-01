@@ -19,7 +19,6 @@ class WebhookController {
     }
 
     public function registerWebhook() {
-        header('Content-Type: application/json');
         $data = json_decode(file_get_contents("php://input"));
 
         if (!empty($data->user_id) && !empty($data->url) && !empty($data->secret) && !empty($data->name)) {
@@ -50,7 +49,6 @@ class WebhookController {
     }
 
     public function getList() {
-        header('Content-Type: application/json');
         $user_id = $_GET['user_id'] ?? null;
 
         if (!empty($user_id)) {
