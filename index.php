@@ -75,6 +75,11 @@ switch ($request_uri[0]) {
         $controller->listFolders();
         break;
 
+    case '/api/outlook/oauth/conversation':
+        $controller = new OutlookOAuth2Controller();
+        $controller->listEmailsByConversation();
+        break;
+
 
     case '/api/outlook/oauth/list/conversation':
         $controller = new OutlookOAuth2Controller();

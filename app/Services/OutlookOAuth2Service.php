@@ -360,7 +360,6 @@ class OutlookOAuth2Service {
     
             $accessToken = $emailAccount['oauth_token'];
     
-            // Usando a API do Microsoft Graph para mover o e-mail
             $response = $this->httpClient->post("https://graph.microsoft.com/v1.0/me/messages/$messageId/move", [
                 'headers' => [
                     'Authorization' => 'Bearer ' . $accessToken,
@@ -373,13 +372,11 @@ class OutlookOAuth2Service {
     
             $movedMessage = json_decode($response->getBody(), true);
     
-            // Obter o novo messageId após mover
             $newMessageId = $movedMessage['id'] ?? '';
             if (empty($newMessageId)) {
                 throw new Exception('Falha ao obter o novo messageId após mover o e-mail.');
             }
     
-            // Obter o novo folderId e nome da pasta
             $newFolderId = $movedMessage['parentFolderId'] ?? '';
             $folderResponse = $this->httpClient->get("https://graph.microsoft.com/v1.0/me/mailFolders/$newFolderId", [
                 'headers' => [
@@ -392,6 +389,8 @@ class OutlookOAuth2Service {
     
 
             $this->emailModel->updateEmailAfterMove($messageId, $newMessageId, $folderName);
+
+            $this->emailModel->deleteEmail($messageId);
     
             return true;
     
