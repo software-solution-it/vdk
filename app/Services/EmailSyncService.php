@@ -145,29 +145,6 @@ class EmailSyncService
             throw $e;
         }
     }
-
-    public function getAuthorizationUrl($emailAccount)
-    {
-       $tenant_id = $emailAccount['tenant_id'] ?? 'common'; 
-        $authorizeUrl = "https://login.microsoftonline.com/{$tenant_id}/oauth2/v2.0/authorize";
-    
-        $params = [
-            'client_id' => $emailAccount['client_id'],
-            'response_type' => 'code',
-            'redirect_uri' => 'http://localhost:3000/callback',  
-            'response_mode' => 'query',
-            'scope' => 'https://outlook.office365.com/IMAP.AccessAsUser.All offline_access',
-            'prompt' => 'consent', 
-            'state' => base64_encode(json_encode([
-                'user_id' => $emailAccount['user_id'],
-                'provider_id' => $emailAccount['provider_id'],
-            ])),
-        ];
-    
-        $authorizeUrl .= '?' . http_build_query($params);
-    
-        return $authorizeUrl; 
-    }
     
 
 public function syncEmailsByUserIdAndProviderId($user_id, $provider_id)
@@ -228,8 +205,7 @@ public function syncEmailsByUserIdAndProviderId($user_id, $provider_id)
     private function syncEmails($user_id, $provider_id, $email, $imap_host, $imap_port, $password)
     {
         error_log("Sincronizando e-mails para o usuário $user_id e provedor $provider_id");
-        $this->errorLogController->logError("Oauth2 Token e email " . " Email: " . $email, __FILE__, __LINE__, $user_id);
-        
+
         try {
             $server = new Server($imap_host, $imap_port);
 
@@ -275,10 +251,6 @@ public function syncEmailsByUserIdAndProviderId($user_id, $provider_id)
                         continue;
                     }
 
-                    if ($this->emailModel->emailExistsByMessageId($messageId)) {
-                        error_log("E-mail com Message-ID " . $messageId . " já existe, ignorando.");
-                        continue;
-                    }
 
                     $inReplyTo = $message->getInReplyTo();
                     if (is_array($inReplyTo)) {
@@ -303,7 +275,8 @@ public function syncEmailsByUserIdAndProviderId($user_id, $provider_id)
                         $isRead,
                         $mailbox->getName(),
                         $cc,
-                        $uidCounter
+                        $uidCounter,
+                        null
                     );
 
                     if ($message->hasAttachments()) {

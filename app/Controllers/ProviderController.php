@@ -18,6 +18,7 @@ class ProviderController {
     }
 
     public function createProvider() {
+        header('Content-Type: application/json');
         $data = json_decode(file_get_contents('php://input'), true);
         
         if (empty($data['name']) || empty($data['host'])) {
@@ -31,6 +32,7 @@ class ProviderController {
     }
 
     public function updateProvider($id) {
+        header('Content-Type: application/json');
         $data = json_decode(file_get_contents('php://input'), true);
         
         if (empty($data['name']) || empty($data['host'])) {
@@ -44,11 +46,13 @@ class ProviderController {
     }
 
     public function deleteProvider($id) {
+        header('Content-Type: application/json');
         $response = $this->providerService->deleteProvider($id);
         echo json_encode($response);
     }
     
     public function getAllProviders() {
+        header('Content-Type: application/json');
         $response = $this->providerService->getAllProviders();
         echo json_encode($response);
     }

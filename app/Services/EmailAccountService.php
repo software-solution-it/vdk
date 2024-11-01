@@ -64,7 +64,7 @@ class EmailAccountService {
     
         $is_basic = $data['is_basic'] ?? null;
     
-        $updated = $this->emailAccountModel->update(
+        $updated = $this->emailAccountModel->update( 
             $id,
             $data['email'],
             $data['provider_id'],

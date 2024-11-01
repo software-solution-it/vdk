@@ -91,6 +91,16 @@ class Email {
         }
     }
 
+    public function updateEmailAfterMove($oldMessageId, $newMessageId, $folderName) {
+        $sql = "UPDATE emails SET message_id = :new_message_id, folder = :folder_name WHERE message_id = :old_message_id";
+        $stmt = $this->conn->prepare($sql); 
+        $stmt->bindParam(':new_message_id', $newMessageId);
+        $stmt->bindParam(':folder_name', $folderName);
+        $stmt->bindParam(':old_message_id', $oldMessageId);
+        $stmt->execute();
+    }
+    
+
     public function getLastEmailSyncDateByFolder($user_id, $folder) {
         $query = "SELECT MAX(date_received) as last_date 
                   FROM " . $this->table . " 

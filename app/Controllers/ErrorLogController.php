@@ -19,11 +19,13 @@ class ErrorLogController {
     }
 
     public function getLogs() {
+        header('Content-Type: application/json');
         $logs = $this->errorLogService->getAllLogs();
         echo json_encode($logs);
     }
 
     public function getLogsByUserId($userId) {
+        header('Content-Type: application/json');
         $logs = $this->errorLogService->getLogsByUserId($userId);
         echo json_encode($logs);
     }

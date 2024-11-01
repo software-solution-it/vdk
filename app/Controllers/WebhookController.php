@@ -14,11 +14,12 @@ class WebhookController {
     public function __construct() {
         $database = new Database();
         $db = $database->getConnection();
-        $this->webhookService = new WebhookService(new Webhook($db));
+        $this->webhookService = new WebhookService();
         $this->errorLogController = new ErrorLogController();
     }
 
     public function registerWebhook() {
+        header('Content-Type: application/json');
         $data = json_decode(file_get_contents("php://input"));
 
         if (!empty($data->user_id) && !empty($data->url) && !empty($data->secret) && !empty($data->name)) {
@@ -49,6 +50,7 @@ class WebhookController {
     }
 
     public function getList() {
+        header('Content-Type: application/json');
         $user_id = $_GET['user_id'] ?? null;
 
         if (!empty($user_id)) {

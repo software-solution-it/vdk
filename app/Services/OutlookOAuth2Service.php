@@ -357,9 +357,9 @@ class OutlookOAuth2Service {
             if (!$emailAccount) {
                 throw new Exception("Email account not found for user ID: $user_id and provider ID: $provider_id");
             }
-
+    
             $accessToken = $emailAccount['oauth_token'];
-
+    
             // Usando a API do Microsoft Graph para mover o e-mail
             $response = $this->httpClient->post("https://graph.microsoft.com/v1.0/me/messages/$messageId/move", [
                 'headers' => [
@@ -370,10 +370,16 @@ class OutlookOAuth2Service {
                     'destinationId' => $destinationFolderId
                 ]
             ]);
-
+    
             $movedMessage = json_decode($response->getBody(), true);
-
-            // Atualizar a pasta do e-mail no banco de dados
+    
+            // Obter o novo messageId após mover
+            $newMessageId = $movedMessage['id'] ?? '';
+            if (empty($newMessageId)) {
+                throw new Exception('Falha ao obter o novo messageId após mover o e-mail.');
+            }
+    
+            // Obter o novo folderId e nome da pasta
             $newFolderId = $movedMessage['parentFolderId'] ?? '';
             $folderResponse = $this->httpClient->get("https://graph.microsoft.com/v1.0/me/mailFolders/$newFolderId", [
                 'headers' => [
@@ -383,11 +389,12 @@ class OutlookOAuth2Service {
             ]);
             $folderData = json_decode($folderResponse->getBody(), true);
             $folderName = $folderData['displayName'] ?? '';
+    
 
-            $this->emailModel->updateFolder($messageId, $folderName);
-
+            $this->emailModel->updateEmailAfterMove($messageId, $newMessageId, $folderName);
+    
             return true;
-
+    
         } catch (RequestException $e) {
             $this->errorLogController->logError('Error while moving email: ' . $e->getMessage(), __FILE__, __LINE__, $user_id);
             throw new Exception('Error while moving email: ' . $e->getMessage());
@@ -396,6 +403,7 @@ class OutlookOAuth2Service {
             throw new Exception('Error while moving email: ' . $e->getMessage());
         }
     }
+    
 
     public function deleteEmail($user_id, $provider_id, $messageId) {
         try {
