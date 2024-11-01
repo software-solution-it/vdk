@@ -244,6 +244,7 @@ class EmailController {
     }
 
     public function checkDomain($domain) {
+        header('Content-Type: application/json');
         if (empty($domain)) {
             http_response_code(400);
             echo json_encode(['message' => 'Domain is required']);
@@ -299,76 +300,6 @@ class EmailController {
             $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
             http_response_code(500);
             echo json_encode(['message' => 'Erro ao visualizar o e-mail: ' . $e->getMessage()]);
-        }
-    }
-
-    public function markEmailAsSpam($user_id, $provider_id, $email_id): void {
-        header('Content-Type: application/json');
-        $requiredParams = ['user_id', 'provider_id', 'email_id'];
-
-        if (!$this->validateParams($requiredParams, ['user_id' => $user_id, 'provider_id' => $provider_id, 'email_id' => $email_id])) {
-            return;
-        }
-    
-        try {
-            $result = $this->emailService->markEmailAsSpam($user_id, $provider_id, $email_id);
-            if ($result) {
-                http_response_code(200);
-                echo json_encode(['message' => 'E-mail marcado como SPAM.']);
-            } else {
-                http_response_code(500);
-                echo json_encode(['message' => 'Erro ao marcar o e-mail como SPAM.']);
-            }
-        } catch (Exception $e) {
-            $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
-            http_response_code(500);
-            echo json_encode(['message' => 'Erro ao marcar e-mail como SPAM: ' . $e->getMessage()]);
-        }
-    }
-
-    public function deleteSpamEmail($user_id, $email_id) {
-        header('Content-Type: application/json');
-        $requiredParams = ['user_id', 'email_id'];
-        if (!$this->validateParams($requiredParams, ['user_id' => $user_id, 'email_id' => $email_id])) {
-            return;
-        }
-
-        try {
-            $result = $this->emailService->deleteSpamEmail($user_id, $email_id);
-            if ($result) {
-                http_response_code(200);
-                echo json_encode(['message' => 'E-mail excluído com sucesso.']);
-            } else {
-                http_response_code(500);
-                echo json_encode(['message' => 'Erro ao excluir o e-mail.']);
-            }
-        } catch (Exception $e) {
-            $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
-            http_response_code(500);
-            echo json_encode(['message' => 'Erro ao excluir o e-mail: ' . $e->getMessage()]);
-        }
-    }
-
-    public function unmarkSpam($user_id, $email_id, $destinationFolder = 'INBOX') {
-        header('Content-Type: application/json');
-        $requiredParams = ['user_id', 'email_id'];
-        if (!$this->validateParams($requiredParams, ['user_id' => $user_id, 'email_id' => $email_id])) {
-            return;
-        }
-
-        try {
-            $result = $this->emailService->unmarkSpam($user_id, $email_id, $destinationFolder);
-            if ($result) {
-                http_response_code(200);
-                echo json_encode(['message' => 'E-mail movido para a pasta ' . $destinationFolder]);
-            } else {
-                http_response_code(500);
-                echo json_encode(['message' => 'Erro ao mover o e-mail.']);
-            }
-        } catch (Exception $e) {
-            $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
-            http_response_code(500);
-            echo json_encode(['message' => 'Erro ao mover o e-mail: ' . $e->getMessage()]);
         }
     }
 }

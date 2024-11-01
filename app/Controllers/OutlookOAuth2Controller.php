@@ -20,6 +20,7 @@ class OutlookOAuth2Controller {
 
     public function getAuthorizationUrl()
     {
+        header('Content-Type: application/json');
         $data = json_decode(file_get_contents('php://input'), true);
 
         if (!isset($data['user_id']) || !isset($data['provider_id'])) {
@@ -46,6 +47,7 @@ class OutlookOAuth2Controller {
 
     public function getAccessToken()
     {
+        header('Content-Type: application/json');
         $data = json_decode(file_get_contents('php://input'), true);
 
         if (!isset($data['user_id']) || !isset($data['provider_id']) || !isset($data['code'])) {
@@ -73,6 +75,7 @@ class OutlookOAuth2Controller {
 
     public function refreshAccessToken()
     {
+        header('Content-Type: application/json');
         $data = json_decode(file_get_contents('php://input'), true);
 
         if (!isset($data['user_id']) || !isset($data['provider_id'])) {
@@ -99,6 +102,7 @@ class OutlookOAuth2Controller {
 
     public function authenticateImap()
     {
+        header('Content-Type: application/json');
         $data = json_decode(file_get_contents('php://input'), true);
 
         if (!isset($data['user_id']) || !isset($data['provider_id'])) {
@@ -126,6 +130,7 @@ class OutlookOAuth2Controller {
 
     public function moveEmail()
     {
+        header('Content-Type: application/json');
         $data = json_decode(file_get_contents('php://input'), true);
 
         if (!isset($data['user_id'], $data['provider_id'], $data['message_id'], $data['destination_folder_id'])) {
@@ -155,6 +160,7 @@ class OutlookOAuth2Controller {
 
     public function deleteEmail()
     {
+        header('Content-Type: application/json');
         $data = json_decode(file_get_contents('php://input'), true);
 
         if (!isset($data['user_id'], $data['provider_id'], $data['message_id'])) {
@@ -182,6 +188,7 @@ class OutlookOAuth2Controller {
 
     public function listFolders()
     {
+        header('Content-Type: application/json');
         $data = json_decode(file_get_contents('php://input'), true);
 
         if (!isset($data['user_id'], $data['provider_id'])) {
@@ -207,6 +214,7 @@ class OutlookOAuth2Controller {
 
     public function listEmailsByConversation()
     {
+        header('Content-Type: application/json');
         $data = json_decode(file_get_contents('php://input'), true);
     
         if (!isset($data['user_id'], $data['provider_id'], $data['conversation_id'])) {

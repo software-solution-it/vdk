@@ -17,6 +17,7 @@ class EmailAccountController {
     }
 
     public function createEmailAccount() {
+        header('Content-Type: application/json');
         $data = json_decode(file_get_contents("php://input"), true);
 
         try {
@@ -30,6 +31,7 @@ class EmailAccountController {
     }
 
     public function updateEmailAccount($id) {
+        header('Content-Type: application/json');
         $data = json_decode(file_get_contents("php://input"), true);
 
         try {
@@ -43,6 +45,7 @@ class EmailAccountController {
     }
 
     public function deleteEmailAccount($id) {
+        header('Content-Type: application/json');
         try {
             $result = $this->emailAccountService->deleteEmailAccount($id);
             echo json_encode($result);
@@ -54,6 +57,7 @@ class EmailAccountController {
     }
 
     public function getEmailAccountByUserId($id) {
+        header('Content-Type: application/json');
         try {
             $result = $this->emailAccountService->getEmailAccountByUserId($id);
             echo json_encode($result);

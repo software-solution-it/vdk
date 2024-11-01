@@ -22,6 +22,7 @@ class EmailService {
     private $db;
     private $webhookService;
     private $rabbitMQService;
+    private $masterHostModel; // Adicionado
 
     public function __construct($db) {
         $this->db = $db;
@@ -31,6 +32,7 @@ class EmailService {
         $this->emailModel = new Email($this->db);
         $this->webhookService = new WebhookService();
         $this->rabbitMQService = new RabbitMQService($this->db);
+        $this->masterHostModel = new MasterHost($this->db); // Adicionado
     }
 
     public function sendEmail($user_id, $recipientEmails, $subject, $htmlBody, $plainBody = '', $priority = null, $attachments = [], $ccEmails = [], $bccEmails = []) {
@@ -250,60 +252,7 @@ class EmailService {
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    public function markEmailAsSpam($userAccount, $provider_id, $email_id): bool {
-        try {
-            $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($userAccount, $provider_id);
-
-            if (empty($emailAccount['imap_host']) || empty($emailAccount['email']) || empty($emailAccount['password'])) {
-                throw new Exception('Detalhes da conta de email inválidos ou incompletos.');
-            }
-
-            $imapPath = '{' . $emailAccount['imap_host'] . ':' . $emailAccount['imap_port'] . '/imap/ssl}';
-            $imapStream = imap_open($imapPath, $emailAccount['email'], EncryptionHelper::decrypt($emailAccount['password']));
-
-            if (!$imapStream) {
-                throw new Exception('Falha ao conectar ao servidor IMAP: ' . imap_last_error());
-            }
-
-            $spamFolder = '[Gmail]/Spam';
-
-            try {
-                $result = imap_mail_move($imapStream, 4, $spamFolder); // Usa o UID diretamente
-
-                if (!$result) {
-                    throw new Exception('Falha ao mover o email. Verifique se o UID é válido e se a pasta de destino é acessível: ' . imap_last_error());
-                }
-
-                imap_expunge($imapStream);
-
-                $this->updateFolderInDatabase($email_id, $spamFolder);
-
-                imap_close($imapStream);
-
-                return true;
-            } catch (Exception $e) {
-                imap_close($imapStream);
-                throw new Exception('Erro ao mover o email para ' . $spamFolder . ': ' . $e->getMessage());
-            }
-
-        } catch (Exception $e) {
-            error_log($e->getMessage());
-            return false;
-        }
-    }
-
-    public function deleteSpamEmail($emailAccount, $email_id) {
-        $mailbox = $this->getMailbox($emailAccount);
-        $mailbox->deleteMail($email_id);
-        return $this->deleteEmailFromDatabase($email_id);
-    }
-
-    public function unmarkSpam($emailAccount, $email_id, $destinationFolder = 'INBOX') {
-        $mailbox = $this->getMailbox($emailAccount);
-        $mailbox->moveMail($email_id, $destinationFolder);
-        return $this->updateFolderInDatabase($email_id, $destinationFolder);
-    }
-
+  
     public function getEmailThread($message_id) {
         $query = "SELECT * FROM emails WHERE message_id = :message_id OR in_reply_to = :message_id ORDER BY date_received ASC";
         $stmt = $this->db->prepare($query);
@@ -337,6 +286,60 @@ class EmailService {
         $htmlBody = 'Seu código de verificação é: <b>' . $code . '</b>';
         $plainBody = null;
 
-        return $this->sendEmail($user_id, $email, $subject, $htmlBody, $plainBody, true);
+        return $this->sendEmailWithMasterHost($email, $subject, $htmlBody, $plainBody);
+    }
+
+
+    public function sendEmailWithMasterHost($recipientEmail, $subject, $htmlBody, $plainBody = '') {
+        $smtpConfig = $this->masterHostModel->getMasterHost();
+
+        if (!$smtpConfig) {
+            error_log("Configurações de SMTP não encontradas para o MasterHost");
+            return [
+                'success' => false,
+                'message' => 'Configurações de SMTP não encontradas para o MasterHost'
+            ];
+        }
+
+        $smtpConfig['password'] = EncryptionHelper::decrypt($smtpConfig['password']);
+
+        $mail = new PHPMailer(true);
+
+        try {
+            $mail->isSMTP();
+            $mail->Host       = $smtpConfig['smtp_host'];
+            $mail->SMTPAuth   = true;
+            $mail->Username   = $smtpConfig['email'];
+            $mail->Password   = $smtpConfig['password'];
+            $mail->SMTPSecure = $smtpConfig['encryption'];
+            $mail->Port       = $smtpConfig['smtp_port'];
+
+            $mail->setFrom($smtpConfig['email'], $smtpConfig['name']);
+            $mail->addAddress($recipientEmail);
+
+            $mail->isHTML(true);
+            $mail->Subject = $subject;
+            $mail->Body    = $htmlBody;
+            $mail->AltBody = $plainBody ?: strip_tags($htmlBody);
+
+            if ($mail->send()) {
+                return [
+                    'success' => true,
+                    'message' => 'E-mail enviado com sucesso.'
+                ];
+            } else {
+                error_log("Falha ao enviar o e-mail.");
+                return [
+                    'success' => false,
+                    'message' => 'Falha ao enviar o e-mail.'
+                ];
+            }
+        } catch (Exception $e) {
+            error_log("Erro ao enviar e-mail: " . $e->getMessage());
+            return [
+                'success' => false,
+                'message' => 'Erro ao enviar e-mail: ' . $e->getMessage()
+            ];
+        }
     }
 }

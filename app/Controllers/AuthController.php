@@ -11,8 +11,6 @@ class AuthController {
     private $errorLogController;
 
     public function __construct() {
-        $database = new Database();
-        $db = $database->getConnection();
         $this->authService = new AuthService(new JWTHandler());
         $this->errorLogController = new ErrorLogController(); 
     }

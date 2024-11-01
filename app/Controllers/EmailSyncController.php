@@ -21,7 +21,6 @@ class EmailSyncController {
 
     public function startConsumer()
     {
-        // Definir o cabeçalho de conteúdo para JSON com codificação UTF-8
         header('Content-Type: application/json; charset=utf-8');
 
         $data = json_decode(file_get_contents('php://input'), true);
