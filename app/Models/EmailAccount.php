@@ -172,18 +172,10 @@ class EmailAccount {
     
 
     public function delete($id) {
-        if (!$this->getById($id)) {
-            return ['status' => false, 'message' => 'Registro não encontrado para exclusão.'];
-        }
-    
         $query = "DELETE FROM " . $this->table . " WHERE id = :id";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':id', $id);
-    
-        if ($stmt->execute()) {
-            return ['status' => true, 'message' => 'Registro excluído com sucesso.'];
-        } else {
-            return ['status' => false, 'message' => 'Erro ao excluir o registro.'];
-        }
+
+        return $stmt->execute();
     }
 }
