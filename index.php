@@ -146,27 +146,6 @@ switch ($request_uri[0]) {
         $emailController->viewEmail($email_id);
         break;
 
-    case '/api/email/mark-spam':
-        $emailController = new EmailController();
-        $data = json_decode(file_get_contents('php://input'), true);
-        if (isset($data['user_id']) && isset($data['provider_id']) && isset($data['email_id'])) {
-            $emailController->markEmailAsSpam($data['user_id'], $data['provider_id'], $data['email_id']);
-        } else {
-            http_response_code(400);
-            echo json_encode(['message' => 'Os seguintes parâmetros estão faltando: user_id, provider_id, email_id']);
-        }
-        break;
-
-    case '/api/email/delete-spam':
-        $emailController = new EmailController();
-        $emailController->deleteSpamEmail($_POST['user_id'], $_POST['email_id']);
-        break;
-
-    case '/api/email/unmark-spam':
-        $emailController = new EmailController();
-        $emailController->unmarkSpam($_POST['user_id'], $_POST['email_id'], $_POST['destinationFolder'] ?? 'INBOX');
-        break;
-
     case '/api/email/create':
         $controller = new EmailAccountController();
         $controller->createEmailAccount();
@@ -221,16 +200,6 @@ switch ($request_uri[0]) {
     case '/api/email/sync/consume':
         $emailSync = new EmailSyncController();
         $emailSync->startConsumer();
-        break;
-
-    case '/api/test/smtp':
-        $connection = new ConnectionController();
-        $connection->testSMTP();
-        break;
-
-    case '/api/test/imap':
-        $connection = new ConnectionController();
-        $connection->testIMAP();
         break;
 
     case '/api/provider/delete':

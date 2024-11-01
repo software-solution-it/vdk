@@ -12,19 +12,21 @@ class EmailAccountService {
     }
 
 
-    private function validateFields($data, $requiredFields) {
+    public function validateFields($data, $requiredFields) {
         $missingFields = [];
+    
         foreach ($requiredFields as $field) {
-            if (empty($data[$field])) {
+            if (!array_key_exists($field, $data) || is_null($data[$field])) {
                 $missingFields[] = $field;
             }
         }
+    
         return $missingFields;
     }
-
+    
 
     public function createEmailAccount($data) {
-        $requiredFields = ['user_id', 'email', 'provider_id', 'password', 'is_basic'];
+        $requiredFields = ['user_id','email', 'provider_id', 'password', 'oauth_token', 'refresh_token', 'client_id', 'client_secret', 'is_basic'];
         $missingFields = $this->validateFields($data, $requiredFields);
     
         if (!empty($missingFields)) {
