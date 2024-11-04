@@ -82,6 +82,17 @@ class GmailOAuth2Service {
 
             $this->initializeOAuthParameters($emailAccount);
 
+            $this->errorLogController->logError(
+                "Enviando solicitação para obter token de acesso:\n" .
+                "client_id: {$this->clientId}\n" .
+                "client_secret: {$this->clientSecret}\n" .
+                "code: {$code}\n" .
+                "redirect_uri: {$this->redirectUri}\n" .
+                "grant_type: authorization_code",
+                __FILE__, 
+                __LINE__
+            );
+
             $response = $this->httpClient->post('https://oauth2.googleapis.com/token', [
                 'form_params' => [
                     'client_id' => $this->clientId,
