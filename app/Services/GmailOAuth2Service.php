@@ -80,6 +80,17 @@ class GmailOAuth2Service {
                 throw new Exception("Email account not found for user ID: $user_id and provider ID: $provider_id");
             }
 
+            $this->errorLogController->logError(
+                "Enviando2 solicitação para obter token de acesso:\n" .
+                "client_id: {$this->clientId}\n" .
+                "client_secret: {$this->clientSecret}\n" .
+                "code: {$code}\n" .
+                "redirect_uri: {$this->redirectUri}\n" .
+                "grant_type: authorization_code",
+                __FILE__, 
+                __LINE__
+            );
+
             $this->initializeOAuthParameters($emailAccount);
 
             $this->errorLogController->logError(
