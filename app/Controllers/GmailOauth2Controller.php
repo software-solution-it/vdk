@@ -34,7 +34,7 @@ class GmailOauth2Controller {
         if ($user_id <= 0 || $provider_id <= 0) {
             echo json_encode(['status' => false, 'message' => 'Invalid user_id or provider_id.']);
             return;
-        }
+        } 
 
         try {
             $result = $this->gmailOAuth2Service->getAuthorizationUrl($user_id, $provider_id);
