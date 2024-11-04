@@ -6,6 +6,7 @@ use App\Controllers\GmailOauth2Controller;
 use App\Controllers\UserController;
 use App\Controllers\ErrorLogController;
 use App\Controllers\EmailController;
+use App\Controllers\IMAPController;
 use App\Controllers\EmailAccountController;
 use App\Controllers\ProviderController;
 use App\Controllers\EmailSyncController;
@@ -172,6 +173,12 @@ switch ($request_uri[0]) {
         $emailController = new EmailController();
         $emailController->sendMultipleEmails();
         break;
+        
+
+        case '/api/imap/teste':
+            $imapController = new IMAPController();
+            $imapController->testConnection();
+            break;
 
     case '/api/email/list':
         $emailController = new EmailController();
