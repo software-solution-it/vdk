@@ -3,6 +3,7 @@
 require __DIR__ . '/vendor/autoload.php';
 use App\Controllers\AuthController;
 use App\Controllers\GmailOauth2Controller;
+use App\Controllers\SMTPController;
 use App\Controllers\UserController;
 use App\Controllers\ErrorLogController;
 use App\Controllers\EmailController;
@@ -175,10 +176,15 @@ switch ($request_uri[0]) {
         break;
         
 
-        case '/api/imap/teste':
+        case '/api/imap/test':
             $imapController = new IMAPController();
             $imapController->testConnection();
             break;
+
+            case '/api/smtp/test':
+                $smtpController = new SMTPController();
+                $smtpController->testConnection();
+                break;
 
     case '/api/email/list':
         $emailController = new EmailController();
