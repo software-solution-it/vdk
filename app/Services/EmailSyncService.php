@@ -23,6 +23,8 @@ class EmailSyncService
 
     private $outlookOAuth2Service;
 
+    private $gmailOauth2Service;
+
     private $isGeneratingToken = false;
 
     public function __construct($db)
@@ -34,6 +36,7 @@ class EmailSyncService
         $this->webhookService = new WebhookService();
         $this->errorLogController = new ErrorLogController();
         $this->outlookOAuth2Service  = new OutlookOAuth2Service();
+        $this->gmailOauth2Service  = new GmailOAuth2Service();
     }
 
     
@@ -93,11 +96,11 @@ class EmailSyncService
                     $task['imap_port'],
                     $task['password']
                 );
-            }else{
+            }else if($task['provider_id'] == 3){
                 $this->outlookOAuth2Service->authenticateImap($task['user_id'], $task['provider_id']);
-        
-    
 
+            }else if ($task['provider_id'] == 1){
+                $this->gmailOauth2Service->listEmails($task['user_id'], $task['provider_id']);
             }
 
                 $msg->ack();

@@ -74,6 +74,11 @@ switch ($request_uri[0]) {
             $controller->refreshAccessToken();
             break;
 
+            case '/api/gmail/oauth/list':
+                $controller = new GmailOauth2Controller();
+                $controller->listEmails();
+                break;
+
     case '/api/outlook/oauth/move':
         $controller = new OutlookOAuth2Controller();
         $controller->moveEmail();

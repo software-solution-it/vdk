@@ -35,7 +35,7 @@ class GmailOAuth2Service {
         $this->emailAccountModel = new EmailAccount($db);
     }
 
-    public function initializeOAuthParameters($emailAccount) {
+    private function initializeOAuthParameters($emailAccount) {
         $this->clientId = $emailAccount['client_id'];
         $this->clientSecret = $emailAccount['client_secret'];
         $this->redirectUri = "http://localhost:3000/callback"; // Certifique-se de que seja o mesmo registrado no Google Cloud
@@ -45,7 +45,7 @@ class GmailOAuth2Service {
         try {
             $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $provider_id);
             if (!$emailAccount) {
-                throw new Exception("Email account not found for user ID: $user_id and provider ID: $provider_id");
+                throw new Exception("Conta de e-mail não encontrada para o usuário ID: $user_id e provider ID: $provider_id");
             }
 
             $this->initializeOAuthParameters($emailAccount);
@@ -59,7 +59,7 @@ class GmailOAuth2Service {
                 'scope' => implode(' ', $this->scopes),
                 'access_type' => 'offline',
                 'prompt' => 'consent',
-                'state' => $extraParams // Use `state` para passar informações extras
+                'state' => $extraParams // Use state para passar informações extras
             ]);
 
             return [
@@ -69,7 +69,7 @@ class GmailOAuth2Service {
 
         } catch (Exception $e) {
             $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__, $user_id);
-            throw new Exception('Error generating authorization URL: ' . $e->getMessage());
+            throw new Exception('Erro ao gerar URL de autorização: ' . $e->getMessage());
         }
     }
 
@@ -77,32 +77,10 @@ class GmailOAuth2Service {
         try {
             $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $provider_id);
             if (!$emailAccount) {
-                throw new Exception("Email account not found for user ID: $user_id and provider ID: $provider_id");
+                throw new Exception("Conta de e-mail não encontrada para o usuário ID: $user_id e provider ID: $provider_id");
             }
 
-            $this->errorLogController->logError(
-                "Enviando2 solicitação para obter token de acesso:\n" .
-                "client_id: {$this->clientId}\n" .
-                "client_secret: {$this->clientSecret}\n" .
-                "code: {$code}\n" .
-                "redirect_uri: {$this->redirectUri}\n" .
-                "grant_type: authorization_code",
-                __FILE__, 
-                __LINE__
-            );
-
             $this->initializeOAuthParameters($emailAccount);
-
-            $this->errorLogController->logError(
-                "Enviando solicitação para obter token de acesso:\n" .
-                "client_id: {$this->clientId}\n" .
-                "client_secret: {$this->clientSecret}\n" .
-                "code: {$code}\n" .
-                "redirect_uri: {$this->redirectUri}\n" .
-                "grant_type: authorization_code",
-                __FILE__, 
-                __LINE__
-            );
 
             $response = $this->httpClient->post('https://oauth2.googleapis.com/token', [
                 'form_params' => [
@@ -133,15 +111,15 @@ class GmailOAuth2Service {
                     'refresh_token' => $body['refresh_token']
                 ];
             } else {
-                throw new Exception('Access token or refresh token not found in response');
+                throw new Exception('Token de acesso ou refresh token não encontrado na resposta');
             }
 
         } catch (RequestException $e) {
-            $this->errorLogController->logError('Failed to get access token: ' . $e->getMessage(), __FILE__, __LINE__, $user_id);
-            throw new Exception('Failed to get access token: ' . $e->getMessage());
+            $this->errorLogController->logError('Falha ao obter token de acesso: ' . $e->getMessage(), __FILE__, __LINE__, $user_id);
+            throw new Exception('Falha ao obter token de acesso: ' . $e->getMessage());
         } catch (Exception $e) {
             $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__, $user_id);
-            throw new Exception('Error during access token retrieval: ' . $e->getMessage());
+            throw new Exception('Erro ao recuperar token de acesso: ' . $e->getMessage());
         }
     }
 
@@ -149,7 +127,7 @@ class GmailOAuth2Service {
         try {
             $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $provider_id);
             if (!$emailAccount) {
-                throw new Exception("Email account not found for user ID: $user_id and provider ID: $provider_id");
+                throw new Exception("Conta de e-mail não encontrada para o usuário ID: $user_id e provider ID: $provider_id");
             }
 
             $this->initializeOAuthParameters($emailAccount);
@@ -182,15 +160,483 @@ class GmailOAuth2Service {
                     'refresh_token' => $body['refresh_token'] ?? $emailAccount['refresh_token']
                 ];
             } else {
-                throw new Exception('Access token not found in response');
+                throw new Exception('Token de acesso não encontrado na resposta');
             }
 
         } catch (RequestException $e) {
-            $this->errorLogController->logError('Failed to refresh access token: ' . $e->getMessage(), __FILE__, __LINE__, $user_id);
-            throw new Exception('Failed to refresh access token: ' . $e->getMessage());
+            $this->errorLogController->logError('Falha ao atualizar token de acesso: ' . $e->getMessage(), __FILE__, __LINE__, $user_id);
+            throw new Exception('Falha ao atualizar token de acesso: ' . $e->getMessage());
         } catch (Exception $e) {
             $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__, $user_id);
-            throw new Exception('Error during token refresh: ' . $e->getMessage());
+            throw new Exception('Erro ao atualizar token: ' . $e->getMessage());
+        }
+    }
+
+    public function listFolders($user_id, $provider_id) {
+        try {
+            $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $provider_id);
+            if (!$emailAccount) {
+                throw new Exception("Conta de e-mail não encontrada para o usuário ID: $user_id e provider ID: $provider_id");
+            }
+
+            $accessToken = $emailAccount['oauth_token'];
+
+            $response = $this->httpClient->get('https://gmail.googleapis.com/gmail/v1/users/me/labels', [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $accessToken,
+                    'Accept' => 'application/json'
+                ]
+            ]);
+
+            $body = json_decode($response->getBody(), true);
+
+            // Opcionalmente, atualizar as pastas no banco de dados
+
+            return $body['labels'];
+
+        } catch (RequestException $e) {
+            $this->errorLogController->logError('Erro ao listar pastas: ' . $e->getMessage(), __FILE__, __LINE__, $user_id);
+            throw new Exception('Erro ao listar pastas: ' . $e->getMessage());
+        } catch (Exception $e) {
+            $this->errorLogController->logError('Erro ao listar pastas: ' . $e->getMessage(), __FILE__, __LINE__, $user_id);
+            throw new Exception('Erro ao listar pastas: ' . $e->getMessage());
+        }
+    }
+
+    public function listEmails($user_id, $provider_id, $labelIds = []) {
+        try {
+            $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $provider_id);
+            if (!$emailAccount) {
+                throw new Exception("Conta de e-mail não encontrada para o usuário ID: $user_id e provider ID: $provider_id");
+            }
+
+            $accessToken = $emailAccount['oauth_token'];
+
+            $query = [];
+            if (!empty($labelIds)) {
+                $query['labelIds'] = implode(',', $labelIds);
+            }
+
+            $response = $this->httpClient->get('https://gmail.googleapis.com/gmail/v1/users/me/messages', [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $accessToken,
+                    'Accept' => 'application/json'
+                ],
+                'query' => $query
+            ]);
+
+            $body = json_decode($response->getBody(), true);
+
+            $messages = $body['messages'] ?? [];
+
+            $emails = [];
+            foreach ($messages as $message) {
+                $messageId = $message['id'];
+
+                $messageResponse = $this->httpClient->get("https://gmail.googleapis.com/gmail/v1/users/me/messages/$messageId", [
+                    'headers' => [
+                        'Authorization' => 'Bearer ' . $accessToken,
+                        'Accept' => 'application/json'
+                    ],
+                    'query' => [
+                        'format' => 'full'
+                    ]
+                ]);
+
+                $messageBody = json_decode($messageResponse->getBody(), true);
+                $emailData = $this->parseGmailMessage($messageBody);
+
+                $emails[] = $emailData;
+
+                // Salvar ou atualizar no banco de dados
+                $existingEmail = $this->emailModel->getEmailByMessageId($messageId, $user_id);
+                if ($existingEmail) {
+                    // Verificar se o e-mail foi alterado
+                    $needsUpdate = false;
+                    if ($existingEmail['is_read'] != $emailData['isRead']) {
+                        $needsUpdate = true;
+                    }
+                    if ($existingEmail['folder_name'] != $emailData['folderName']) {
+                        $needsUpdate = true;
+                    }
+                    // Adicionar outras comparações conforme necessário
+                    if ($needsUpdate) {
+                        // Atualizar o e-mail no banco de dados
+                        $this->emailModel->updateEmail(
+                            $existingEmail['id'],
+                            $user_id,
+                            $messageId,
+                            $emailData['subject'],
+                            $emailData['fromAddress'],
+                            $emailData['toRecipients'],
+                            $emailData['bodyContent'],
+                            $emailData['date_received'],
+                            $emailData['references'],
+                            $emailData['inReplyTo'],
+                            $emailData['isRead'],
+                            $emailData['folderName'],
+                            $emailData['ccRecipients'],
+                            $messageId,
+                            $emailData['conversationId']
+                        );
+                    }
+                } else {
+                    // Salvar novo e-mail
+                    $emailId = $this->emailModel->saveEmail(
+                        $user_id,
+                        $messageId,
+                        $emailData['subject'],
+                        $emailData['fromAddress'],
+                        $emailData['toRecipients'],
+                        $emailData['bodyContent'],
+                        $emailData['date_received'],
+                        $emailData['references'],
+                        $emailData['inReplyTo'],
+                        $emailData['isRead'],
+                        $emailData['folderName'],
+                        $emailData['ccRecipients'],
+                        $messageId,
+                        $emailData['conversationId']
+                    );
+
+                    // Verificar e salvar anexos
+                    if (!empty($messageBody['payload']['parts'])) {
+                        foreach ($messageBody['payload']['parts'] as $part) {
+                            if (isset($part['filename']) && !empty($part['filename']) && isset($part['body']['attachmentId'])) {
+                                $attachmentId = $part['body']['attachmentId'];
+                                $attachment = $this->getGmailAttachment($accessToken, $messageId, $attachmentId);
+
+                                if ($attachment && isset($attachment['data'])) {
+                                    $contentBytes = base64_decode(strtr($attachment['data'], '-_', '+/'));
+                                    if ($contentBytes !== false) {
+                                        $this->emailModel->saveAttachment(
+                                            $emailId,
+                                            $part['filename'],
+                                            $part['mimeType'],
+                                            strlen($contentBytes),
+                                            $contentBytes
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            return $emails;
+
+        } catch (RequestException $e) {
+            $this->errorLogController->logError('Erro ao listar e-mails: ' . $e->getMessage(), __FILE__, __LINE__, $user_id);
+            throw new Exception('Erro ao listar e-mails: ' . $e->getMessage());
+        } catch (Exception $e) {
+            $this->errorLogController->logError('Erro ao listar e-mails: ' . $e->getMessage(), __FILE__, __LINE__, $user_id);
+            throw new Exception('Erro ao listar e-mails: ' . $e->getMessage());
+        }
+    }
+
+    private function parseGmailMessage($message) {
+        $payload = $message['payload'];
+        $headers = $payload['headers'];
+
+        $emailData = [
+            'id' => $message['id'],
+            'threadId' => $message['threadId'],
+            'subject' => '',
+            'fromAddress' => '',
+            'toRecipients' => '',
+            'ccRecipients' => '',
+            'date_received' => '',
+            'isRead' => false,
+            'bodyContent' => '',
+            'conversationId' => $message['threadId'],
+            'references' => '',
+            'inReplyTo' => '',
+            'folderName' => '',
+        ];
+
+        foreach ($headers as $header) {
+            switch (strtolower($header['name'])) {
+                case 'subject':
+                    $emailData['subject'] = $header['value'];
+                    break;
+                case 'from':
+                    $emailData['fromAddress'] = $header['value'];
+                    break;
+                case 'to':
+                    $emailData['toRecipients'] = $header['value'];
+                    break;
+                case 'cc':
+                    $emailData['ccRecipients'] = $header['value'] ?? '';
+                    break;
+                case 'date':
+                    $emailData['date_received'] = $header['value'];
+                    break;
+                case 'references':
+                    $emailData['references'] = $header['value'] ?? '';
+                    break;
+                case 'in-reply-to':
+                    $emailData['inReplyTo'] = $header['value'] ?? '';
+                    break;
+            }
+        }
+
+        $emailData['isRead'] = !in_array('UNREAD', $message['labelIds']);
+
+        // Obter o conteúdo do e-mail
+        $emailData['bodyContent'] = $this->getEmailBody($payload);
+
+        // Obter o nome da pasta (label)
+        $emailData['folderName'] = implode(', ', $message['labelIds']);
+
+        return $emailData;
+    }
+
+    private function getEmailBody($payload) {
+        $body = '';
+        if (isset($payload['parts'])) {
+            foreach ($payload['parts'] as $part) {
+                if ($part['mimeType'] === 'text/plain') {
+                    $body .= base64_decode(strtr($part['body']['data'], '-_', '+/'));
+                } elseif ($part['mimeType'] === 'text/html') {
+                    $body .= strip_tags(base64_decode(strtr($part['body']['data'], '-_', '+/')));
+                }
+            }
+        } else {
+            if (isset($payload['body']['data'])) {
+                $body = base64_decode(strtr($payload['body']['data'], '-_', '+/'));
+            }
+        }
+        return $body;
+    }
+
+    private function getGmailAttachment($accessToken, $messageId, $attachmentId) {
+        try {
+            $response = $this->httpClient->get("https://gmail.googleapis.com/gmail/v1/users/me/messages/$messageId/attachments/$attachmentId", [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $accessToken,
+                    'Accept' => 'application/json'
+                ]
+            ]);
+
+            return json_decode($response->getBody(), true);
+        } catch (Exception $e) {
+            // Logar erro e continuar
+            return null;
+        }
+    }
+
+    public function moveEmail($user_id, $provider_id, $messageId, $destinationLabelId) {
+        try {
+            $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $provider_id);
+            if (!$emailAccount) {
+                throw new Exception("Conta de e-mail não encontrada para o usuário ID: $user_id e provider ID: $provider_id");
+            }
+
+            $accessToken = $emailAccount['oauth_token'];
+
+            // Obter labels atuais
+            $messageResponse = $this->httpClient->get("https://gmail.googleapis.com/gmail/v1/users/me/messages/$messageId", [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $accessToken,
+                    'Accept' => 'application/json'
+                ],
+                'query' => [
+                    'format' => 'minimal'
+                ]
+            ]);
+
+            $message = json_decode($messageResponse->getBody(), true);
+            $currentLabels = $message['labelIds'] ?? [];
+
+            // Remover label de origem e adicionar a nova label
+            $newLabelsToAdd = [$destinationLabelId];
+            $labelsToRemove = []; // Especifique se deseja remover algum label
+
+            $this->httpClient->modifyRequest("https://gmail.googleapis.com/gmail/v1/users/me/messages/$messageId/modify", [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $accessToken,
+                    'Content-Type' => 'application/json'
+                ],
+                'json' => [
+                    'addLabelIds' => $newLabelsToAdd,
+                    'removeLabelIds' => $labelsToRemove
+                ]
+            ]);
+
+            // Atualizar no banco de dados se necessário
+            // ...
+
+            return true;
+
+        } catch (RequestException $e) {
+            $this->errorLogController->logError('Erro ao mover e-mail: ' . $e->getMessage(), __FILE__, __LINE__, $user_id);
+            throw new Exception('Erro ao mover e-mail: ' . $e->getMessage());
+        } catch (Exception $e) {
+            $this->errorLogController->logError('Erro ao mover e-mail: ' . $e->getMessage(), __FILE__, __LINE__, $user_id);
+            throw new Exception('Erro ao mover e-mail: ' . $e->getMessage());
+        }
+    }
+
+    public function deleteEmail($user_id, $provider_id, $messageId) {
+        try {
+            $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $provider_id);
+            if (!$emailAccount) {
+                throw new Exception("Conta de e-mail não encontrada para o usuário ID: $user_id e provider ID: $provider_id");
+            }
+
+            $accessToken = $emailAccount['oauth_token'];
+
+            // Usar a API do Gmail para deletar o e-mail
+            $this->httpClient->delete("https://gmail.googleapis.com/gmail/v1/users/me/messages/$messageId", [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $accessToken
+                ]
+            ]);
+
+            // Remover ou marcar o e-mail como deletado no banco de dados
+            $this->emailModel->deleteEmail($messageId);
+
+            return true;
+
+        } catch (RequestException $e) {
+            $this->errorLogController->logError('Erro ao deletar e-mail: ' . $e->getMessage(), __FILE__, __LINE__, $user_id);
+            throw new Exception('Erro ao deletar e-mail: ' . $e->getMessage());
+        } catch (Exception $e) {
+            $this->errorLogController->logError('Erro ao deletar e-mail: ' . $e->getMessage(), __FILE__, __LINE__, $user_id);
+            throw new Exception('Erro ao deletar e-mail: ' . $e->getMessage());
+        }
+    }
+
+    public function listEmailsByConversation($user_id, $provider_id, $conversationId) {
+        try {
+            $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $provider_id);
+            if (!$emailAccount) {
+                throw new Exception("Conta de e-mail não encontrada para o usuário ID: $user_id e provider ID: $provider_id");
+            }
+
+            $accessToken = $emailAccount['oauth_token'];
+
+            // Obter mensagens da conversação
+            $response = $this->httpClient->get("https://gmail.googleapis.com/gmail/v1/users/me/conversations/$conversationId", [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $accessToken,
+                    'Accept' => 'application/json'
+                ]
+            ]);
+
+            $body = json_decode($response->getBody(), true);
+
+            $messages = $body['messages'] ?? [];
+
+            $emails = [];
+            foreach ($messages as $message) {
+                $messageId = $message['id'];
+
+                $messageResponse = $this->httpClient->get("https://gmail.googleapis.com/gmail/v1/users/me/messages/$messageId", [
+                    'headers' => [
+                        'Authorization' => 'Bearer ' . $accessToken,
+                        'Accept' => 'application/json'
+                    ],
+                    'query' => [
+                        'format' => 'full'
+                    ]
+                ]);
+
+                $messageBody = json_decode($messageResponse->getBody(), true);
+                $emailData = $this->parseGmailMessage($messageBody);
+
+                $emails[] = $emailData;
+
+                // Salvar ou atualizar no banco de dados
+                $existingEmail = $this->emailModel->getEmailByMessageId($messageId, $user_id);
+                if ($existingEmail) {
+                    // Verificar se o e-mail foi alterado
+                    $needsUpdate = false;
+                    if ($existingEmail['is_read'] != $emailData['isRead']) {
+                        $needsUpdate = true;
+                    }
+                    if ($existingEmail['folder_name'] != $emailData['folderName']) {
+                        $needsUpdate = true;
+                    }
+                    // Adicionar outras comparações conforme necessário
+                    if ($needsUpdate) {
+                        // Atualizar o e-mail no banco de dados
+                        $this->emailModel->updateEmail(
+                            $existingEmail['id'],
+                            $user_id,
+                            $messageId,
+                            $emailData['subject'],
+                            $emailData['fromAddress'],
+                            $emailData['toRecipients'],
+                            $emailData['bodyContent'],
+                            $emailData['date_received'],
+                            $emailData['references'],
+                            $emailData['inReplyTo'],
+                            $emailData['isRead'],
+                            $emailData['folderName'],
+                            $emailData['ccRecipients'],
+                            $messageId,
+                            $emailData['conversationId']
+                        );
+                    }
+                } else {
+                    // Salvar novo e-mail
+                    $emailId = $this->emailModel->saveEmail(
+                        $user_id,
+                        $messageId,
+                        $emailData['subject'],
+                        $emailData['fromAddress'],
+                        $emailData['toRecipients'],
+                        $emailData['bodyContent'],
+                        $emailData['date_received'],
+                        $emailData['references'],
+                        $emailData['inReplyTo'],
+                        $emailData['isRead'],
+                        $emailData['folderName'],
+                        $emailData['ccRecipients'],
+                        $messageId,
+                        $emailData['conversationId']
+                    );
+
+                    // Verificar e salvar anexos
+                    if (!empty($messageBody['payload']['parts'])) {
+                        foreach ($messageBody['payload']['parts'] as $part) {
+                            if (isset($part['filename']) && !empty($part['filename']) && isset($part['body']['attachmentId'])) {
+                                $attachmentId = $part['body']['attachmentId'];
+                                $attachment = $this->getGmailAttachment($accessToken, $messageId, $attachmentId);
+
+                                if ($attachment && isset($attachment['data'])) {
+                                    $contentBytes = base64_decode(strtr($attachment['data'], '-_', '+/'));
+                                    if ($contentBytes !== false) {
+                                        $this->emailModel->saveAttachment(
+                                            $emailId,
+                                            $part['filename'],
+                                            $part['mimeType'],
+                                            strlen($contentBytes),
+                                            $contentBytes
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Ordenar os e-mails por data de recebimento
+            usort($emails, function($a, $b) {
+                return strtotime($a['date_received']) - strtotime($b['date_received']);
+            });
+
+            return $emails;
+
+        } catch (RequestException $e) {
+            $this->errorLogController->logError('Erro ao listar e-mails por conversação: ' . $e->getMessage(), __FILE__, __LINE__, $user_id);
+            throw new Exception('Erro ao listar e-mails por conversação: ' . $e->getMessage());
+        } catch (Exception $e) {
+            $this->errorLogController->logError('Erro ao listar e-mails por conversação: ' . $e->getMessage(), __FILE__, __LINE__, $user_id);
+            throw new Exception('Erro ao listar e-mails por conversação: ' . $e->getMessage());
         }
     }
 }
