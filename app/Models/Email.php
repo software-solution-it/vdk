@@ -92,11 +92,11 @@ class Email {
     }
 
     public function updateEmailAfterMove($oldMessageId, $newMessageId, $folderName) {
-        $sql = "UPDATE emails SET message_id = :new_message_id, folder = :folder_name WHERE message_id = :old_message_id";
+        $sql = "UPDATE emails SET conversation_Id = :new_conversation_Id, folder = :folder_name WHERE conversation_Id = :old_conversation_Id";
         $stmt = $this->conn->prepare($sql); 
-        $stmt->bindParam(':new_message_id', $newMessageId);
+        $stmt->bindParam(':new_conversation_Id', $newMessageId);
         $stmt->bindParam(':folder_name', $folderName);
-        $stmt->bindParam(':old_message_id', $oldMessageId);
+        $stmt->bindParam(':old_conversation_Id', $oldMessageId);
         $stmt->execute();
     }
     
@@ -151,9 +151,9 @@ class Email {
     // Método para obter um e-mail pelo messageId e user_id
     public function getEmailByMessageId($messageId, $user_id) {
         try {
-            $query = "SELECT * FROM " . $this->table . " WHERE email_id = :message_id AND user_id = :user_id LIMIT 1";
+            $query = "SELECT * FROM " . $this->table . " WHERE email_id = :conversation_Id AND user_id = :user_id LIMIT 1";
             $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(':message_id', $messageId);
+            $stmt->bindParam(':conversation_Id', $messageId);
             $stmt->bindParam(':user_id', $user_id);
             $stmt->execute();
     
@@ -225,10 +225,10 @@ class Email {
     // Método para atualizar a pasta de um e-mail
     public function updateFolder($messageId, $folderName) {
         try {
-            $query = "UPDATE " . $this->table . " SET folder = :folder_name WHERE email_id = :message_id";
+            $query = "UPDATE " . $this->table . " SET folder = :folder_name WHERE email_id = :conversation_Id";
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':folder_name', $folderName);
-            $stmt->bindParam(':message_id', $messageId);
+            $stmt->bindParam(':conversation_Id', $messageId);
     
             return $stmt->execute();
     
@@ -241,9 +241,9 @@ class Email {
     // Método para deletar um e-mail
     public function deleteEmail($messageId) {
         try {
-            $query = "DELETE FROM " . $this->table . " WHERE email_id = :message_id";
+            $query = "DELETE FROM " . $this->table . " WHERE email_id = :conversation_Id";
             $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(':message_id', $messageId);
+            $stmt->bindParam(':conversation_Id', $messageId);
     
             return $stmt->execute();
     
@@ -275,9 +275,9 @@ class Email {
     
     public function emailExistsByMessageId($messageId, $user_id) {
         try {
-            $query = "SELECT COUNT(*) as count FROM " . $this->table . " WHERE email_id = :message_id AND user_id = :user_id";
+            $query = "SELECT COUNT(*) as count FROM " . $this->table . " WHERE email_id = :conversation_Id AND user_id = :user_id";
             $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(':message_id', $messageId);
+            $stmt->bindParam(':conversation_Id', $messageId);
             $stmt->bindParam(':user_id', $user_id);
             $stmt->execute();
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -290,9 +290,7 @@ class Email {
         }
     }
     
-    
 
-    // Método auxiliar para obter e-mails por IDs
     private function getEmailsByIds($emailIds) {
         try {
             $placeholders = implode(',', array_fill(0, count($emailIds), '?'));
@@ -311,7 +309,6 @@ class Email {
         }
     }
 
-    // Método para obter um e-mail específico
     public function getEmailById($id) {
         try {
             $query = "SELECT * FROM " . $this->table . " WHERE id = :id";
@@ -327,7 +324,6 @@ class Email {
         }
     }
 
-    // Métodos existentes mantidos...
 
     public function getDnsRecords($domain) {
         return dns_get_record($domain, DNS_TXT);

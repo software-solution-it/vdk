@@ -48,7 +48,7 @@ use Webklex\PHPIMAP\Traits\HasEvents;
  * @property integer msgn
  * @property integer size
  * @property Attribute subject
- * @property Attribute message_id
+ * @property Attribute conversation_Id
  * @property Attribute message_no
  * @property Attribute references
  * @property Attribute date
@@ -977,14 +977,14 @@ class Message {
 
         /** @var Message $message */
         foreach ($thread as $message) {
-            if ($message->message_id->first() == $this->message_id->first()) {
+            if ($message->conversation_Id->first() == $this->conversation_Id->first()) {
                 return $thread;
             }
         }
         $thread->push($this);
 
-        $this->fetchThreadByInReplyTo($thread, $this->message_id, $folder, $folder, $sent_folder);
-        $this->fetchThreadByInReplyTo($thread, $this->message_id, $sent_folder, $folder, $sent_folder);
+        $this->fetchThreadByInReplyTo($thread, $this->conversation_Id, $folder, $folder, $sent_folder);
+        $this->fetchThreadByInReplyTo($thread, $this->conversation_Id, $sent_folder, $folder, $sent_folder);
 
         foreach ($this->in_reply_to->all() as $in_reply_to) {
             $this->fetchThreadByMessageId($thread, $in_reply_to, $folder, $folder, $sent_folder);
@@ -1023,7 +1023,7 @@ class Message {
     /**
      * Fetch a partial thread by message id
      * @param MessageCollection $thread
-     * @param string $message_id
+     * @param string $conversation_Id
      * @param Folder $primary_folder
      * @param Folder $secondary_folder
      * @param Folder $sent_folder
@@ -1037,8 +1037,8 @@ class Message {
      * @throws RuntimeException
      * @throws ResponseException
      */
-    protected function fetchThreadByMessageId(MessageCollection &$thread, string $message_id, Folder $primary_folder, Folder $secondary_folder, Folder $sent_folder): void {
-        $primary_folder->query()->messageId($message_id)
+    protected function fetchThreadByMessageId(MessageCollection &$thread, string $conversation_Id, Folder $primary_folder, Folder $secondary_folder, Folder $sent_folder): void {
+        $primary_folder->query()->messageId($conversation_Id)
             ->setFetchBody($this->getFetchBodyOption())
             ->leaveUnread()->get()->each(function($message) use (&$thread, $secondary_folder, $sent_folder) {
                 /** @var Message $message */
@@ -1471,7 +1471,7 @@ class Message {
         }
 
         return $this->uid == $message->uid
-            && $this->message_id->first() == $message->message_id->first()
+            && $this->conversation_Id->first() == $message->conversation_Id->first()
             && $this->subject->first() == $message->subject->first()
             && $this->date->toDate()->eq($message->date->toDate());
     }

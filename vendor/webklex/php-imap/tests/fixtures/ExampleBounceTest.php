@@ -58,7 +58,7 @@ class ExampleBounceTest extends FixtureTestCase {
         self::assertEquals("demo@foo.de", $message->to);
         self::assertEquals("1.0", $message->mime_version);
         self::assertEquals("Mail delivery failed", $message->subject);
-        self::assertEquals("E1pXaXO-0008gb-6g@sslproxy01.your-server.de", $message->message_id);
+        self::assertEquals("E1pXaXO-0008gb-6g@sslproxy01.your-server.de", $message->conversation_Id);
         self::assertEquals("2023-03-02 04:27:26", $message->date->first()->setTimezone('UTC')->format("Y-m-d H:i:s"));
         self::assertEquals("Clear (ClamAV 0.103.8/26827/Wed Mar  1 09:28:49 2023)", $message->x_virus_scanned);
         self::assertEquals("0.0 (/)", $message->x_spam_score);

@@ -253,10 +253,10 @@ class EmailService {
     }
 
   
-    public function getEmailThread($message_id) {
-        $query = "SELECT * FROM emails WHERE message_id = :message_id OR in_reply_to = :message_id ORDER BY date_received ASC";
+    public function getEmailThread($conversation_Id) {
+        $query = "SELECT * FROM emails WHERE conversation_Id = :conversation_Id OR in_reply_to = :conversation_Id ORDER BY date_received ASC";
         $stmt = $this->db->prepare($query);
-        $stmt->bindParam(':message_id', $message_id);
+        $stmt->bindParam(':conversation_Id', $conversation_Id);
         $stmt->execute();
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);

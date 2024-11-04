@@ -86,7 +86,7 @@ class AMQPMessage
         'correlation_id' => 'shortstr',
         'reply_to' => 'shortstr',
         'expiration' => 'shortstr',
-        'message_id' => 'shortstr',
+        'conversation_Id' => 'shortstr',
         'timestamp' => 'timestamp',
         'type' => 'shortstr',
         'user_id' => 'shortstr',

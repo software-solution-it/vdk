@@ -54,6 +54,6 @@ class UndefinedCharsetHeaderTest extends FixtureTestCase {
 
         self::assertEquals("sales@bla.bla", $message->to->first()->mail);
         self::assertEquals("Submit your tax refund | Australian Taxation Office.", $message->subject);
-        self::assertEquals("201702270351.BGF77614@bla.bla", $message->message_id);
+        self::assertEquals("201702270351.BGF77614@bla.bla", $message->conversation_Id);
     }
 }

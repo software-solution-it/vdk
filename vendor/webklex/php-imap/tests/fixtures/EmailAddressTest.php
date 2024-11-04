@@ -28,7 +28,7 @@ class EmailAddressTest extends FixtureTestCase {
         $message = $this->getFixture("email_address.eml");
 
         self::assertEquals("", $message->subject);
-        self::assertEquals("123@example.com", $message->message_id);
+        self::assertEquals("123@example.com", $message->conversation_Id);
         self::assertEquals("Hi\r\nHow are you?", $message->getTextBody());
         self::assertFalse($message->hasHTMLBody());
         self::assertFalse($message->date->first());

@@ -41,14 +41,14 @@ class MultipartWithoutBodyTest extends FixtureTestCase {
         ], $message->received->all());
         self::assertEquals("This mail will not contain a body", $message->thread_topic);
         self::assertEquals("AdlT8uVmpHPvImbCRM6E9LODIvAcQA==", $message->thread_index);
-        self::assertEquals("omef0ahNgeoJuEB51C568ED2227A2DAABB5BB9@omef0ahNgeoJu.eurprd02.prod.outlook.com", $message->message_id);
+        self::assertEquals("omef0ahNgeoJuEB51C568ED2227A2DAABB5BB9@omef0ahNgeoJu.eurprd02.prod.outlook.com", $message->conversation_Id);
         self::assertEquals("da-DK, en-US", $message->accept_language);
         self::assertEquals("en-US", $message->content_language);
         self::assertEquals("Internal", $message->x_ms_exchange_organization_authAs);
         self::assertEquals("04", $message->x_ms_exchange_organization_authMechanism);
         self::assertEquals("omef0ahNgeoJu.eurprd02.prod.outlook.com", $message->x_ms_exchange_organization_authSource);
         self::assertEquals("", $message->x_ms_Has_Attach);
-        self::assertEquals("aa546a02-2b7a-4fb1-7fd4-08db220a09f1", $message->x_ms_exchange_organization_Network_Message_Id);
+        self::assertEquals("aa546a02-2b7a-4fb1-7fd4-08db220a09f1", $message->x_ms_exchange_organization_Network_conversation_Id);
         self::assertEquals("-1", $message->x_ms_exchange_organization_SCL);
         self::assertEquals("", $message->x_ms_TNEF_Correlator);
         self::assertEquals("0", $message->x_ms_exchange_organization_RecordReviewCfmType);

@@ -34,7 +34,7 @@ class EmbeddedEmailWithoutContentDispositionTest extends FixtureTestCase {
             'from webmail.my-office.cz (localhost [127.0.0.1]) by keira.cofis.cz ; Fri, 29 Jan 2016 14:25:40 +0100',
             'from webmail.my-office.cz (localhost [127.0.0.1]) by keira.cofis.cz'
         ], $message->received->toArray());
-        self::assertEquals("AC39946EBF5C034B87BABD5343E96979012671D9F7E4@VM002.cerk.cc", $message->message_id);
+        self::assertEquals("AC39946EBF5C034B87BABD5343E96979012671D9F7E4@VM002.cerk.cc", $message->conversation_Id);
         self::assertEquals("pl-PL, nl-NL", $message->accept_language);
         self::assertEquals("1.0", $message->mime_version);
         self::assertEquals("TexT\r\n\r\n[cid:file.jpg]", $message->getTextBody());

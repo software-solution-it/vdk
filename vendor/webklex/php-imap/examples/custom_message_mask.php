@@ -17,7 +17,7 @@ class CustomMessageMask extends \Webklex\PHPIMAP\Support\Masks\MessageMask {
      * @return string
      */
     public function token(): string {
-        return implode('-', [$this->message_id, $this->uid, $this->message_no]);
+        return implode('-', [$this->conversation_Id, $this->uid, $this->message_no]);
     }
 
     /**

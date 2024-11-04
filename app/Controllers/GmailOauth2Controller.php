@@ -163,25 +163,23 @@ class GmailOauth2Controller {
         if (
             !isset($data['user_id']) ||
             !isset($data['provider_id']) ||
-            !isset($data['message_id']) ||
             !isset($data['destination_label_id'])
         ) {
-            echo json_encode(['status' => false, 'message' => 'user_id, provider_id, message_id, and destination_label_id are required.']);
+            echo json_encode(['status' => false, 'message' => 'user_id, provider_id, and destination_label_id are required.']);
             return;
         }
 
         $user_id = intval($data['user_id']);
         $provider_id = intval($data['provider_id']);
-        $message_id = trim($data['message_id']);
         $destination_label_id = trim($data['destination_label_id']);
 
-        if ($user_id <= 0 || $provider_id <= 0 || empty($message_id) || empty($destination_label_id)) {
+        if ($user_id <= 0 || $provider_id <= 0 || empty($conversation_Id) || empty($destination_label_id)) {
             echo json_encode(['status' => false, 'message' => 'Invalid parameters.']);
             return;
         }
 
         try {
-            $result = $this->gmailOAuth2Service->moveEmail($user_id, $provider_id, $message_id, $destination_label_id);
+            $result = $this->gmailOAuth2Service->moveEmail($user_id, $provider_id, $conversation_Id, $destination_label_id);
             echo json_encode(['status' => true, 'message' => 'E-mail movido com sucesso.']);
         } catch (Exception $e) {
             $this->errorLogController->logError("Erro ao mover e-mail: " . $e->getMessage(), __FILE__, __LINE__, $user_id);
@@ -197,23 +195,23 @@ class GmailOauth2Controller {
         if (
             !isset($data['user_id']) ||
             !isset($data['provider_id']) ||
-            !isset($data['message_id'])
+            !isset($data['conversation_Id'])
         ) {
-            echo json_encode(['status' => false, 'message' => 'user_id, provider_id, and message_id are required.']);
+            echo json_encode(['status' => false, 'message' => 'user_id, provider_id, and conversation_Id are required.']);
             return;
         }
 
         $user_id = intval($data['user_id']);
         $provider_id = intval($data['provider_id']);
-        $message_id = trim($data['message_id']);
+        $conversation_Id = trim($data['conversation_Id']);
 
-        if ($user_id <= 0 || $provider_id <= 0 || empty($message_id)) {
+        if ($user_id <= 0 || $provider_id <= 0 || empty($conversation_Id)) {
             echo json_encode(['status' => false, 'message' => 'Invalid parameters.']);
             return;
         }
 
         try {
-            $result = $this->gmailOAuth2Service->deleteEmail($user_id, $provider_id, $message_id);
+            $result = $this->gmailOAuth2Service->deleteEmail($user_id, $provider_id, $conversation_Id);
             echo json_encode(['status' => true, 'message' => 'E-mail deletado com sucesso.']);
         } catch (Exception $e) {
             $this->errorLogController->logError("Erro ao deletar e-mail: " . $e->getMessage(), __FILE__, __LINE__, $user_id);

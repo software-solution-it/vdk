@@ -133,15 +133,15 @@ class OutlookOAuth2Controller {
         header('Content-Type: application/json');
         $data = json_decode(file_get_contents('php://input'), true);
 
-        if (!isset($data['user_id'], $data['provider_id'], $data['message_id'], $data['destination_folder_id'])) {
+        if (!isset($data['user_id'], $data['provider_id'], $data['conversation_Id'], $data['destination_folder_id'])) {
         
-            echo json_encode(['status' => false, 'message' => 'user_id, provider_id, message_id, and destination_folder_id are required.']);
+            echo json_encode(['status' => false, 'message' => 'user_id, provider_id, conversation_Id, and destination_folder_id are required.']);
             return;
         }
 
         $user_id = intval($data['user_id']);
         $provider_id = intval($data['provider_id']);
-        $messageId = $data['message_id'];
+        $messageId = $data['conversation_Id'];
         $destinationFolderId = $data['destination_folder_id'];
 
         if ($user_id <= 0 || $provider_id <= 0 || empty($messageId) || empty($destinationFolderId)) {
@@ -163,14 +163,14 @@ class OutlookOAuth2Controller {
         header('Content-Type: application/json');
         $data = json_decode(file_get_contents('php://input'), true);
 
-        if (!isset($data['user_id'], $data['provider_id'], $data['message_id'])) {
-            echo json_encode(['status' => false, 'message' => 'user_id, provider_id, and message_id are required.']);
+        if (!isset($data['user_id'], $data['provider_id'], $data['conversation_Id'])) {
+            echo json_encode(['status' => false, 'message' => 'user_id, provider_id, and conversation_Id are required.']);
             return;
         }
 
         $user_id = intval($data['user_id']);
         $provider_id = intval($data['provider_id']);
-        $messageId = $data['message_id'];
+        $messageId = $data['conversation_Id'];
 
         if ($user_id <= 0 || $provider_id <= 0 || empty($messageId)) {
        echo json_encode(['status' => false, 'message' => 'Invalid parameters.']);

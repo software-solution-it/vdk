@@ -493,7 +493,7 @@ If you have any questions, please feel welcome to join this issue: https://githu
 
 ### Breaking changes
 - Stringified message headers are now separated by ", " instead of " ". 
-- All message header values such as subject, message_id, from, to, etc now consists of an `Àttribute::class` instance (should behave the same way as before, but might cause some problem in certain edge cases)
+- All message header values such as subject, conversation_Id, from, to, etc now consists of an `Àttribute::class` instance (should behave the same way as before, but might cause some problem in certain edge cases)
 - The formal address object "from", "to", etc now consists of an `Address::class` instance  (should behave the same way as before, but might cause some problem in certain edge cases)
 - When fetching or manipulating message flags a `MessageFlagException::class` exception can be thrown if a runtime error occurs
 - Learn more about the new `Attribute` class here: [www.php-imap.com/api/attribute](https://www.php-imap.com/api/attribute)

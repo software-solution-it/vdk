@@ -30,7 +30,7 @@ class MailThatIsAttachmentTest extends FixtureTestCase {
         $message = $this->getFixture("mail_that_is_attachment.eml");
 
         self::assertEquals("Report domain: yyy.cz Submitter: google.com Report-ID: 2244696771454641389", $message->subject);
-        self::assertEquals("2244696771454641389@google.com", $message->message_id);
+        self::assertEquals("2244696771454641389@google.com", $message->conversation_Id);
         self::assertEquals("1.0", $message->mime_version);
         self::assertFalse($message->hasTextBody());
         self::assertFalse($message->hasHTMLBody());

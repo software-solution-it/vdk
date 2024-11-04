@@ -200,8 +200,8 @@ class Header {
                 return str_replace(['<', '>'], '', $item);
             }, explode(" ", $header->references)));
         }
-        if (property_exists($header, 'message_id')) {
-            $this->set("message_id", str_replace(['<', '>'], '', $header->message_id));
+        if (property_exists($header, 'conversation_Id')) {
+            $this->set("conversation_Id", str_replace(['<', '>'], '', $header->conversation_Id));
         }
         if (property_exists($header, 'in_reply_to')) {
             $this->set("in_reply_to", str_replace(['<', '>'], '', $header->in_reply_to));
@@ -763,7 +763,7 @@ class Header {
                     $parsed_date = Carbon::parse($date);
                 } catch (\Exception $_e) {
                     if (!isset($this->config["fallback_date"])) {
-                        throw new InvalidMessageDateException("Invalid message date. ID:" . $this->get("message_id") . " Date:" . $header->date . "/" . $date, 1100, $e);
+                        throw new InvalidMessageDateException("Invalid message date. ID:" . $this->get("conversation_Id") . " Date:" . $header->date . "/" . $date, 1100, $e);
                     } else {
                         $parsed_date = Carbon::parse($this->config["fallback_date"]);
                     }
