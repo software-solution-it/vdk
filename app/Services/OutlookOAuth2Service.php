@@ -95,8 +95,7 @@ class OutlookOAuth2Service {
                     'client_secret' => $this->clientSecret,
                     'code' => $code,
                     'redirect_uri' => $this->redirectUri,
-                    'grant_type' => 'authorization_code',
-                    'scope' => implode(' ', $this->scopes)
+                    'grant_type' => 'authorization_code'
                 ]
             ]);
 
