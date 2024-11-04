@@ -309,6 +309,26 @@ class Email {
         }
     }
 
+    public function updateLabel($emailId, $newLabel) {
+        try {
+            $query = "UPDATE emails SET folder_name = :folder_name WHERE id = :email_id";
+            $stmt = $this->conn->prepare($query);
+    
+            $stmt->bindParam(':folder_name', $newLabel);
+            $stmt->bindParam(':email_id', $emailId);
+    
+            if ($stmt->execute()) {
+                return true;
+            } else {
+                throw new Exception("Erro ao atualizar o rótulo do e-mail com ID: $emailId");
+            }
+        } catch (Exception $e) {
+            error_log($e->getMessage());
+            return false;
+        }
+    }
+    
+
     public function getEmailById($id) {
         try {
             $query = "SELECT * FROM " . $this->table . " WHERE id = :id";

@@ -79,6 +79,21 @@ switch ($request_uri[0]) {
                 $controller->listEmails();
                 break;
 
+                case '/api/gmail/oauth/move':
+                    $controller = new GmailOauth2Controller();
+                    $controller->moveEmail();
+                    break;
+                
+                case '/api/gmail/oauth/delete':
+                    $controller = new GmailOauth2Controller();
+                    $controller->deleteEmail();
+                    break;
+                
+                case '/api/gmail/oauth/list/conversation':
+                    $controller = new GmailOauth2Controller();
+                    $controller->listEmailsByConversation();
+                    break;
+
     case '/api/outlook/oauth/move':
         $controller = new OutlookOAuth2Controller();
         $controller->moveEmail();

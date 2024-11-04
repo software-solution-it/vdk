@@ -38,7 +38,7 @@ class GmailOAuth2Service {
     private function initializeOAuthParameters($emailAccount) {
         $this->clientId = $emailAccount['client_id'];
         $this->clientSecret = $emailAccount['client_secret'];
-        $this->redirectUri = "http://localhost:3000/callback"; // Certifique-se de que seja o mesmo registrado no Google Cloud
+        $this->redirectUri = "http://localhost:3000/callback";
     }
 
     public function getAuthorizationUrl($user_id, $provider_id) {
@@ -59,7 +59,7 @@ class GmailOAuth2Service {
                 'scope' => implode(' ', $this->scopes),
                 'access_type' => 'offline',
                 'prompt' => 'consent',
-                'state' => $extraParams // Use state para passar informações extras
+                'state' => $extraParams
             ]);
 
             return [
@@ -190,7 +190,6 @@ class GmailOAuth2Service {
 
             $body = json_decode($response->getBody(), true);
 
-            // Opcionalmente, atualizar as pastas no banco de dados
 
             return $body['labels'];
 
@@ -229,7 +228,6 @@ class GmailOAuth2Service {
 
             $messages = $body['messages'] ?? [];
 
-            $emails = [];
             foreach ($messages as $message) {
                 $messageId = $message['id'];
 
@@ -246,12 +244,8 @@ class GmailOAuth2Service {
                 $messageBody = json_decode($messageResponse->getBody(), true);
                 $emailData = $this->parseGmailMessage($messageBody);
 
-                $emails[] = $emailData;
-
-                // Salvar ou atualizar no banco de dados
                 $existingEmail = $this->emailModel->getEmailByMessageId($messageId, $user_id);
                 if ($existingEmail) {
-                    // Verificar se o e-mail foi alterado
                     $needsUpdate = false;
                     if ($existingEmail['is_read'] != $emailData['isRead']) {
                         $needsUpdate = true;
@@ -259,9 +253,7 @@ class GmailOAuth2Service {
                     if ($existingEmail['folder_name'] != $emailData['folderName']) {
                         $needsUpdate = true;
                     }
-                    // Adicionar outras comparações conforme necessário
                     if ($needsUpdate) {
-                        // Atualizar o e-mail no banco de dados
                         $this->emailModel->updateEmail(
                             $existingEmail['id'],
                             $user_id,
@@ -281,7 +273,6 @@ class GmailOAuth2Service {
                         );
                     }
                 } else {
-                    // Salvar novo e-mail
                     $emailId = $this->emailModel->saveEmail(
                         $user_id,
                         $messageId,
@@ -299,7 +290,6 @@ class GmailOAuth2Service {
                         $emailData['conversationId']
                     );
 
-                    // Verificar e salvar anexos
                     if (!empty($messageBody['payload']['parts'])) {
                         foreach ($messageBody['payload']['parts'] as $part) {
                             if (isset($part['filename']) && !empty($part['filename']) && isset($part['body']['attachmentId'])) {
@@ -324,7 +314,7 @@ class GmailOAuth2Service {
                 }
             }
 
-            return $emails;
+            return true;
 
         } catch (RequestException $e) {
             $this->errorLogController->logError('Erro ao listar e-mails: ' . $e->getMessage(), __FILE__, __LINE__, $user_id);
@@ -383,10 +373,8 @@ class GmailOAuth2Service {
 
         $emailData['isRead'] = !in_array('UNREAD', $message['labelIds']);
 
-        // Obter o conteúdo do e-mail
         $emailData['bodyContent'] = $this->getEmailBody($payload);
 
-        // Obter o nome da pasta (label)
         $emailData['folderName'] = implode(', ', $message['labelIds']);
 
         return $emailData;
@@ -422,7 +410,6 @@ class GmailOAuth2Service {
 
             return json_decode($response->getBody(), true);
         } catch (Exception $e) {
-            // Logar erro e continuar
             return null;
         }
     }
@@ -433,10 +420,10 @@ class GmailOAuth2Service {
             if (!$emailAccount) {
                 throw new Exception("Conta de e-mail não encontrada para o usuário ID: $user_id e provider ID: $provider_id");
             }
-
+    
             $accessToken = $emailAccount['oauth_token'];
-
-            // Obter labels atuais
+    
+            // Obtenha o estado atual do e-mail
             $messageResponse = $this->httpClient->get("https://gmail.googleapis.com/gmail/v1/users/me/messages/$messageId", [
                 'headers' => [
                     'Authorization' => 'Bearer ' . $accessToken,
@@ -446,30 +433,26 @@ class GmailOAuth2Service {
                     'format' => 'minimal'
                 ]
             ]);
-
+    
             $message = json_decode($messageResponse->getBody(), true);
             $currentLabels = $message['labelIds'] ?? [];
-
-            // Remover label de origem e adicionar a nova label
-            $newLabelsToAdd = [$destinationLabelId];
-            $labelsToRemove = []; // Especifique se deseja remover algum label
-
-            $this->httpClient->modifyRequest("https://gmail.googleapis.com/gmail/v1/users/me/messages/$messageId/modify", [
+    
+            // Mova o e-mail no Gmail
+            $this->httpClient->post("https://gmail.googleapis.com/gmail/v1/users/me/messages/$messageId/modify", [
                 'headers' => [
                     'Authorization' => 'Bearer ' . $accessToken,
                     'Content-Type' => 'application/json'
                 ],
                 'json' => [
-                    'addLabelIds' => $newLabelsToAdd,
-                    'removeLabelIds' => $labelsToRemove
-                ]
+                    'addLabelIds' => [$destinationLabelId],
+                    'removeLabelIds' => $currentLabels
+                ] 
             ]);
-
-            // Atualizar no banco de dados se necessário
-            // ...
-
+    
+            $this->emailModel->updateLabel($messageId, $destinationLabelId);
+    
             return true;
-
+    
         } catch (RequestException $e) {
             $this->errorLogController->logError('Erro ao mover e-mail: ' . $e->getMessage(), __FILE__, __LINE__, $user_id);
             throw new Exception('Erro ao mover e-mail: ' . $e->getMessage());
@@ -478,6 +461,7 @@ class GmailOAuth2Service {
             throw new Exception('Erro ao mover e-mail: ' . $e->getMessage());
         }
     }
+    
 
     public function deleteEmail($user_id, $provider_id, $messageId) {
         try {
@@ -488,14 +472,12 @@ class GmailOAuth2Service {
 
             $accessToken = $emailAccount['oauth_token'];
 
-            // Usar a API do Gmail para deletar o e-mail
             $this->httpClient->delete("https://gmail.googleapis.com/gmail/v1/users/me/messages/$messageId", [
                 'headers' => [
                     'Authorization' => 'Bearer ' . $accessToken
                 ]
             ]);
 
-            // Remover ou marcar o e-mail como deletado no banco de dados
             $this->emailModel->deleteEmail($messageId);
 
             return true;
@@ -517,8 +499,6 @@ class GmailOAuth2Service {
             }
 
             $accessToken = $emailAccount['oauth_token'];
-
-            // Obter mensagens da conversação
             $response = $this->httpClient->get("https://gmail.googleapis.com/gmail/v1/users/me/conversations/$conversationId", [
                 'headers' => [
                     'Authorization' => 'Bearer ' . $accessToken,
@@ -543,16 +523,14 @@ class GmailOAuth2Service {
                         'format' => 'full'
                     ]
                 ]);
-
+ 
                 $messageBody = json_decode($messageResponse->getBody(), true);
                 $emailData = $this->parseGmailMessage($messageBody);
 
                 $emails[] = $emailData;
 
-                // Salvar ou atualizar no banco de dados
                 $existingEmail = $this->emailModel->getEmailByMessageId($messageId, $user_id);
                 if ($existingEmail) {
-                    // Verificar se o e-mail foi alterado
                     $needsUpdate = false;
                     if ($existingEmail['is_read'] != $emailData['isRead']) {
                         $needsUpdate = true;
@@ -560,9 +538,7 @@ class GmailOAuth2Service {
                     if ($existingEmail['folder_name'] != $emailData['folderName']) {
                         $needsUpdate = true;
                     }
-                    // Adicionar outras comparações conforme necessário
                     if ($needsUpdate) {
-                        // Atualizar o e-mail no banco de dados
                         $this->emailModel->updateEmail(
                             $existingEmail['id'],
                             $user_id,
@@ -582,7 +558,6 @@ class GmailOAuth2Service {
                         );
                     }
                 } else {
-                    // Salvar novo e-mail
                     $emailId = $this->emailModel->saveEmail(
                         $user_id,
                         $messageId,
@@ -600,7 +575,6 @@ class GmailOAuth2Service {
                         $emailData['conversationId']
                     );
 
-                    // Verificar e salvar anexos
                     if (!empty($messageBody['payload']['parts'])) {
                         foreach ($messageBody['payload']['parts'] as $part) {
                             if (isset($part['filename']) && !empty($part['filename']) && isset($part['body']['attachmentId'])) {
@@ -625,7 +599,6 @@ class GmailOAuth2Service {
                 }
             }
 
-            // Ordenar os e-mails por data de recebimento
             usort($emails, function($a, $b) {
                 return strtotime($a['date_received']) - strtotime($b['date_received']);
             });
