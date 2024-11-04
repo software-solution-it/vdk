@@ -12,6 +12,7 @@ use App\Helpers\EncryptionHelper;
 use App\Services\RabbitMQService;
 use App\Services\UserService;
 use App\Services\WebhookService;
+use App\Controllers\ErrorLogController;
 use PDO;
 
 class EmailService {
@@ -24,6 +25,7 @@ class EmailService {
     private $rabbitMQService;
     private $masterHostModel; // Adicionado
 
+    private $errorLogController;
     public function __construct($db) {
         $this->db = $db;
         $this->userModel = new User($this->db);
@@ -33,6 +35,7 @@ class EmailService {
         $this->webhookService = new WebhookService();
         $this->rabbitMQService = new RabbitMQService($this->db);
         $this->masterHostModel = new MasterHost($this->db); // Adicionado
+        $this->errorLogController = new ErrorLogController();
     }
 
     public function sendEmail($user_id, $recipientEmails, $subject, $htmlBody, $plainBody = '', $priority = null, $attachments = [], $ccEmails = [], $bccEmails = []) {
@@ -71,6 +74,7 @@ class EmailService {
         try {
             $this->rabbitMQService->publishMessage($queue_name, $message, $user_id);
         } catch (Exception $e) {
+            $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
             error_log("Erro ao enfileirar e-mail: " . $e->getMessage());
             return [
                 'success' => false,
@@ -173,6 +177,7 @@ class EmailService {
                 return false;
             }
         } catch (Exception $e) {
+            $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
             error_log("Erro ao enviar e-mail: " . $e->getMessage());
             return false;
         }
@@ -335,6 +340,7 @@ class EmailService {
                 ];
             }
         } catch (Exception $e) {
+            $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
             error_log("Erro ao enviar e-mail: " . $e->getMessage());
             return [
                 'success' => false,
