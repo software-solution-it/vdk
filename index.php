@@ -2,6 +2,7 @@
 
 require __DIR__ . '/vendor/autoload.php';
 use App\Controllers\AuthController;
+use App\Controllers\GmailOauth2Controller;
 use App\Controllers\UserController;
 use App\Controllers\ErrorLogController;
 use App\Controllers\EmailController;
@@ -57,6 +58,21 @@ switch ($request_uri[0]) {
         $controller = new OutlookOAuth2Controller();
         $controller->refreshAccessToken();
         break;
+
+        case '/api/gmail/oauth/authorization':
+            $controller = new GmailOauth2Controller();
+            $controller->getAuthorizationUrl();
+            break;
+    
+        case '/api/gmail/oauth/token':
+            $controller = new GmailOauth2Controller();
+            $controller->getAccessToken();
+            break;
+    
+        case '/api/gmail/oauth/refresh':
+            $controller = new GmailOauth2Controller();
+            $controller->refreshAccessToken();
+            break;
 
     case '/api/outlook/oauth/move':
         $controller = new OutlookOAuth2Controller();
