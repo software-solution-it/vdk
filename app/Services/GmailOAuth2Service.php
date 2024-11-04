@@ -35,13 +35,10 @@ class GmailOAuth2Service {
         $this->emailAccountModel = new EmailAccount($db);
     }
 
-    public function initializeOAuthParameters($emailAccount, $user_id, $provider_id) {
+    public function initializeOAuthParameters($emailAccount) {
         $this->clientId = $emailAccount['client_id'];
         $this->clientSecret = $emailAccount['client_secret'];
-
-        $extraParams = base64_encode(json_encode(['user_id' => $user_id, 'provider_id' => $provider_id]));
-
-        $this->redirectUri = "http://localhost:3000/callback";
+        $this->redirectUri = "http://localhost:3000/callback"; // Certifique-se de que seja o mesmo registrado no Google Cloud
     }
 
     public function getAuthorizationUrl($user_id, $provider_id) {
@@ -51,7 +48,7 @@ class GmailOAuth2Service {
                 throw new Exception("Email account not found for user ID: $user_id and provider ID: $provider_id");
             }
 
-            $this->initializeOAuthParameters($emailAccount, $user_id, $provider_id);
+            $this->initializeOAuthParameters($emailAccount);
 
             $extraParams = base64_encode(json_encode(['user_id' => $user_id, 'provider_id' => $provider_id]));
 
@@ -83,12 +80,12 @@ class GmailOAuth2Service {
                 throw new Exception("Email account not found for user ID: $user_id and provider ID: $provider_id");
             }
 
-            $this->initializeOAuthParameters($emailAccount, $user_id, $provider_id);
+            $this->initializeOAuthParameters($emailAccount);
 
             $response = $this->httpClient->post('https://oauth2.googleapis.com/token', [
                 'form_params' => [
-                    'client_id' => $emailAccount['clientId'],
-                    'client_secret' => $emailAccount['clientSecret'],
+                    'client_id' => $this->clientId,
+                    'client_secret' => $this->clientSecret,
                     'code' => $code,
                     'redirect_uri' => $this->redirectUri,
                     'grant_type' => 'authorization_code'
@@ -133,7 +130,7 @@ class GmailOAuth2Service {
                 throw new Exception("Email account not found for user ID: $user_id and provider ID: $provider_id");
             }
 
-            $this->initializeOAuthParameters($emailAccount, $user_id, $provider_id);
+            $this->initializeOAuthParameters($emailAccount);
 
             $response = $this->httpClient->post('https://oauth2.googleapis.com/token', [
                 'form_params' => [
