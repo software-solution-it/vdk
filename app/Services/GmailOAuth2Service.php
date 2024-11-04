@@ -22,9 +22,7 @@ class GmailOAuth2Service {
     private $scopes = [
         'https://www.googleapis.com/auth/gmail.readonly',
         'https://www.googleapis.com/auth/gmail.send',
-        'https://www.googleapis.com/auth/gmail.modify',
-        'https://www.googleapis.com/auth/imap',
-        'https://www.googleapis.com/auth/smtp'
+        'https://www.googleapis.com/auth/gmail.modify'
     ];
     private $errorLogController;
 
