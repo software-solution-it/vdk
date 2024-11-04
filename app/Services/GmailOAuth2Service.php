@@ -43,7 +43,7 @@ class GmailOAuth2Service {
 
         $extraParams = base64_encode(json_encode(['user_id' => $user_id, 'provider_id' => $provider_id]));
 
-        $this->redirectUri = 'http://localhost:3000/callback?extra=' . urlencode($extraParams);
+        $this->redirectUri = "http://localhost:3000/callback";
     }
 
     public function getAuthorizationUrl($user_id, $provider_id) {
@@ -55,16 +55,17 @@ class GmailOAuth2Service {
 
             $this->initializeOAuthParameters($emailAccount, $user_id, $provider_id);
 
-            $authorizationUrl = 'https://accounts.google.com/o/oauth2/v2/auth?'
-                . http_build_query([
-                    'client_id' => $this->clientId,
-                    'response_type' => 'code',
-                    'redirect_uri' => $this->redirectUri,
-                    'scope' => implode(' ', $this->scopes),
-                    'access_type' => 'offline',
-                    'prompt' => 'consent',
-                    'state' => base64_encode(random_bytes(10))
-                ]);
+            $extraParams = base64_encode(json_encode(['user_id' => $user_id, 'provider_id' => $provider_id]));
+
+            $authorizationUrl = 'https://accounts.google.com/o/oauth2/v2/auth?' . http_build_query([
+                'client_id' => $this->clientId,
+                'response_type' => 'code',
+                'redirect_uri' => $this->redirectUri,
+                'scope' => implode(' ', $this->scopes),
+                'access_type' => 'offline',
+                'prompt' => 'consent',
+                'state' => $extraParams // Use `state` para passar informações extras
+            ]);
 
             return [
                 'status' => true,
