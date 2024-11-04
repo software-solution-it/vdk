@@ -134,8 +134,8 @@ class GmailOAuth2Service {
 
             $response = $this->httpClient->post('https://oauth2.googleapis.com/token', [
                 'form_params' => [
-                    'client_id' => $this->clientId,
-                    'client_secret' => $this->clientSecret,
+                    'client_id' => $emailAccount['client_id'],
+                    'client_secret' => $emailAccount['client_secret'],
                     'refresh_token' => $emailAccount['refresh_token'],
                     'grant_type' => 'refresh_token'
                 ]
