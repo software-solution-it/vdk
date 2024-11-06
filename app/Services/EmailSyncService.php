@@ -254,7 +254,7 @@ public function syncEmailsByUserIdAndProviderId($user_id, $provider_id)
                  }
                 
                     // Verifica se o e-mail já foi salvo
-                    $existingEmail = $this->emailModel->getEmailById($messageId);
+                    $existingEmail = $this->emailModel->emailExistsByMessageId($messageId,$user_id);
                     if ($existingEmail) {
                         error_log("E-mail com Message-ID $messageId já foi processado. Ignorando...");
                         continue;
