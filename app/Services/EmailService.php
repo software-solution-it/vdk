@@ -139,7 +139,7 @@ class EmailService {
             $mail->SMTPAuth   = true;
             $mail->Username   = $smtpConfig['email'];
             $mail->Password   = $smtpConfig['password'];
-            $mail->SMTPSecure = 'ssl';
+            $mail->SMTPSecure = 'tls';
             $mail->Port       = $smtpConfig['smtp_port'];
     
             $mail->setFrom($smtpConfig['email'], $smtpConfig['name']);
@@ -328,7 +328,7 @@ class EmailService {
             $mail->SMTPAuth   = true;
             $mail->Username   = $smtpConfig['email'];
             $mail->Password   = $smtpConfig['password'];
-            $mail->SMTPSecure = 'ssl';
+            $mail->SMTPSecure = 'tls';
             $mail->Port       = $smtpConfig['smtp_port'];
 
             $mail->setFrom($smtpConfig['email'], $smtpConfig['name']);
