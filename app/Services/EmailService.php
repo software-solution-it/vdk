@@ -23,9 +23,9 @@ class EmailService {
     private $db;
     private $webhookService;
     private $rabbitMQService;
-    private $masterHostModel; // Adicionado
-
+    private $masterHostModel;
     private $errorLogController;
+
     public function __construct($db) {
         $this->db = $db;
         $this->userModel = new User($this->db);
@@ -34,11 +34,11 @@ class EmailService {
         $this->emailModel = new Email($this->db);
         $this->webhookService = new WebhookService();
         $this->rabbitMQService = new RabbitMQService($this->db);
-        $this->masterHostModel = new MasterHost($this->db); // Adicionado
+        $this->masterHostModel = new MasterHost($this->db);
         $this->errorLogController = new ErrorLogController();
     }
 
-    public function sendEmail($user_id, $recipientEmails, $subject, $htmlBody, $plainBody = '', $priority = null, $attachments = [], $ccEmails = [], $bccEmails = []) {
+    public function sendEmail($user_id, $email_account_id, $recipientEmails, $subject, $htmlBody, $plainBody = '', $priority = null, $attachments = [], $ccEmails = [], $bccEmails = []) {
         if (!is_array($recipientEmails)) {
             $recipientEmails = [$recipientEmails];
         }
@@ -57,9 +57,20 @@ class EmailService {
                 'message' => 'Usuário não encontrado'
             ];
         }
-    
+        
+        // Captura as configurações do email_account_id
+        $smtpConfig = $this->emailAccountModel->getById($email_account_id);
+        if (!$smtpConfig) {
+            return [
+                'success' => false,
+                'message' => 'Configurações de SMTP não encontradas para o email_account_id ' . $email_account_id
+            ];
+        }
+        $smtpConfig['password'] = EncryptionHelper::decrypt($smtpConfig['password']);
+
         $message = [
             'user_id' => $user_id,
+            'email_account_id' => $email_account_id, // Adicionando email_account_id
             'recipientEmails' => $recipientEmails,
             'ccEmails' => $ccEmails,
             'bccEmails' => $bccEmails,
@@ -89,8 +100,10 @@ class EmailService {
             'message' => 'E-mail enviado com sucesso.'
         ];
     }
+
     public function processEmailSending($message) {
         $user_id = $message['user_id'];
+        $email_account_id = $message['email_account_id']; // Capturando o email_account_id
         $recipientEmails = $message['recipientEmails'];
         $ccEmails = $message['ccEmails'] ?? [];
         $bccEmails = $message['bccEmails'] ?? [];
@@ -106,9 +119,10 @@ class EmailService {
             return false;
         }
     
-        $smtpConfig = $this->emailAccountModel->getByUserId($user_id);
+        // Captura as configurações do email_account_id
+        $smtpConfig = $this->emailAccountModel->getById($email_account_id);
         if (!$smtpConfig) {
-            error_log("Configurações de SMTP não encontradas para o usuário $user_id");
+            error_log("Configurações de SMTP não encontradas para o email_account_id $email_account_id");
             return false;
         }
         $smtpConfig['password'] = EncryptionHelper::decrypt($smtpConfig['password']);
@@ -257,7 +271,6 @@ class EmailService {
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-  
     public function getEmailThread($conversation_Id) {
         $query = "SELECT * FROM emails WHERE conversation_Id = :conversation_Id OR in_reply_to = :conversation_Id ORDER BY date_received ASC";
         $stmt = $this->db->prepare($query);
@@ -266,8 +279,6 @@ class EmailService {
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-
-
 
     private function updateFolderInDatabase($email_id, $folder) {
         $query = "UPDATE emails SET folder = :folder WHERE `uid` = :email_id";
@@ -284,8 +295,6 @@ class EmailService {
         return $stmt->execute();
     }
 
-    
-
     public function sendVerificationEmail($user_id, $email, $code) {
         $subject = 'Seu código de verificação';
         $htmlBody = 'Seu código de verificação é: <b>' . $code . '</b>';
@@ -293,7 +302,6 @@ class EmailService {
 
         return $this->sendEmailWithMasterHost($email, $subject, $htmlBody, $plainBody);
     }
-
 
     public function sendEmailWithMasterHost($recipientEmail, $subject, $htmlBody, $plainBody = '') {
         $smtpConfig = $this->masterHostModel->getMasterHost();

@@ -55,8 +55,17 @@ class EmailController {
                 return;
             }
     
+            if (!isset($data['email_account_id'])) { // Validação do email_account_id
+                http_response_code(400);
+                echo json_encode(['message' => 'O email_account_id é necessário.']);
+                ob_end_flush();
+                return;
+            }
+    
             $user_id = $data['user_id'];
+            $email_account_id = $data['email_account_id']; // Capturando o email_account_id
             $sendResults = [];
+            
             foreach ($data['emails'] as $emailData) {
                 $requiredParams = ['recipientEmails', 'subject', 'htmlTemplate'];
                 $missingParams = [];
@@ -115,6 +124,7 @@ class EmailController {
                 try {
                     $result = $this->emailService->sendEmail(
                         $user_id,
+                        $email_account_id, // Passando o email_account_id
                         $recipientEmails,
                         $subject,
                         $htmlTemplate,
@@ -156,6 +166,7 @@ class EmailController {
     
         ob_end_flush(); 
     }
+    
 
     public function sendEmail() {
         ob_start();
@@ -172,7 +183,7 @@ class EmailController {
                 return;
             }
     
-            $requiredParams = ['user_id', 'recipientEmails', 'subject', 'htmlTemplate'];
+            $requiredParams = ['user_id', 'email_account_id', 'recipientEmails', 'subject', 'htmlTemplate']; // Adicionando email_account_id
             if (!$this->validateParams($requiredParams, $data)) {
                 http_response_code(400);
                 echo json_encode(['message' => 'Os seguintes parâmetros estão faltando: ' . implode(', ', $requiredParams)]);
@@ -181,6 +192,7 @@ class EmailController {
             }
     
             $user_id = $data['user_id'];
+            $email_account_id = $data['email_account_id']; // Capturando o email_account_id
             $recipientEmails = is_array($data['recipientEmails']) ? $data['recipientEmails'] : [$data['recipientEmails']];
             $ccEmails = isset($data['ccEmails']) ? (is_array($data['ccEmails']) ? $data['ccEmails'] : [$data['ccEmails']]) : [];
             $bccEmails = isset($data['bccEmails']) ? (is_array($data['bccEmails']) ? $data['bccEmails'] : [$data['bccEmails']]) : [];
@@ -217,6 +229,7 @@ class EmailController {
     
             $result = $this->emailService->sendEmail(
                 $user_id, 
+                $email_account_id, // Passando o email_account_id
                 $recipientEmails, 
                 $subject, 
                 $htmlTemplate, 
@@ -242,6 +255,7 @@ class EmailController {
     
         ob_end_flush(); 
     }
+    
 
     public function checkDomain($domain) {
         header('Content-Type: application/json');
