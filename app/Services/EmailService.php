@@ -119,7 +119,7 @@ class EmailService {
             return false;
         }
     
-        $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
+
 
         // Captura as configurações do email_account_id
         $smtpConfig = $this->emailAccountModel->getById($email_account_id);
