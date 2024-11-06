@@ -51,11 +51,14 @@ class EmailAccount {
     }
 
     public function getById($id) {
-        $query = "SELECT * FROM " . $this->table . " WHERE id = :id LIMIT 1";
+        $query = "SELECT ea.*, p.name AS provider_name, p.smtp_host, p.smtp_port, p.imap_host, p.imap_port, p.encryption
+                  FROM " . $this->table . " ea
+                  INNER JOIN " . $this->providerTable . " p ON ea.provider_id = p.id
+                  WHERE ea.id = :id LIMIT 1";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':id', $id);
         $stmt->execute();
-
+    
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
