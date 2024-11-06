@@ -3,22 +3,23 @@ namespace App\Config;
 use PDO;
 use PDOException;
 use Exception;
+
 class Database {
-    private $host = "betnext.cfkm8siwuqq1.sa-east-1.rds.amazonaws.com";
-    private $db_name = "mail";
-    private $username = "betadmin";
-    private $password = "Cap0199**";
+    private $host = "localhost"; 
+    private $db_name = "mail";   
+    private $username = "admin";  
+    private $password = "admin";   
     private $charset = "utf8mb4";
-    private $pdo;
-    private $error;
+    private $pdo;    
+    private $error;      
 
     public function __construct() {
-        $this->connect();
+        $this->connect();          
     }
 
     public function connect() {
         if ($this->pdo === null) {
-            $dsn = "mysql:host={$this->host};dbname={$this->db_name};charset={$this->charset}";
+            $dsn = "mysql:host={$this->host};port=3306;dbname={$this->db_name};charset={$this->charset}"; 
             $options = [
                 PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
@@ -26,21 +27,19 @@ class Database {
             ];
 
             try {
-                $this->pdo = new PDO($dsn, $this->username, $this->password, $options);
+                $this->pdo = new PDO($dsn, $this->username, $this->password, $options); 
             } catch (PDOException $e) {
                 $this->error = $e->getMessage();
-                error_log("Connection failed: " . $this->error);
+                error_log("Connection failed: " . $this->error); // Log de erro
                 throw new Exception("Failed to connect to the database: " . $e->getMessage());
             }
         }
     }
 
-
     public function reconnect() {
-        $this->disconnect();
+        $this->disconnect();      
         $this->connect();
     }
-
 
     public function getConnection() {
         if ($this->pdo === null) {
@@ -50,15 +49,14 @@ class Database {
         try {
             $this->pdo->query('SELECT 1');
         } catch (PDOException $e) {
-            error_log("Connection lost: " . $e->getMessage());
+            error_log("Connection lost: " . $e->getMessage()); 
             $this->reconnect();
         }
 
-        return $this->pdo;
+        return $this->pdo;  
     }
 
-
     public function disconnect() {
-        $this->pdo = null;
+        $this->pdo = null;   
     }
 }
