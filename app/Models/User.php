@@ -72,6 +72,7 @@ class User {
     public function getUserById($id) {
         $query = "SELECT u.id, u.name, u.email, r.role_name, u.created_at 
                   FROM " . $this->table . " u 
+                  JOIN " . $this->roleTable . " r ON u.role_id = r.id 
                   WHERE u.id = :id";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(":id", $id);
