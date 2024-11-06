@@ -233,7 +233,6 @@ public function syncEmailsByUserIdAndProviderId($user_id, $provider_id)
                 $messages = $search ? $mailbox->getMessages($search) : $mailbox->getMessages();
 
                 $uidCounter = 1;
-                $lastEmailDate = null;
 
                 foreach ($messages as $message) {
                     $messageId = $message->getId();
@@ -242,29 +241,35 @@ public function syncEmailsByUserIdAndProviderId($user_id, $provider_id)
                     $date_received = $message->getDate()->format('Y-m-d H:i:s');
                     $isRead = $message->isSeen() ? 1 : 0;
                     $body = $message->getBodyHtml() ?? $message->getBodyText();
-
+                
                     $bcc = $message->getBcc();
                     if ($bcc && count($bcc) > 0) {
                         error_log("E-mail contém CCO (BCC). Ignorando o processamento.");
                         continue;
                     }
-
+                
                     if (!$messageId || !$fromAddress) {
                         error_log("E-mail com Message-ID ou From nulo. Ignorando...");
                         continue;
+                 }
+                
+                    // Verifica se o e-mail já foi salvo
+                    $existingEmail = $this->emailModel->getEmailById($messageId);
+                    if ($existingEmail) {
+                        error_log("E-mail com Message-ID $messageId já foi processado. Ignorando...");
+                        continue;
                     }
-
-
+                
                     $inReplyTo = $message->getInReplyTo();
                     if (is_array($inReplyTo)) {
                         $inReplyTo = implode(', ', $inReplyTo);
                     }
-
+                
                     $references = implode(', ', $message->getReferences());
-
+                
                     $ccAddresses = $message->getCc();
                     $cc = $ccAddresses ? implode(', ', array_map(fn(EmailAddress $addr) => $addr->getAddress(), $ccAddresses)) : null;
-
+                
                     $emailId = $this->emailModel->saveEmail(
                         $user_id,
                         $messageId,
@@ -281,30 +286,28 @@ public function syncEmailsByUserIdAndProviderId($user_id, $provider_id)
                         $uidCounter,
                         null
                     );
-
+                
+                    // Processamento de anexos e outros dados
                     if ($message->hasAttachments()) {
                         $attachments = $message->getAttachments();
-
                         foreach ($attachments as $attachment) {
                             $filename = $attachment->getFilename();
-
+                
                             if (is_null($filename) || empty($filename)) {
                                 error_log("Anexo ignorado: o nome do arquivo está nulo.");
                                 continue;
                             }
-
+                
                             $mimeTypeName = $attachment->getType();
                             $subtype = $attachment->getSubtype();
-
                             $fullMimeType = $mimeTypeName . '/' . $subtype;
-
                             $contentBytes = $attachment->getDecodedContent();
-
+                
                             if ($contentBytes === false) {
                                 error_log("Falha ao obter o conteúdo do anexo: $filename");
                                 continue;
                             }
-
+                
                             $this->emailModel->saveAttachment(
                                 $emailId,
                                 $filename,
@@ -314,7 +317,8 @@ public function syncEmailsByUserIdAndProviderId($user_id, $provider_id)
                             );
                         }
                     }
-
+                
+                    // Disparo de evento de webhook
                     $event = [
                         'type' => 'email_received',
                         'email_id' => $messageId,
@@ -326,18 +330,14 @@ public function syncEmailsByUserIdAndProviderId($user_id, $provider_id)
                         'folder' => $mailbox->getName(),
                         'uuid' => uniqid(),
                     ];
-
+                
                     $this->webhookService->triggerEvent($event, $user_id);
-
+                
                     $uidCounter++;
-
+                
                     if ($date_received) {
                         $lastEmailDate = $date_received;
                     }
-                }
-
-                if ($lastEmailDate) {
-                    $this->emailModel->updateLastEmailSyncDateByFolder($user_id, $mailbox->getName(), $lastEmailDate);
                 }
 
                 error_log("Sincronização de e-mails concluída para a pasta " . $mailbox->getName());
