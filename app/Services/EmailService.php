@@ -119,6 +119,8 @@ class EmailService {
             return false;
         }
     
+        $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
+
         // Captura as configurações do email_account_id
         $smtpConfig = $this->emailAccountModel->getById($email_account_id);
         if (!$smtpConfig) {
@@ -127,6 +129,8 @@ class EmailService {
         }
         $smtpConfig['password'] = EncryptionHelper::decrypt($smtpConfig['password']);
     
+        $this->errorLogController->logError("SMTP Config: " . json_encode($smtpConfig), __FILE__, __LINE__);
+
         $mail = new PHPMailer(true);
     
         try {
