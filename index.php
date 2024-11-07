@@ -189,7 +189,7 @@ switch ($request_uri[0]) {
 
     case '/api/email/list':
         $emailController = new EmailController();
-        $user_id = $_GET['email_id'];
+        $email_id = isset($_GET['email_id']) ? $_GET['email_id'] : null;
         $emailController->listEmails($email_id,);
         break;
 

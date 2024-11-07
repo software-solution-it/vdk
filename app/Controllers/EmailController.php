@@ -338,11 +338,17 @@ class EmailController {
         
         $requiredParams = ['email_id'];
         if (!$this->validateParams($requiredParams, ['email_id' => $email_id])) {
+            http_response_code(400);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'O parâmetro "email_id" é obrigatório.'
+            ]);
             return;
         }
     
         try {
             $emails = $this->emailService->listEmails($email_id);
+            
             http_response_code(200);
             echo json_encode([
                 'Status' => 'Success',
