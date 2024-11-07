@@ -16,7 +16,7 @@ class SMTPController {
         try {
             $data = json_decode(file_get_contents('php://input'), true);
 
-            $requiredParams = ['smtp_host', 'smtp_port', 'smtp_username', 'smtp_password', 'encryption'];
+            $requiredParams = ['user_id', 'email_id', 'recipient', 'html_body'];
             $missingParams = [];
 
             foreach ($requiredParams as $param) {
@@ -28,27 +28,36 @@ class SMTPController {
             if (!empty($missingParams)) {
                 http_response_code(400);
                 echo json_encode([
-                    'status' => false,
-                    'message' => 'Parâmetros de conexão SMTP incompletos.',
-                    'missing_params' => $missingParams
+                    'Status' => 'Error',
+                    'Message' => 'Parâmetros de conexão SMTP incompletos.',
+                    'Data' => [
+                        'missing_params' => $missingParams
+                    ]
                 ]);
                 return;
             }
 
-            $smtp_host = $data['smtp_host'];
-            $smtp_port = $data['smtp_port'];
-            $smtp_username = $data['smtp_username'];
-            $smtp_password = $data['smtp_password'];
-            $encryption = $data['encryption'];
+            $user_id = $data['user_id'];
+            $email_id = $data['email_id'];
+            $recipient = $data['recipient'];
+            $html_body = $data['html_body'];
 
-            $result = $this->connectionSMTPService->testSMTPConnection($smtp_host, $smtp_port, $smtp_username, $smtp_password, $encryption);
+            $result = $this->connectionSMTPService->testSMTPConnection($user_id, $email_id, $recipient, $html_body);
 
             http_response_code($result['status'] ? 200 : 500);
-            echo json_encode($result);
+            echo json_encode([
+                'Status' => $result['status'] ? 'Success' : 'Error',
+                'Message' => $result['status'] ? 'Conexão SMTP testada com sucesso.' : 'Falha na conexão SMTP.',
+                'Data' => $result['status'] ? null : $result['message']
+            ]);
 
         } catch (\Exception $e) {
             http_response_code(500);
-            echo json_encode(['status' => false, 'message' => 'Erro ao processar a solicitação: ' . $e->getMessage()]);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Erro ao processar a solicitação: ' . $e->getMessage(),
+                'Data' => null
+            ]);
         }
     }
 }

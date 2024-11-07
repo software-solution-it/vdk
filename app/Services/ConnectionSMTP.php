@@ -1,10 +1,33 @@
 <?php
 namespace App\Services;
+
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
+use App\Models\EmailAccount; 
+use App\Config\Database;
 
 class ConnectionSMTP {
-    public function testSMTPConnection($smtp_host, $smtp_port, $smtp_username, $smtp_password, $encryption) {
+    private $emailAccountModel;
+
+    public function __construct() {
+        $database = new Database();
+        $db = $database->getConnection();
+        $this->emailAccountModel = new EmailAccount($db); 
+    }
+
+    public function testSMTPConnection($user_id, $email_id, $recipient, $html_body) {
+        $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $email_id);
+        
+        if (!$emailAccount) {
+            return ['status' => false, 'message' => 'Email account not found'];
+        }
+
+        $smtp_host = $emailAccount['smtp_host'];
+        $smtp_port = $emailAccount['smtp_port'];
+        $smtp_username = $emailAccount['username'];
+        $smtp_password = $emailAccount['password']; 
+        $encryption = $emailAccount['encryption'] ?? 'tls';
+
         $mail = new PHPMailer(true);
 
         try {
@@ -16,8 +39,16 @@ class ConnectionSMTP {
             $mail->SMTPSecure = $encryption;
             $mail->Port       = $smtp_port;
 
-            $mail->smtpConnect();
-            return ['status' => true, 'message' => 'SMTP connection successful'];
+            $mail->setFrom($smtp_username); 
+            $mail->addAddress($recipient);
+            $mail->isHTML(true);
+            $mail->Subject = 'SMTP Test Email';
+            $mail->Body    = $html_body;
+
+            $mail->smtpConnect(); 
+            $mail->send();
+
+            return ['status' => true, 'message' => 'SMTP connection successful, email sent'];
         } catch (Exception $e) {
             return ['status' => false, 'message' => 'SMTP connection failed: ' . $e->getMessage()];
         }

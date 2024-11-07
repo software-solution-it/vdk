@@ -41,9 +41,9 @@ class EmailSyncService
 
     
 
-    public function startConsumer($user_id, $provider_id)
+    public function startConsumer($user_id, $email_id)
     {
-        $this->syncEmailsByUserIdAndProviderId($user_id, $provider_id);
+        $this->syncEmailsByUserIdAndProviderId($user_id, $email_id);
     }
 
     public function reconnectRabbitMQ() {
@@ -150,20 +150,20 @@ class EmailSyncService
     }
     
 
-public function syncEmailsByUserIdAndProviderId($user_id, $provider_id)
+public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
 {
     set_time_limit(0);
 
-    $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $provider_id);
+    $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $email_id);
 
     if (!$emailAccount) {
-        error_log("Conta de e-mail não encontrada para user_id={$user_id} e provider_id={$provider_id}");
-        $this->errorLogController->logError("Conta de e-mail não encontrada para user_id={$user_id} e provider_id={$provider_id}", __FILE__, __LINE__, $user_id);
+        error_log("Conta de e-mail não encontrada para user_id={$user_id} e email_id={$email_id}");
+        $this->errorLogController->logError("Conta de e-mail não encontrada para user_id={$user_id} e email_id={$email_id}", __FILE__, __LINE__, $user_id);
         
         return json_encode(['status' => false, 'message' => 'Conta de e-mail não encontrada.']);
     }
 
-    $queue_name = $this->generateQueueName($user_id, $provider_id);
+    $queue_name = $this->generateQueueName($user_id, $emailAccount['provider_id']);
 
     error_log("Conta de e-mail encontrada: " . $emailAccount['email']);
     error_log("Senha Descriptografada: " . EncryptionHelper::decrypt($emailAccount['password']));
@@ -171,7 +171,7 @@ public function syncEmailsByUserIdAndProviderId($user_id, $provider_id)
     try {
         $message = [
             'user_id' => $user_id,
-            'provider_id' => $provider_id,
+            'provider_id' => $emailAccount['provider_id'],
             'email' => $emailAccount['email'],
             'password' => EncryptionHelper::decrypt($emailAccount['password']),
             'oauth2_token' => $emailAccount['oauth_token'] ?? null,
@@ -188,7 +188,7 @@ public function syncEmailsByUserIdAndProviderId($user_id, $provider_id)
         ];
         $this->rabbitMQService->publishMessage($queue_name, $message, $user_id);
 
-        $this->consumeEmailSyncQueue($user_id, $provider_id, $queue_name);
+        $this->consumeEmailSyncQueue($user_id, $emailAccount['provider_id'], $queue_name);
 
         return json_encode(['status' => true, 'message' => 'Sincronização de e-mails iniciada com sucesso.']);
     } catch (Exception $e) {
@@ -287,7 +287,6 @@ public function syncEmailsByUserIdAndProviderId($user_id, $provider_id)
                         null
                     );
                 
-                    // Processamento de anexos e outros dados
                     if ($message->hasAttachments()) {
                         $attachments = $message->getAttachments();
                         foreach ($attachments as $attachment) {
@@ -308,8 +307,8 @@ public function syncEmailsByUserIdAndProviderId($user_id, $provider_id)
                                 continue;
                             }
                 
-                            $this->emailModel->saveAttachment(
-                                $emailId,
+                            $emailId = $this->emailModel->saveAttachment(
+                                $messageId,
                                 $filename,
                                 $fullMimeType,
                                 strlen($contentBytes),
@@ -318,17 +317,20 @@ public function syncEmailsByUserIdAndProviderId($user_id, $provider_id)
                         }
                     }
                 
-                    // Disparo de evento de webhook
                     $event = [
-                        'type' => 'email_received',
-                        'email_id' => $messageId,
-                        'subject' => $subject,
-                        'from' => $fromAddress,
-                        'to' => array_map(fn(EmailAddress $addr) => $addr->getAddress(), iterator_to_array($message->getTo())),
-                        'received_at' => $date_received,
-                        'user_id' => $user_id,
-                        'folder' => $mailbox->getName(),
-                        'uuid' => uniqid(),
+                        'Status' => 'Success', 
+                        'Message' => 'Email received successfully', 
+                        'Data' => [
+                            'email_id' => $emailId,
+                            'message_id' => $messageId,
+                            'subject' => $subject,
+                            'from' => $fromAddress,
+                            'to' => array_map(fn(EmailAddress $addr) => $addr->getAddress(), iterator_to_array($message->getTo())),
+                            'received_at' => $date_received,
+                            'user_id' => $user_id,
+                            'folder' => $mailbox->getName(),
+                            'uuid' => uniqid(),
+                        ]
                     ];
                 
                     $this->webhookService->triggerEvent($event, $user_id);

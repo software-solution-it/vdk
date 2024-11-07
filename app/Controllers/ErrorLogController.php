@@ -20,13 +20,41 @@ class ErrorLogController {
 
     public function getLogs() {
         header('Content-Type: application/json');
-        $logs = $this->errorLogService->getAllLogs();
-        echo json_encode($logs);
+        try {
+            $logs = $this->errorLogService->getAllLogs();
+            http_response_code(200);
+            echo json_encode([
+                'Status' => 'Success',
+                'Message' => 'Logs retrieved successfully.',
+                'Data' => $logs
+            ]);
+        } catch (\Exception $e) {
+            http_response_code(500);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Error retrieving logs: ' . $e->getMessage(),
+                'Data' => null
+            ]);
+        }
     }
 
     public function getLogsByUserId($userId) {
         header('Content-Type: application/json');
-        $logs = $this->errorLogService->getLogsByUserId($userId);
-        echo json_encode($logs);
+        try {
+            $logs = $this->errorLogService->getLogsByUserId($userId);
+            http_response_code(200);
+            echo json_encode([
+                'Status' => 'Success',
+                'Message' => 'Logs retrieved successfully for user ID ' . $userId,
+                'Data' => $logs
+            ]);
+        } catch (\Exception $e) {
+            http_response_code(500);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Error retrieving logs for user ID ' . $userId . ': ' . $e->getMessage(),
+                'Data' => null
+            ]);
+        }
     }
 }

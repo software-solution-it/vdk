@@ -35,6 +35,7 @@ switch ($request_uri[0]) {
         $auth = new AuthController();
         $auth->verifyLoginCode();
         break;
+        
 
     case '/api/auth/forgot-password':
         $auth = new AuthController();
@@ -188,10 +189,8 @@ switch ($request_uri[0]) {
 
     case '/api/email/list':
         $emailController = new EmailController();
-        $user_id = $_GET['user_id'] ?? null;
-        $folder = $_GET['folder'] ?? 'INBOX';
-        $search = $_GET['search'] ?? '';
-        $emailController->listEmails($user_id, $folder, $search);
+        $user_id = $_GET['email_id'];
+        $emailController->listEmails($email_id,);
         break;
 
     case '/api/email/view':

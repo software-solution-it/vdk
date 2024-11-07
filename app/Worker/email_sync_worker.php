@@ -8,21 +8,21 @@ use App\Services\EmailSyncService;
 use App\Config\Database;
 
 if ($argc < 3) {
-    echo "Usage: php email_sync_worker.php <user_id> <provider_id>\n";
+    echo "Usage: php email_sync_worker.php <user_id> <email_id>\n";
     exit(1);
 }
 
 $user_id = intval($argv[1]);
-$provider_id = intval($argv[2]);
+$email_id = intval($argv[2]);
 
 $database = new Database();
 $db = $database->getConnection();
 
 $emailSyncService = new EmailSyncService($db);
 
-echo "Iniciando sincronizacao para user_id=$user_id e provider_id=$provider_id\n";
+echo "Iniciando sincronizacao para user_id=$user_id e email_id=$email_id\n";
 try {
-$emailSyncService->startConsumer($user_id, $provider_id);
+$emailSyncService->startConsumer($user_id, $email_id);
 } catch (Exception $e) {
     error_log("Erro ao iniciar a sincronizacao: " . $e->getMessage());
     exit(1);

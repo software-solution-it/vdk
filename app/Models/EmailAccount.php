@@ -62,7 +62,7 @@ class EmailAccount {
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    public function getEmailAccountByUserIdAndProviderId($user_id, $provider_id) {
+    public function getEmailAccountByUserIdAndProviderId($user_id, $email_id) {
         try {
 
             $query = "SELECT ea.id, ea.email, ea.password, 
@@ -77,11 +77,11 @@ class EmailAccount {
                       FROM " . $this->table . " ea
                       INNER JOIN " . $this->userTable . " u ON ea.user_id = u.id
                       INNER JOIN " . $this->providerTable . " p ON ea.provider_id = p.id
-                      WHERE ea.user_id = :user_id AND ea.provider_id = :provider_id LIMIT 1";
+                      WHERE ea.user_id = :user_id AND ea.id = :email_id LIMIT 1";
 
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':user_id', $user_id);
-            $stmt->bindParam(':provider_id', $provider_id);
+            $stmt->bindParam(':provider_id', $email_id);
     
             $stmt->execute();
             $result = $stmt->fetch(PDO::FETCH_ASSOC);

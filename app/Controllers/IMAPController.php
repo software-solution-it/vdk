@@ -16,25 +16,35 @@ class IMAPController {
         try {
             $data = json_decode(file_get_contents('php://input'), true);
 
-            if (!isset($data['imap_host'], $data['imap_port'], $data['imap_username'], $data['imap_password'])) {
+            if (!isset($data['user_id'], $data['email_id'])) {
                 http_response_code(400);
-                echo json_encode(['status' => false, 'message' => 'Parâmetros de conexão IMAP incompletos.']);
+                echo json_encode([
+                    'Status' => 'Error',
+                    'Message' => 'Parâmetros de conexão IMAP incompletos.',
+                    'Data' => null
+                ]);
                 return;
             }
 
-            $imap_host = $data['imap_host'];
-            $imap_port = $data['imap_port'];
-            $imap_username = $data['imap_username'];
-            $imap_password = $data['imap_password'];
+            $user_id = $data['user_id'];
+            $email_id = $data['email_id'];
 
-            $result = $this->connectionIMAPService->testIMAPConnection($imap_host, $imap_port, $imap_username, $imap_password);
+            $result = $this->connectionIMAPService->testIMAPConnection($user_id, $email_id);
 
             http_response_code($result['status'] ? 200 : 500);
-            echo json_encode($result);
+            echo json_encode([
+                'Status' => $result['status'] ? 'Success' : 'Error',
+                'Message' => $result['status'] ? 'Conexão IMAP testada com sucesso.' : 'Falha na conexão IMAP.',
+                'Data' => $result['status'] ? null : $result['message']
+            ]);
 
         } catch (\Exception $e) {
             http_response_code(500);
-            echo json_encode(['status' => false, 'message' => 'Erro ao processar a solicitação: ' . $e->getMessage()]);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Erro ao processar a solicitação: ' . $e->getMessage(),
+                'Data' => null
+            ]);
         }
     }
 }

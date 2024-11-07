@@ -26,7 +26,7 @@ class EmailAccountService {
     
 
     public function createEmailAccount($data) {
-        $requiredFields = ['user_id','email', 'provider_id', 'password', 'oauth_token', 'refresh_token', 'client_id', 'client_secret', 'is_basic'];
+        $requiredFields = ['user_id', 'email', 'provider_id', 'password', 'oauth_token', 'refresh_token', 'client_id', 'client_secret', 'is_basic'];
         $missingFields = $this->validateFields($data, $requiredFields);
     
         if (!empty($missingFields)) {
@@ -48,11 +48,14 @@ class EmailAccountService {
         );
     
         if ($emailAccountId) {
-            return ['status' => true, 'message' => 'Email account created successfully', 'email_account_id' => $emailAccountId];
+            $createdEmailAccount = $this->emailAccountModel->getById($emailAccountId);
+            
+            return $createdEmailAccount;
         }
     
         return ['status' => false, 'message' => 'Failed to create email account'];
     }
+    
 
     public function updateEmailAccount($id, $data) {
         $requiredFields = ['email', 'provider_id', 'password', 'oauth_token', 'refresh_token', 'client_id', 'client_secret', 'is_basic'];
@@ -79,7 +82,9 @@ class EmailAccountService {
         );
     
         if ($updated) {
-            return ['status' => true, 'message' => 'Email account updated successfully'];
+            $updatedEmailAccount = $this->emailAccountModel->getById($id);
+            
+            return $updatedEmailAccount;
         }
     
         return ['status' => false, 'message' => 'Failed to update email account'];

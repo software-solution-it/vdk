@@ -32,12 +32,21 @@ class ProviderController {
     
         if (!empty($missingFields)) {
             http_response_code(400);
-            echo json_encode(['message' => 'Missing fields: ' . implode(', ', $missingFields)]);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Missing fields: ' . implode(', ', $missingFields),
+                'Data' => null
+            ]);
             return;
         }
     
         $response = $this->providerService->createProvider($data);
-        echo json_encode($response);
+        http_response_code($response['status'] ? 201 : 500);
+        echo json_encode([
+            'Status' => $response['status'] ? 'Success' : 'Error',
+            'Message' => $response['message'],
+            'Data' => $response['status'] ? $response['data'] : null
+        ]);
     }
     
     public function updateProvider($id) {
@@ -55,24 +64,43 @@ class ProviderController {
     
         if (!empty($missingFields)) {
             http_response_code(400);
-            echo json_encode(['message' => 'Missing fields: ' . implode(', ', $missingFields)]);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Missing fields: ' . implode(', ', $missingFields),
+                'Data' => null
+            ]);
             return;
         }
     
         $response = $this->providerService->updateProvider($id, $data);
-        echo json_encode($response);
+        http_response_code($response['status'] ? 200 : 500);
+        echo json_encode([
+            'Status' => $response['status'] ? 'Success' : 'Error',
+            'Message' => $response['message'],
+            'Data' => $response['status'] ? $response['data'] : null
+        ]);
     }
     
-
+    
     public function deleteProvider($id) {
         header('Content-Type: application/json');
         $response = $this->providerService->deleteProvider($id);
-        echo json_encode($response);
+        http_response_code($response['status'] ? 200 : 500);
+        echo json_encode([
+            'Status' => $response['status'] ? 'Success' : 'Error',
+            'Message' => $response['message'],
+            'Data' => null
+        ]);
     }
     
     public function getAllProviders() {
         header('Content-Type: application/json');
         $response = $this->providerService->getAllProviders();
-        echo json_encode($response);
+        http_response_code(200);
+        echo json_encode([
+            'Status' => 'Success',
+            'Message' => 'Providers retrieved successfully.',
+            'Data' => $response
+        ]);
     }
 }

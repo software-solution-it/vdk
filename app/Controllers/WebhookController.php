@@ -19,12 +19,17 @@ class WebhookController {
     }
 
     public function registerWebhook() {
+        header('Content-Type: application/json');
         $data = json_decode(file_get_contents("php://input"));
 
         if (!empty($data->user_id) && !empty($data->url) && !empty($data->secret) && !empty($data->name)) {
             if (strpos($data->url, 'https://') !== 0) {
                 http_response_code(400);
-                echo json_encode(['message' => 'URL must be HTTPS']);
+                echo json_encode([
+                    'Status' => 'Error',
+                    'Message' => 'URL must be HTTPS',
+                    'Data' => null
+                ]);
                 return;
             }
 
@@ -37,27 +42,48 @@ class WebhookController {
 
             if ($this->webhookService->registerWebhook($webhookData)) {
                 http_response_code(201);
-                echo json_encode(['message' => 'Webhook registered successfully']);
+                echo json_encode([
+                    'Status' => 'Success',
+                    'Message' => 'Webhook registered successfully',
+                    'Data' => null
+                ]);
             } else {
                 http_response_code(503);
-                echo json_encode(['message' => 'Unable to register webhook']);
+                echo json_encode([
+                    'Status' => 'Error',
+                    'Message' => 'Unable to register webhook',
+                    'Data' => null
+                ]);
             }
         } else {
             http_response_code(400);
-            echo json_encode(['message' => 'Incomplete data']);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Incomplete data',
+                'Data' => null
+            ]);
         }
     }
 
     public function getList() {
+        header('Content-Type: application/json');
         $user_id = $_GET['user_id'] ?? null;
 
         if (!empty($user_id)) {
             $webhooks = $this->webhookService->getWebhooksByUserId($user_id);
             http_response_code(200);
-            echo json_encode($webhooks);
+            echo json_encode([
+                'Status' => 'Success',
+                'Message' => 'Webhooks retrieved successfully.',
+                'Data' => $webhooks
+            ]);
         } else {
             http_response_code(400);
-            echo json_encode(['message' => 'User ID is required']);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'User ID is required',
+                'Data' => null
+            ]);
         }
     }
 }

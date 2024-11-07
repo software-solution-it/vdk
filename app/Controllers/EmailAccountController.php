@@ -22,11 +22,20 @@ class EmailAccountController {
 
         try {
             $result = $this->emailAccountService->createEmailAccount($data);
-            echo json_encode($result);
+            http_response_code(201);
+            echo json_encode([
+                'Status' => 'Success',
+                'Message' => 'Email account created successfully.',
+                'Data' => $result
+            ]);
         } catch (\Exception $e) {
             $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
             http_response_code(500);
-            echo json_encode(['message' => 'Erro ao criar conta de email: ' . $e->getMessage()]);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Error creating email account: ' . $e->getMessage(),
+                'Data' => null
+            ]);
         }
     }
 
@@ -36,11 +45,20 @@ class EmailAccountController {
 
         try {
             $result = $this->emailAccountService->updateEmailAccount($id, $data);
-            echo json_encode($result);
+            http_response_code(200);
+            echo json_encode([
+                'Status' => 'Success',
+                'Message' => 'Email account updated successfully.',
+                'Data' => $result
+            ]);
         } catch (\Exception $e) {
             $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
             http_response_code(500);
-            echo json_encode(['message' => 'Erro ao atualizar conta de email: ' . $e->getMessage()]);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Error updating email account: ' . $e->getMessage(),
+                'Data' => null
+            ]);
         }
     }
 
@@ -48,11 +66,20 @@ class EmailAccountController {
         header('Content-Type: application/json');
         try {
             $result = $this->emailAccountService->deleteEmailAccount($id);
-            echo json_encode($result);
+            http_response_code(200);
+            echo json_encode([
+                'Status' => 'Success',
+                'Message' => 'Email account deleted successfully.',
+                'Data' => $result
+            ]);
         } catch (\Exception $e) {
             $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
             http_response_code(500);
-            echo json_encode(['message' => 'Erro ao excluir conta de email: ' . $e->getMessage()]);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Error deleting email account: ' . $e->getMessage(),
+                'Data' => null
+            ]);
         }
     }
 
@@ -60,11 +87,20 @@ class EmailAccountController {
         header('Content-Type: application/json');
         try {
             $result = $this->emailAccountService->getEmailAccountByUserId($id);
-            echo json_encode($result);
+            http_response_code(200);
+            echo json_encode([
+                'Status' => 'Success',
+                'Message' => 'Email accounts retrieved successfully.',
+                'Data' => $result
+            ]);
         } catch (\Exception $e) {
             $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
             http_response_code(500);
-            echo json_encode(['message' => 'Erro ao obter contas de email: ' . $e->getMessage()]);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Error retrieving email accounts: ' . $e->getMessage(),
+                'Data' => null
+            ]);
         }
     }
 }

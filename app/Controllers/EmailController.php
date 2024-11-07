@@ -28,7 +28,11 @@ class EmailController {
         if (!empty($missingParams)) {
             error_log('Parâmetros ausentes: ' . implode(', ', $missingParams));
             http_response_code(400);
-            echo json_encode(['message' => 'Os seguintes parâmetros estão faltando: ' . implode(', ', $missingParams)]);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Os seguintes parâmetros estão faltando: ' . implode(', ', $missingParams),
+                'Data' => null
+            ]);
             return false;
         }
         return true;
@@ -43,27 +47,39 @@ class EmailController {
     
             if (!isset($data['emails']) || !is_array($data['emails'])) {
                 http_response_code(400);
-                echo json_encode(['message' => 'A lista de e-mails é necessária.']);
+                echo json_encode([
+                    'Status' => 'Error',
+                    'Message' => 'A lista de e-mails é necessária.',
+                    'Data' => null
+                ]);
                 ob_end_flush();
                 return;
             }
     
             if (!isset($data['user_id'])) {
                 http_response_code(400);
-                echo json_encode(['message' => 'O user_id é necessário.']);
+                echo json_encode([
+                    'Status' => 'Error',
+                    'Message' => 'O user_id é necessário.',
+                    'Data' => null
+                ]);
                 ob_end_flush();
                 return;
             }
     
-            if (!isset($data['email_account_id'])) { // Validação do email_account_id
+            if (!isset($data['email_account_id'])) {
                 http_response_code(400);
-                echo json_encode(['message' => 'O email_account_id é necessário.']);
+                echo json_encode([
+                    'Status' => 'Error',
+                    'Message' => 'O email_account_id é necessário.',
+                    'Data' => null
+                ]);
                 ob_end_flush();
                 return;
             }
     
             $user_id = $data['user_id'];
-            $email_account_id = $data['email_account_id']; // Capturando o email_account_id
+            $email_account_id = $data['email_account_id'];
             $sendResults = [];
             
             foreach ($data['emails'] as $emailData) {
@@ -124,7 +140,7 @@ class EmailController {
                 try {
                     $result = $this->emailService->sendEmail(
                         $user_id,
-                        $email_account_id, // Passando o email_account_id
+                        $email_account_id,
                         $recipientEmails,
                         $subject,
                         $htmlTemplate,
@@ -152,21 +168,23 @@ class EmailController {
     
             http_response_code(200);
             echo json_encode([
-                'message' => 'Processamento de envio de e-mails concluído.',
-                'results' => $sendResults
+                'Status' => 'Success',
+                'Message' => 'Processamento de envio de e-mails concluído.',
+                'Data' => $sendResults
             ]);
     
         } catch (Exception $e) {
             $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
             http_response_code(500);
             echo json_encode([
-                'message' => 'Erro ao processar os e-mails: ' . $e->getMessage()
+                'Status' => 'Error',
+                'Message' => 'Erro ao processar os e-mails: ' . $e->getMessage(),
+                'Data' => null
             ]);
         }
     
         ob_end_flush(); 
     }
-    
 
     public function sendEmail() {
         ob_start();
@@ -178,21 +196,29 @@ class EmailController {
                 $attachments = $_FILES['attachments'] ?? [];
             } else {
                 http_response_code(400);
-                echo json_encode(['message' => 'O conteúdo deve ser multipart/form-data.']);
+                echo json_encode([
+                    'Status' => 'Error',
+                    'Message' => 'O conteúdo deve ser multipart/form-data.',
+                    'Data' => null
+                ]);
                 ob_end_flush(); 
                 return;
             }
     
-            $requiredParams = ['user_id', 'email_account_id', 'recipientEmails', 'subject', 'htmlTemplate']; // Adicionando email_account_id
+            $requiredParams = ['user_id', 'email_account_id', 'recipientEmails', 'subject', 'htmlTemplate'];
             if (!$this->validateParams($requiredParams, $data)) {
                 http_response_code(400);
-                echo json_encode(['message' => 'Os seguintes parâmetros estão faltando: ' . implode(', ', $requiredParams)]);
+                echo json_encode([
+                    'Status' => 'Error',
+                    'Message' => 'Os seguintes parâmetros estão faltando: ' . implode(', ', $requiredParams),
+                    'Data' => null
+                ]);
                 ob_end_flush();  
                 return;
             }
     
             $user_id = $data['user_id'];
-            $email_account_id = $data['email_account_id']; // Capturando o email_account_id
+            $email_account_id = $data['email_account_id'];
             $recipientEmails = is_array($data['recipientEmails']) ? $data['recipientEmails'] : [$data['recipientEmails']];
             $ccEmails = isset($data['ccEmails']) ? (is_array($data['ccEmails']) ? $data['ccEmails'] : [$data['ccEmails']]) : [];
             $bccEmails = isset($data['bccEmails']) ? (is_array($data['bccEmails']) ? $data['bccEmails'] : [$data['bccEmails']]) : [];
@@ -202,7 +228,11 @@ class EmailController {
     
             if ($priority !== null && ($priority < 1 || $priority > 99)) {
                 http_response_code(400);
-                echo json_encode(['message' => 'A prioridade deve ser um número entre 1 e 99.']);
+                echo json_encode([
+                    'Status' => 'Error',
+                    'Message' => 'A prioridade deve ser um número entre 1 e 99.',
+                    'Data' => null
+                ]);
                 ob_end_flush(); 
                 return;
             }
@@ -220,7 +250,11 @@ class EmailController {
                         ];
                     } else {
                         http_response_code(400);
-                        echo json_encode(['message' => "Erro no upload do anexo: {$attachments['name'][$key]}"]);
+                        echo json_encode([
+                            'Status' => 'Error',
+                            'Message' => "Erro no upload do anexo: {$attachments['name'][$key]}",
+                            'Data' => null
+                        ]);
                         ob_end_flush();  
                         return;
                     }
@@ -228,71 +262,104 @@ class EmailController {
             }
     
             $result = $this->emailService->sendEmail(
-                $user_id, 
-                $email_account_id, // Passando o email_account_id
-                $recipientEmails, 
-                $subject, 
-                $htmlTemplate, 
-                null, 
-                $priority, 
-                $attachmentsArray, 
-                $ccEmails, 
+                $user_id,
+                $email_account_id,
+                $recipientEmails,
+                $subject,
+                $htmlTemplate,
+                null,
+                $priority,
+                $attachmentsArray,
+                $ccEmails,
                 $bccEmails
             );
     
             if ($result['success']) {
                 http_response_code(200);
-                echo json_encode(['message' => 'E-mail(s) adicionado(s) à fila para envio.']);
+                echo json_encode([
+                    'Status' => 'Success',
+                    'Message' => 'E-mail(s) adicionado(s) à fila para envio.',
+                    'Data' => null
+                ]);
             } else {
                 http_response_code(500);
-                echo json_encode(['message' => $result['message']]);
+                echo json_encode([
+                    'Status' => 'Error',
+                    'Message' => $result['message'],
+                    'Data' => null
+                ]);
             }
         } catch (Exception $e) {
             $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
             http_response_code(500);
-            echo json_encode(['message' => 'Erro ao processar o envio de e-mails: ' . $e->getMessage()]);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Erro ao processar o envio de e-mails: ' . $e->getMessage(),
+                'Data' => null
+            ]);
         }
     
         ob_end_flush(); 
     }
-    
 
     public function checkDomain($domain) {
         header('Content-Type: application/json');
         if (empty($domain)) {
             http_response_code(400);
-            echo json_encode(['message' => 'Domain is required']);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Domain is required',
+                'Data' => null
+            ]);
             return;
         }
 
         try {
             $results = $this->emailService->checkEmailRecords($domain);
-            http_response_code(200); 
-            echo json_encode($results);
+            http_response_code(200);
+            echo json_encode([
+                'Status' => 'Success',
+                'Message' => 'Domain check successful.',
+                'Data' => $results
+            ]);
         } catch (Exception $e) {
             $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
             http_response_code(500);
-            echo json_encode(['message' => 'Erro ao verificar o domínio: ' . $e->getMessage()]);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Erro ao verificar o domínio: ' . $e->getMessage(),
+                'Data' => null
+            ]);
         }
     }
 
-    public function listEmails($user_id, $folder = '*', $search = '') {
+    public function listEmails($email_id) {
         header('Content-Type: application/json');
-        $requiredParams = ['user_id'];
-        if (!$this->validateParams($requiredParams, ['user_id' => $user_id])) {
+        
+        $requiredParams = ['email_id'];
+        if (!$this->validateParams($requiredParams, ['email_id' => $email_id])) {
             return;
         }
     
         try {
-            $emails = $this->emailService->listEmails($user_id, $folder, $search);
-            http_response_code(200); 
-            echo json_encode($emails);
+            $emails = $this->emailService->listEmails($email_id);
+            http_response_code(200);
+            echo json_encode([
+                'Status' => 'Success',
+                'Message' => 'Emails retrieved successfully.',
+                'Data' => $emails
+            ]);
         } catch (Exception $e) {
             $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
             http_response_code(500);
-            echo json_encode(['message' => 'Erro ao listar e-mails: ' . $e->getMessage()]);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Erro ao listar e-mails: ' . $e->getMessage(),
+                'Data' => null
+            ]);
         }
     }
+    
 
     public function viewEmail($email_id) {
         header('Content-Type: application/json');
@@ -305,15 +372,27 @@ class EmailController {
             $email = $this->emailService->viewEmail($email_id);
             if ($email) {
                 http_response_code(200);
-                echo json_encode($email);
+                echo json_encode([
+                    'Status' => 'Success',
+                    'Message' => 'Email retrieved successfully.',
+                    'Data' => $email
+                ]);
             } else {
                 http_response_code(404);
-                echo json_encode(['message' => 'E-mail não encontrado.']);
+                echo json_encode([
+                    'Status' => 'Error',
+                    'Message' => 'E-mail não encontrado.',
+                    'Data' => null
+                ]);
             }
         } catch (Exception $e) {
             $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
             http_response_code(500);
-            echo json_encode(['message' => 'Erro ao visualizar o e-mail: ' . $e->getMessage()]);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Erro ao visualizar o e-mail: ' . $e->getMessage(),
+                'Data' => null
+            ]); 
         }
     }
 }

@@ -70,16 +70,45 @@ class User {
     }
 
     public function getUserById($id) {
-        $query = "SELECT u.id, u.name, u.email, r.role_name, u.created_at 
+        $query = "SELECT u.id, u.name, u.email, r.role_name, u.created_at, 
+                  e.id AS email_account_id, e.email AS email_account, e.provider_id 
                   FROM " . $this->table . " u 
                   JOIN " . $this->roleTable . " r ON u.role_id = r.id 
+                  LEFT JOIN email_accounts e ON u.id = e.user_id 
                   WHERE u.id = :id";
+        
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(":id", $id);
         $stmt->execute();
-
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+    
+        $user = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        if (empty($user)) {
+            return null; 
+        }
+    
+        $userData = [
+            'id' => $user[0]['id'],
+            'name' => $user[0]['name'],
+            'email' => $user[0]['email'],
+            'role_name' => $user[0]['role_name'],
+            'created_at' => $user[0]['created_at'],
+            'email_accounts' => [] 
+        ];
+    
+        foreach ($user as $account) {
+            if ($account['email_account_id']) {
+                $userData['email_accounts'][] = [
+                    'id' => $account['email_account_id'],
+                    'email' => $account['email_account'],
+                    'provider_id' => $account['provider_id']
+                ];
+            }
+        }
+    
+        return $userData;
     }
+    
 
     public function updateLoginVerificationCode($user_id, $verificationCode, $expirationTime) {
         $query = "UPDATE users SET verification_code = :verificationCode, code_expiration = :expirationTime WHERE id = :user_id";

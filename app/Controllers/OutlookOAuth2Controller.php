@@ -23,25 +23,45 @@ class OutlookOAuth2Controller {
         header('Content-Type: application/json');
         $data = json_decode(file_get_contents('php://input'), true);
 
-        if (!isset($data['user_id']) || !isset($data['provider_id'])) {
-            echo json_encode(['status' => false, 'message' => 'user_id and provider_id are required.']);
+        if (!isset($data['user_id']) || !isset($data['email_id'])) {
+            http_response_code(400);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'user_id and email_id are required.',
+                'Data' => null
+            ]);
             return;
         }
 
         $user_id = intval($data['user_id']);
-        $provider_id = intval($data['provider_id']);
+        $email_id = intval($data['email_id']);
 
-        if ($user_id <= 0 || $provider_id <= 0) {
-            echo json_encode(['status' => false, 'message' => 'Invalid user_id or provider_id.']);
+        if ($user_id <= 0 || $email_id <= 0) {
+            http_response_code(400);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Invalid user_id or email_id.',
+                'Data' => null
+            ]);
             return;
         }
 
         try {
-            $result = $this->outlookOAuth2Service->getAuthorizationUrl($user_id, $provider_id);
-            echo json_encode($result);
+            $result = $this->outlookOAuth2Service->getAuthorizationUrl($user_id, $email_id);
+            http_response_code(200);
+            echo json_encode([
+                'Status' => 'Success',
+                'Message' => 'Authorization URL retrieved successfully.',
+                'Data' => $result
+            ]);
         } catch (Exception $e) {
             $this->errorLogController->logError("Erro ao obter URL de autorização: " . $e->getMessage(), __FILE__, __LINE__);
-            echo json_encode(['status' => false, 'message' => 'Erro ao obter URL de autorização: ' . $e->getMessage()]);
+            http_response_code(500);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Erro ao obter URL de autorização: ' . $e->getMessage(),
+                'Data' => null
+            ]);
         }
     }
 
@@ -50,26 +70,49 @@ class OutlookOAuth2Controller {
         header('Content-Type: application/json');
         $data = json_decode(file_get_contents('php://input'), true);
 
-        if (!isset($data['user_id']) || !isset($data['provider_id']) || !isset($data['code'])) {
-            echo json_encode(['status' => false, 'message' => 'user_id, provider_id, and code are required.']);
+        if (!isset($data['user_id']) || !isset($data['email_id']) || !isset($data['code'])) {
+            http_response_code(400);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'user_id, email_id, and code are required.',
+                'Data' => null
+            ]);
             return;
         }
 
         $user_id = intval($data['user_id']);
-        $provider_id = intval($data['provider_id']);
+        $email_id = intval($data['email_id']);
         $code = $data['code'];
 
-        if ($user_id <= 0 || $provider_id <= 0) {
-            echo json_encode(['status' => false, 'message' => 'Invalid user_id or provider_id.']);
+        if ($user_id <= 0 || $email_id <= 0) {
+            http_response_code(400);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Invalid user_id or email_id.',
+                'Data' => null
+            ]);
             return;
         }
 
         try {
-            $tokens = $this->outlookOAuth2Service->getAccessToken($user_id, $provider_id, $code);
-            echo json_encode(['status' => true, 'access_token' => $tokens['access_token'], 'refresh_token' => $tokens['refresh_token']]);
+            $tokens = $this->outlookOAuth2Service->getAccessToken($user_id, $email_id, $code);
+            http_response_code(200);
+            echo json_encode([
+                'Status' => 'Success',
+                'Message' => 'Access token retrieved successfully.',
+                'Data' => [
+                    'access_token' => $tokens['access_token'],
+                    'refresh_token' => $tokens['refresh_token']
+                ]
+            ]);
         } catch (Exception $e) {
             $this->errorLogController->logError("Erro ao obter token de acesso: " . $e->getMessage(), __FILE__, __LINE__);
-            echo json_encode(['status' => false, 'message' => 'Erro ao obter token de acesso: ' . $e->getMessage()]);
+            http_response_code(500);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Erro ao obter token de acesso: ' . $e->getMessage(),
+                'Data' => null
+            ]);
         }
     }
 
@@ -78,25 +121,48 @@ class OutlookOAuth2Controller {
         header('Content-Type: application/json');
         $data = json_decode(file_get_contents('php://input'), true);
 
-        if (!isset($data['user_id']) || !isset($data['provider_id'])) {
-            echo json_encode(['status' => false, 'message' => 'user_id and provider_id are required.']);
+        if (!isset($data['user_id']) || !isset($data['email_id'])) {
+            http_response_code(400);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'user_id and email_id are required.',
+                'Data' => null
+            ]);
             return;
         }
 
         $user_id = intval($data['user_id']);
-        $provider_id = intval($data['provider_id']);
+        $email_id = intval($data['email_id']);
 
-        if ($user_id <= 0 || $provider_id <= 0) {
-            echo json_encode(['status' => false, 'message' => 'Invalid user_id or provider_id.']);
+        if ($user_id <= 0 || $email_id <= 0) {
+            http_response_code(400);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Invalid user_id or email_id.',
+                'Data' => null
+            ]);
             return;
         }
 
         try {
-            $tokens = $this->outlookOAuth2Service->refreshAccessToken($user_id, $provider_id);
-            echo json_encode(['status' => true, 'access_token' => $tokens['access_token'], 'refresh_token' => $tokens['refresh_token']]);
+            $tokens = $this->outlookOAuth2Service->refreshAccessToken($user_id, $email_id);
+            http_response_code(200);
+            echo json_encode([
+                'Status' => 'Success',
+                'Message' => 'Access token refreshed successfully.',
+                'Data' => [
+                    'access_token' => $tokens['access_token'],
+                    'refresh_token' => $tokens['refresh_token']
+                ]
+            ]);
         } catch (Exception $e) {
             $this->errorLogController->logError("Erro ao atualizar token de acesso: " . $e->getMessage(), __FILE__, __LINE__);
-            echo json_encode(['status' => false, 'message' => 'Erro ao atualizar token de acesso: ' . $e->getMessage()]);
+            http_response_code(500);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Erro ao atualizar token de acesso: ' . $e->getMessage(),
+                'Data' => null
+            ]);
         }
     }
 
@@ -105,26 +171,45 @@ class OutlookOAuth2Controller {
         header('Content-Type: application/json');
         $data = json_decode(file_get_contents('php://input'), true);
 
-        if (!isset($data['user_id']) || !isset($data['provider_id'])) {
-
-            echo json_encode(['status' => false, 'message' => 'user_id and provider_id are required.']);
+        if (!isset($data['user_id']) || !isset($data['email_id'])) {
+            http_response_code(400);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'user_id and email_id are required.',
+                'Data' => null
+            ]);
             return;
         }
 
         $user_id = intval($data['user_id']);
-        $provider_id = intval($data['provider_id']);
+        $email_id = intval($data['email_id']);
 
-        if ($user_id <= 0 || $provider_id <= 0) {
-            echo json_encode(['status' => false, 'message' => 'Invalid user_id or provider_id.']);
+        if ($user_id <= 0 || $email_id <= 0) {
+            http_response_code(400);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Invalid user_id or email_id.',
+                'Data' => null
+            ]);
             return;
         }
 
         try {
-            $result = $this->outlookOAuth2Service->authenticateImap($user_id, $provider_id);
-            echo json_encode(['status' => true, 'message' => 'Authenticated successfully.']);
+            $result = $this->outlookOAuth2Service->authenticateImap($user_id, $email_id);
+            http_response_code(200);
+            echo json_encode([
+                'Status' => 'Success',
+                'Message' => 'Authenticated successfully.',
+                'Data' => null
+            ]);
         } catch (Exception $e) {
             $this->errorLogController->logError("Erro ao autenticar no IMAP: " . $e->getMessage(), __FILE__, __LINE__);
-            echo json_encode(['status' => false, 'message' => 'Erro ao autenticar no IMAP: ' . $e->getMessage()]);
+            http_response_code(500);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Erro ao autenticar no IMAP: ' . $e->getMessage(),
+                'Data' => null
+            ]);
         }
     }
 
@@ -133,28 +218,47 @@ class OutlookOAuth2Controller {
         header('Content-Type: application/json');
         $data = json_decode(file_get_contents('php://input'), true);
 
-        if (!isset($data['user_id'], $data['provider_id'], $data['conversation_Id'], $data['destination_folder_id'])) {
-        
-            echo json_encode(['status' => false, 'message' => 'user_id, provider_id, conversation_Id, and destination_folder_id are required.']);
+        if (!isset($data['user_id'], $data['email_id'], $data['conversation_Id'], $data['destination_folder_id'])) {
+            http_response_code(400);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'user_id, email_id, conversation_Id, and destination_folder_id are required.',
+                'Data' => null
+            ]);
             return;
         }
 
         $user_id = intval($data['user_id']);
-        $provider_id = intval($data['provider_id']);
+        $email_id = intval($data['email_id']);
         $messageId = $data['conversation_Id'];
         $destinationFolderId = $data['destination_folder_id'];
 
-        if ($user_id <= 0 || $provider_id <= 0 || empty($messageId) || empty($destinationFolderId)) {
-            echo json_encode(['status' => false, 'message' => 'Invalid parameters.']);
+        if ($user_id <= 0 || $email_id <= 0 || empty($messageId) || empty($destinationFolderId)) {
+            http_response_code(400);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Invalid parameters.',
+                'Data' => null
+            ]);
             return;
         }
 
         try {
-            $this->outlookOAuth2Service->moveEmail($user_id, $provider_id, $messageId, $destinationFolderId);
-            echo json_encode(['status' => true, 'message' => 'Email moved successfully.']);
+            $this->outlookOAuth2Service->moveEmail($user_id, $email_id, $messageId, $destinationFolderId);
+            http_response_code(200);
+            echo json_encode([
+                'Status' => 'Success',
+                'Message' => 'Email moved successfully.',
+                'Data' => null
+            ]);
         } catch (Exception $e) {
             $this->errorLogController->logError("Erro ao mover o e-mail: " . $e->getMessage(), __FILE__, __LINE__);
-            echo json_encode(['status' => false, 'message' => 'Erro ao mover o e-mail: ' . $e->getMessage()]);
+            http_response_code(500);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Erro ao mover o e-mail: ' . $e->getMessage(),
+                'Data' => null
+            ]);
         }
     }
 
@@ -163,26 +267,46 @@ class OutlookOAuth2Controller {
         header('Content-Type: application/json');
         $data = json_decode(file_get_contents('php://input'), true);
 
-        if (!isset($data['user_id'], $data['provider_id'], $data['conversation_Id'])) {
-            echo json_encode(['status' => false, 'message' => 'user_id, provider_id, and conversation_Id are required.']);
+        if (!isset($data['user_id'], $data['email_id'], $data['conversation_Id'])) {
+            http_response_code(400);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'user_id, email_id, and conversation_Id are required.',
+                'Data' => null
+            ]);
             return;
         }
 
         $user_id = intval($data['user_id']);
-        $provider_id = intval($data['provider_id']);
+        $email_id = intval($data['email_id']);
         $messageId = $data['conversation_Id'];
 
-        if ($user_id <= 0 || $provider_id <= 0 || empty($messageId)) {
-       echo json_encode(['status' => false, 'message' => 'Invalid parameters.']);
+        if ($user_id <= 0 || $email_id <= 0 || empty($messageId)) {
+            http_response_code(400);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Invalid parameters.',
+                'Data' => null
+            ]);
             return;
         }
 
         try {
-            $this->outlookOAuth2Service->deleteEmail($user_id, $provider_id, $messageId);
-            echo json_encode(['status' => true, 'message' => 'Email deleted successfully.']);
+            $this->outlookOAuth2Service->deleteEmail($user_id, $email_id, $messageId);
+            http_response_code(200);
+            echo json_encode([
+                'Status' => 'Success',
+                'Message' => 'Email deleted successfully.',
+                'Data' => null
+            ]);
         } catch (Exception $e) {
             $this->errorLogController->logError("Erro ao deletar o e-mail: " . $e->getMessage(), __FILE__, __LINE__);
-            echo json_encode(['status' => false, 'message' => 'Erro ao deletar o e-mail: ' . $e->getMessage()]);
+            http_response_code(500);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Erro ao deletar o e-mail: ' . $e->getMessage(),
+                'Data' => null
+            ]);
         }
     }
 
@@ -191,24 +315,45 @@ class OutlookOAuth2Controller {
         header('Content-Type: application/json');
         $data = json_decode(file_get_contents('php://input'), true);
 
-        if (!isset($data['user_id'], $data['provider_id'])) {
-            echo json_encode(['status' => false, 'message' => 'user_id and provider_id are required.']);
+        if (!isset($data['user_id'], $data['email_id'])) {
+            http_response_code(400);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'user_id and email_id are required.',
+                'Data' => null
+            ]);
             return;
         }
 
         $user_id = intval($data['user_id']);
-        $provider_id = intval($data['provider_id']);
+        $email_id = intval($data['email_id']);
 
-        if ($user_id <= 0 || $provider_id <= 0) {
-            echo json_encode(['status' => false, 'message' => 'Invalid user_id or provider_id.']);
+        if ($user_id <= 0 || $email_id <= 0) {
+            http_response_code(400);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Invalid user_id or email_id.',
+                'Data' => null
+            ]);
             return;
         }
 
         try {
-            $folders = $this->outlookOAuth2Service->listFolders($user_id, $provider_id);
-            echo json_encode(['status' => true, 'folders' => $folders]);
+            $folders = $this->outlookOAuth2Service->listFolders($user_id, $email_id);
+            http_response_code(200);
+            echo json_encode([
+                'Status' => 'Success',
+                'Message' => 'Folders listed successfully.',
+                'Data' => $folders
+            ]);
         } catch (Exception $e) {
-            echo json_encode(['status' => false, 'message' => 'Erro ao listar pastas: ' . $e->getMessage()]);
+            $this->errorLogController->logError("Erro ao listar pastas: " . $e->getMessage(), __FILE__, __LINE__);
+            http_response_code(500);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Erro ao listar pastas: ' . $e->getMessage(),
+                'Data' => null
+            ]);
         }
     }
 
@@ -216,28 +361,47 @@ class OutlookOAuth2Controller {
     {
         header('Content-Type: application/json');
         $data = json_decode(file_get_contents('php://input'), true);
-    
-        if (!isset($data['user_id'], $data['provider_id'], $data['conversation_id'])) {
-            echo json_encode(['status' => false, 'message' => 'user_id, provider_id, and conversation_id are required.']);
+
+        if (!isset($data['user_id'], $data['email_id'], $data['conversation_id'])) {
+            http_response_code(400);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'user_id, email_id, and conversation_id are required.',
+                'Data' => null
+            ]);
             return;
         }
-    
+
         $user_id = intval($data['user_id']);
-        $provider_id = intval($data['provider_id']);
+        $email_id = intval($data['email_id']);
         $conversation_id = $data['conversation_id'];
-    
-        if ($user_id <= 0 || $provider_id <= 0 || empty($conversation_id)) {
-            echo json_encode(['status' => false, 'message' => 'Invalid user_id, provider_id, or conversation_id.']);
+
+        if ($user_id <= 0 || $email_id <= 0 || empty($conversation_id)) {
+            http_response_code(400);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Invalid user_id, email_id, or conversation_id.',
+                'Data' => null
+            ]); 
             return;
         }
-    
+
         try {
-            $emails = $this->outlookOAuth2Service->listEmailsByConversation($user_id, $provider_id, $conversation_id);
-            echo json_encode(['status' => true, 'emails' => $emails]);
+            $emails = $this->outlookOAuth2Service->listEmailsByConversation($user_id, $conversation_id);
+            http_response_code(200);
+            echo json_encode([
+                'Status' => 'Success',
+                'Message' => 'Emails retrieved successfully.',
+                'Data' => $emails
+            ]);
         } catch (Exception $e) {
             $this->errorLogController->logError("Erro ao listar e-mails por conversa: " . $e->getMessage(), __FILE__, __LINE__);
-            echo json_encode(['status' => false, 'message' => 'Erro ao listar e-mails por conversa: ' . $e->getMessage()]);
+            http_response_code(500);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Erro ao listar e-mails por conversa: ' . $e->getMessage(),
+                'Data' => null
+            ]);
         }
     }
-    
 }

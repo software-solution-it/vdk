@@ -58,7 +58,6 @@ class EmailService {
             ];
         }
         
-        // Captura as configurações do email_account_id
         $smtpConfig = $this->emailAccountModel->getById($email_account_id);
         if (!$smtpConfig) {
             return [
@@ -70,7 +69,7 @@ class EmailService {
 
         $message = [
             'user_id' => $user_id,
-            'email_account_id' => $email_account_id, // Adicionando email_account_id
+            'email_account_id' => $email_account_id, 
             'recipientEmails' => $recipientEmails,
             'ccEmails' => $ccEmails,
             'bccEmails' => $bccEmails,
@@ -103,7 +102,7 @@ class EmailService {
 
     public function processEmailSending($message) {
         $user_id = $message['user_id'];
-        $email_account_id = $message['email_account_id']; // Capturando o email_account_id
+        $email_account_id = $message['email_account_id']; 
         $recipientEmails = $message['recipientEmails'];
         $ccEmails = $message['ccEmails'] ?? [];
         $bccEmails = $message['bccEmails'] ?? [];
@@ -119,9 +118,6 @@ class EmailService {
             return false;
         }
     
-
-
-        // Captura as configurações do email_account_id
         $smtpConfig = $this->emailAccountModel->getById($email_account_id);
         if (!$smtpConfig) {
             error_log("Configurações de SMTP não encontradas para o email_account_id $email_account_id");
@@ -134,6 +130,7 @@ class EmailService {
         $mail = new PHPMailer(true);
     
         try {
+            $mail->CharSet = 'UTF-8';
             $mail->isSMTP();
             $mail->Host       = $smtpConfig['smtp_host'];
             $mail->SMTPAuth   = true;
@@ -174,17 +171,21 @@ class EmailService {
             $mail->Subject = $subject;
             $mail->Body    = $htmlBody;
             $mail->AltBody = $plainBody ?: strip_tags($htmlBody);
+            $mail->addCustomHeader('Content-Type', 'text/html; charset=UTF-8');
     
             if ($mail->send()) {
                 $event = [
-                    'type' => 'email_sent',
-                    'subject' => $subject,
-                    'from' => $smtpConfig['email'],
-                    'to' => $recipientEmails,
-                    'cc' => $ccEmails,
-                    'bcc' => $bccEmails,
-                    'sent_at' => date('Y-m-d H:i:s'),
-                    'user_id' => $user_id
+                    'Status' => 'Success',
+                    'Message' => 'Email sent successfully', 
+                    'Data' => [ 
+                        'subject' => $subject,
+                        'from' => $smtpConfig['email'],
+                        'to' => $recipientEmails,
+                        'cc' => $ccEmails,
+                        'bcc' => $bccEmails,
+                        'sent_at' => date('Y-m-d H:i:s'),
+                        'user_id' => $user_id
+                    ]
                 ];
     
                 $this->webhookService->triggerEvent($event, $user_id);
@@ -201,58 +202,48 @@ class EmailService {
         }
     }
 
-    public function listEmails($user_id, $folder = '*', $search = '', $startDate = '', $endDate = '') {
-        if ($folder == '*') {
-            $query = "SELECT e.*, a.filename, a.mime_type, a.size, a.content 
-                      FROM emails e 
-                      LEFT JOIN email_attachments a ON e.id = a.email_id 
-                      WHERE e.user_id = :user_id";
-        } else {
-            $query = "SELECT e.*, a.filename, a.mime_type, a.size, a.content
-                      FROM emails e 
-                      LEFT JOIN email_attachments a ON e.id = a.email_id 
-                      WHERE e.user_id = :user_id AND e.folder LIKE :folder";
-        }
-    
-        if (!empty($search)) {
-            $query .= " AND (e.subject LIKE :search OR e.sender LIKE :search OR e.recipient LIKE :search OR e.email_id LIKE :search OR e.`references` LIKE :search OR e.in_reply_to LIKE :search)";
-        }
-    
-        if (!empty($startDate) && !empty($endDate)) {
-            $query .= " AND e.date_received BETWEEN :startDate AND :endDate";
-        }
-    
-        $query .= " ORDER BY e.`references`, e.in_reply_to, e.date_received DESC";
+    public function listEmails($email_id) {
+        $query = "SELECT e.* 
+                  FROM emails e 
+                  WHERE e.id = :email_id";
     
         $stmt = $this->db->prepare($query);
-        $stmt->bindParam(':user_id', $user_id);
-    
-        if ($folder != '*') {
-            $folderTerm = "%" . $folder . "%";
-            $stmt->bindParam(':folder', $folderTerm);
-        }
-    
-        if (!empty($search)) {
-            $searchTerm = "%" . $search . "%";
-            $stmt->bindParam(':search', $searchTerm);
-        }
-    
-        if (!empty($startDate) && !empty($endDate)) {
-            $stmt->bindParam(':startDate', $startDate);
-            $stmt->bindParam(':endDate', $endDate);
-        }
-    
+        $stmt->bindParam(':email_id', $email_id);
         $stmt->execute();
-        $emails = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $email = $stmt->fetch(PDO::FETCH_ASSOC);
     
-        foreach ($emails as &$email) {
-            if (!empty($email['content'])) {
-                $email['content'] = base64_encode($email['content']);
+        if (!$email) {
+            return [];
+        }
+    
+        $firstEmailReference = $email['references'] ?? null;
+        if (empty($firstEmailReference)) {
+            $firstEmailReference = $email['in_reply_to'] ?? null;
+        }
+    
+        if (empty($firstEmailReference)) {
+            return [$email];
+        }
+    
+        $query = "SELECT e.* 
+                  FROM emails e 
+                  WHERE e.references = :references 
+                  ORDER BY e.date_received ASC"; 
+    
+        $stmt = $this->db->prepare($query);
+        $stmt->bindParam(':references', $firstEmailReference);
+        $stmt->execute();
+        $threadEmails = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+        foreach ($threadEmails as &$threadEmail) {
+            if (!empty($threadEmail['content'])) {
+                $threadEmail['content'] = base64_encode($threadEmail['content']);
             }
         }
     
-        return $emails;
+        return $threadEmails;
     }
+    
 
     public function checkEmailRecords($domain) {
         $dkim = $this->emailModel->checkDkim($domain);
@@ -323,6 +314,7 @@ class EmailService {
         $mail = new PHPMailer(true);
 
         try {
+            $mail->CharSet = 'UTF-8';
             $mail->isSMTP();
             $mail->Host       = $smtpConfig['smtp_host'];
             $mail->SMTPAuth   = true;
@@ -338,6 +330,7 @@ class EmailService {
             $mail->Subject = $subject;
             $mail->Body    = $htmlBody;
             $mail->AltBody = $plainBody ?: strip_tags($htmlBody);
+            $mail->addCustomHeader('Content-Type', 'text/html; charset=UTF-8');
 
             if ($mail->send()) {
                 return [

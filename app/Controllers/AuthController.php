@@ -17,7 +17,6 @@ class AuthController {
 
     public function login() {
         header('Content-Type: application/json');
-    
         $data = json_decode(file_get_contents("php://input"));
         $missingFields = [];
 
@@ -27,27 +26,38 @@ class AuthController {
         if (empty($data->password)) {
             $missingFields[] = 'password';
         }
-    
+
         if (!empty($missingFields)) {
             http_response_code(400);
-            echo json_encode(['message' => 'Missing required fields: ' . implode(', ', $missingFields)]);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Missing required fields: ' . implode(', ', $missingFields),
+                'Data' => null
+            ]);
             return;
         }
-    
+
         $login = $this->authService->login($data->email, $data->password);
-    
+
         if ($login['success']) {
-            if ($login['role_id'] == 1) {
-                http_response_code(200);
-                echo json_encode(['message' => 'Admin login successful.', 'token' => $login['token']]);
-            } else {
-                http_response_code(200);
-                echo json_encode(['message' => 'Login successful. Please enter the verification code sent to your email.', 'verificationCode' => $login['verificationCode']]);
-            }
+            http_response_code(200);
+            $message = ($login['role_id'] == 1) ? 'Admin login successful.' : 'Login successful. Please enter the verification code sent to your email.';
+            echo json_encode([
+                'Status' => 'Success',
+                'Message' => $message,
+                'Data' => [
+                    'token' => $login['token'],
+                    'verificationCode' => $login['verificationCode'] ?? null
+                ]
+            ]);
         } else {
             $this->errorLogController->logError($login['message'], __FILE__, __LINE__);
             http_response_code(401);
-            echo json_encode(['message' => $login['message']]);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => $login['message'],
+                'Data' => null
+            ]);
         }
     }
 
@@ -65,7 +75,11 @@ class AuthController {
 
         if (!empty($missingFields)) {
             http_response_code(400);
-            echo json_encode(['message' => 'Missing required fields: ' . implode(', ', $missingFields)]);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Missing required fields: ' . implode(', ', $missingFields),
+                'Data' => null
+            ]);
             return;
         }
 
@@ -73,11 +87,19 @@ class AuthController {
 
         if (!empty($verification['token'])) {
             http_response_code(200);
-            echo json_encode(['token' => $verification['token']]);
+            echo json_encode([
+                'Status' => 'Success',
+                'Message' => 'Verification successful.',
+                'Data' => ['token' => $verification['token']]
+            ]);
         } else {
             $this->errorLogController->logError($verification['message'], __FILE__, __LINE__);
             http_response_code(401);
-            echo json_encode(['message' => $verification['message']]);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => $verification['message'],
+                'Data' => null
+            ]);
         }
     }
 
@@ -87,7 +109,11 @@ class AuthController {
 
         if (empty($data->email)) {
             http_response_code(400);
-            echo json_encode(['message' => 'Email is required']);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Email is required',
+                'Data' => null
+            ]);
             return;
         }
 
@@ -95,11 +121,19 @@ class AuthController {
 
         if ($resend['success']) {
             http_response_code(200);
-            echo json_encode(['message' => $resend['message']]);
+            echo json_encode([
+                'Status' => 'Success',
+                'Message' => $resend['message'],
+                'Data' => null
+            ]);
         } else {
             $this->errorLogController->logError($resend['message'], __FILE__, __LINE__);
             http_response_code(500);
-            echo json_encode(['message' => $resend['message']]);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => $resend['message'],
+                'Data' => null
+            ]);
         }
     }
 
@@ -123,7 +157,11 @@ class AuthController {
 
         if (!empty($missingFields)) {
             http_response_code(400);
-            echo json_encode(['message' => 'Missing required fields: ' . implode(', ', $missingFields)]);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Missing required fields: ' . implode(', ', $missingFields),
+                'Data' => null
+            ]);
             return;
         }
 
@@ -131,11 +169,19 @@ class AuthController {
 
         if ($register['success']) {
             http_response_code(201);
-            echo json_encode(['message' => $register['message'], 'verificationCode' => $register['verificationCode']]);
+            echo json_encode([
+                'Status' => 'Success',
+                'Message' => $register['message'],
+                'Data' => ['verificationCode' => $register['verificationCode']]
+            ]);
         } else {
             $this->errorLogController->logError($register['message'], __FILE__, __LINE__);
             http_response_code(500);
-            echo json_encode(['message' => $register['message']]);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => $register['message'],
+                'Data' => null
+            ]);
         }
     }
 
@@ -145,7 +191,11 @@ class AuthController {
 
         if (empty($data->email)) {
             http_response_code(400);
-            echo json_encode(['message' => 'Email is required']);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Email is required',
+                'Data' => null
+            ]);
             return;
         }
 
@@ -153,11 +203,19 @@ class AuthController {
 
         if ($response['success']) {
             http_response_code(200);
-            echo json_encode($response);
+            echo json_encode([
+                'Status' => 'Success',
+                'Message' => $response['message'],
+                'Data' => null
+            ]);
         } else {
             $this->errorLogController->logError($response['message'], __FILE__, __LINE__);
             http_response_code(400);
-            echo json_encode($response);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => $response['message'],
+                'Data' => null
+            ]);
         }
     }
 
@@ -175,7 +233,11 @@ class AuthController {
 
         if (!empty($missingFields)) {
             http_response_code(400);
-            echo json_encode(['message' => 'Missing required fields: ' . implode(', ', $missingFields)]);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Missing required fields: ' . implode(', ', $missingFields),
+                'Data' => null
+            ]);
             return;
         }
 
@@ -183,11 +245,19 @@ class AuthController {
 
         if ($response['success']) {
             http_response_code(200);
-            echo json_encode($response);
+            echo json_encode([
+                'Status' => 'Success',
+                'Message' => 'Verification code is valid.',
+                'Data' => null
+            ]);
         } else {
             $this->errorLogController->logError($response['message'], __FILE__, __LINE__);
             http_response_code(400);
-            echo json_encode($response);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => $response['message'],
+                'Data' => null
+            ]);
         }
     }
 
@@ -208,7 +278,11 @@ class AuthController {
 
         if (!empty($missingFields)) {
             http_response_code(400);
-            echo json_encode(['message' => 'Missing required fields: ' . implode(', ', $missingFields)]);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Missing required fields: ' . implode(', ', $missingFields),
+                'Data' => null
+            ]);
             return;
         }
 
@@ -216,11 +290,19 @@ class AuthController {
 
         if ($response['success']) {
             http_response_code(200);
-            echo json_encode($response);
+            echo json_encode([
+                'Status' => 'Success',
+                'Message' => 'Password reset successfully.',
+                'Data' => null
+            ]);
         } else {
             $this->errorLogController->logError($response['message'], __FILE__, __LINE__);
             http_response_code(400);
-            echo json_encode($response);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => $response['message'],
+                'Data' => null
+            ]);
         }
     }
 }

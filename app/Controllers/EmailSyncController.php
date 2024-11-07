@@ -25,23 +25,27 @@ class EmailSyncController {
 
         $data = json_decode(file_get_contents('php://input'), true);
     
-        if (!isset($data['user_id']) || !isset($data['provider_id'])) {
-            echo json_encode(
-                ['status' => false, 'message' => 'user_id and provider_id are required.'],
-                JSON_UNESCAPED_UNICODE
-            );
+        if (!isset($data['user_id']) || !isset($data['email_id'])) { 
+            http_response_code(400);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'user_id and email_id are required.', 
+                'Data' => null
+            ], JSON_UNESCAPED_UNICODE);
             return;
         }
     
         $user_id = intval($data['user_id']);
-        $provider_id = intval($data['provider_id']);
+        $email_id = intval($data['email_id']); 
     
-        if ($user_id <= 0 || $provider_id <= 0) {
-            $this->errorLogController->logError('Invalid user_id or provider_id.', __FILE__, __LINE__);
-            echo json_encode(
-                ['status' => false, 'message' => 'Invalid user_id or provider_id.'],
-                JSON_UNESCAPED_UNICODE
-            );
+        if ($user_id <= 0 || $email_id <= 0) { 
+            $this->errorLogController->logError('Invalid user_id or email_id.', __FILE__, __LINE__); 
+            http_response_code(400);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Invalid user_id or email_id.', 
+                'Data' => null
+            ], JSON_UNESCAPED_UNICODE);
             return;
         }
     
@@ -49,14 +53,16 @@ class EmailSyncController {
             'php %s %d %d > /dev/null 2>&1 &',
             escapeshellarg('/home/suporte/vdk/app/Worker/email_sync_worker.php'),
             $user_id,
-            $provider_id
+            $email_id
         );
     
         exec($command);
     
-        echo json_encode(
-            ['status' => true, 'message' => 'Sincronização de e-mails iniciada em segundo plano.'],
-            JSON_UNESCAPED_UNICODE
-        );
+        http_response_code(200);
+        echo json_encode([
+            'Status' => 'Success',
+            'Message' => 'Sincronização de e-mails iniciada em segundo plano.',
+            'Data' => null
+        ], JSON_UNESCAPED_UNICODE);
     }
 }

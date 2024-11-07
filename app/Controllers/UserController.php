@@ -24,7 +24,12 @@ class UserController {
     public function listUsers() {
         header('Content-Type: application/json');
         $users = $this->userService->listUsers();
-        echo json_encode($users);
+        http_response_code(200);
+        echo json_encode([
+            'Status' => 'Success',
+            'Message' => 'Users retrieved successfully.',
+            'Data' => $users
+        ]);
     }
 
     public function getUserById() {
@@ -33,14 +38,27 @@ class UserController {
         if ($id) {
             $user = $this->userService->getUserById($id);
             if ($user) {
-                echo json_encode($user);
+                http_response_code(200);
+                echo json_encode([
+                    'Status' => 'Success',
+                    'Message' => 'User retrieved successfully.',
+                    'Data' => $user
+                ]);
             } else {
                 http_response_code(404);
-                echo json_encode(['message' => 'User not found']);
+                echo json_encode([
+                    'Status' => 'Error',
+                    'Message' => 'User not found',
+                    'Data' => null
+                ]);
             }
         } else {
             http_response_code(400);
-            echo json_encode(['message' => 'User ID is required']);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'User ID is required',
+                'Data' => null
+            ]);
         }
     }
 
@@ -51,16 +69,19 @@ class UserController {
         if (!empty($data->name) && !empty($data->email) && !empty($data->password) && !empty($data->role_id)) {
             $create = $this->userService->createUser($data->name, $data->email, $data->password, $data->role_id);
 
-            if ($create) {
-                http_response_code(201);
-                echo json_encode(['message' => 'User created successfully']);
-            } else {
-                http_response_code(500);
-                echo json_encode(['message' => 'Failed to create user']);
-            }
+            http_response_code($create['status'] ? 201 : 500);
+            echo json_encode([
+                'Status' => $create['status'] ? 'Success' : 'Error',
+                'Message' => $create['status'] ? 'User created successfully' : 'Failed to create user',
+                'Data' => $create['status'] ? null : $create['message']
+            ]);
         } else {
             http_response_code(400);
-            echo json_encode(['message' => 'Incomplete data. Name, email, password, and role_id are required.']);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Incomplete data. Name, email, password, and role_id are required.',
+                'Data' => null
+            ]);
         }
     }
 
@@ -72,21 +93,29 @@ class UserController {
             $user = $this->userService->getUserById($data->id);
             if (!$user) {
                 http_response_code(404);
-                echo json_encode(['message' => 'User not found']);
+                echo json_encode([
+                    'Status' => 'Error',
+                    'Message' => 'User not found',
+                    'Data' => null
+                ]);
                 return;
             }
 
             $update = $this->userService->updateUser($data->id, $data->name, $data->email, $data->role_id);
 
-            if ($update) {
-                echo json_encode(['message' => 'User updated successfully']);
-            } else {
-                http_response_code(500);
-                echo json_encode(['message' => 'Failed to update user']);
-            }
+            http_response_code($update['status'] ? 200 : 500);
+            echo json_encode([
+                'Status' => $update['status'] ? 'Success' : 'Error',
+                'Message' => $update['status'] ? 'User updated successfully' : 'Failed to update user',
+                'Data' => null
+            ]);
         } else {
             http_response_code(400);
-            echo json_encode(['message' => 'Incomplete data. ID, name, email, and role_id are required.']);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Incomplete data. ID, name, email, and role_id are required.',
+                'Data' => null
+            ]);
         }
     }
 
@@ -98,22 +127,29 @@ class UserController {
             $user = $this->userService->getUserById($id);
             if (!$user) {
                 http_response_code(404);
-                echo json_encode(['message' => 'User not found']);
+                echo json_encode([
+                    'Status' => 'Error',
+                    'Message' => 'User not found',
+                    'Data' => null
+                ]);
                 return;
             }
 
             $delete = $this->userService->deleteUser($id);
 
-            if ($delete) {
-                echo json_encode(['message' => 'User deleted successfully']);
-            } else {
-    
-                http_response_code(500);
-                echo json_encode(['message' => 'Failed to delete user']);
-            }
+            http_response_code($delete['status'] ? 200 : 500);
+            echo json_encode([
+                'Status' => $delete['status'] ? 'Success' : 'Error',
+                'Message' => $delete['status'] ? 'User deleted successfully' : 'Failed to delete user',
+                'Data' => null
+            ]);
         } else {
             http_response_code(400);
-            echo json_encode(['message' => 'User ID is required']);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'User ID is required',
+                'Data' => null
+            ]);
         }
     }
 
@@ -127,7 +163,11 @@ class UserController {
 
             if (!$user) {
                 http_response_code(404);
-                echo json_encode(['message' => 'User not found']);
+                echo json_encode([
+                    'Status' => 'Error',
+                    'Message' => 'User not found',
+                    'Data' => null
+                ]);
                 return;
             }
 
@@ -135,14 +175,26 @@ class UserController {
 
             if ($hasAccess) {
                 http_response_code(200);
-                echo json_encode(['message' => 'Access granted to ' . $data['functionality_name']]);
+                echo json_encode([
+                    'Status' => 'Success',
+                    'Message' => 'Access granted to ' . $data['functionality_name'],
+                    'Data' => null
+                ]);
             } else {
                 http_response_code(403);
-                echo json_encode(['message' => 'Access denied']);
+                echo json_encode([
+                    'Status' => 'Error',
+                    'Message' => 'Access denied',
+                    'Data' => null
+                ]);
             }
         } else {
             http_response_code(400);
-            echo json_encode(['message' => 'User ID and functionality name are required']);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'User ID and functionality name are required',
+                'Data' => null
+            ]);
         }
     }
 
@@ -155,14 +207,27 @@ class UserController {
             $result = $this->authService->verifyLoginCode($data->email, $data->verification_code);
 
             if (isset($result['token'])) {
-                echo json_encode(['token' => $result['token']]);
+                http_response_code(200);
+                echo json_encode([
+                    'Status' => 'Success',
+                    'Message' => 'Verification successful.',
+                    'Data' => ['token' => $result['token']]
+                ]);
             } else {
                 http_response_code(400);
-                echo json_encode(['message' => $result['message']]);
+                echo json_encode([
+                    'Status' => 'Error',
+                    'Message' => $result['message'],
+                    'Data' => null
+                ]);
             }
         } else {
             http_response_code(400);
-            echo json_encode(['message' => 'Email and verification code are required.']);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Email and verification code are required.',
+                'Data' => null
+            ]);
         }
     }
 }

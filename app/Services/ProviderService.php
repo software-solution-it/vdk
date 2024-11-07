@@ -13,11 +13,11 @@ class ProviderService {
     public function createProvider($data) {
         $requiredFields = ['name', 'smtp_host', 'smtp_port', 'imap_host', 'imap_port', 'encryption'];
         $missingFields = $this->validateFields($data, $requiredFields);
-
+    
         if (!empty($missingFields)) {
             return ['status' => false, 'message' => 'Missing fields: ' . implode(', ', $missingFields)];
         }
-
+    
         $created = $this->providerModel->create(
             $data['name'],
             $data['smtp_host'],
@@ -26,22 +26,23 @@ class ProviderService {
             $data['imap_port'],
             $data['encryption']
         );
-
+    
         if ($created) {
-            return ['status' => true, 'message' => 'Provider created successfully'];
+            $provider = $this->providerModel->getById($created);
+            return ['status' => true, 'message' => 'Provider created successfully', 'data' => $provider];
         }
-
+    
         return ['status' => false, 'message' => 'Failed to create provider'];
     }
-
+    
     public function updateProvider($id, $data) {
         $requiredFields = ['name', 'smtp_host', 'smtp_port', 'imap_host', 'imap_port', 'encryption'];
         $missingFields = $this->validateFields($data, $requiredFields);
-
+    
         if (!empty($missingFields)) {
             return ['status' => false, 'message' => 'Missing fields: ' . implode(', ', $missingFields)];
         }
-
+    
         $updated = $this->providerModel->update(
             $id,
             $data['name'],
@@ -51,13 +52,15 @@ class ProviderService {
             $data['imap_port'],
             $data['encryption']
         );
-
+    
         if ($updated) {
-            return ['status' => true, 'message' => 'Provider updated successfully'];
+            $provider = $this->providerModel->getById($id); 
+            return ['status' => true, 'message' => 'Provider updated successfully', 'data' => $provider];
         }
-
+    
         return ['status' => false, 'message' => 'Failed to update provider'];
     }
+    
 
 
     public function deleteProvider($id) {

@@ -18,6 +18,7 @@ class GmailOAuth2Service {
     private $httpClient;
     private $clientId;
     private $clientSecret;
+    private $webhookService;
     private $redirectUri;
     private $scopes = [
         'https://www.googleapis.com/auth/gmail.readonly',
@@ -30,6 +31,7 @@ class GmailOAuth2Service {
         $database = new Database();
         $db = $database->getConnection();
         $this->httpClient = new Client();
+        $this->webhookService = new WebhookService();
         $this->errorLogController = new ErrorLogController();
         $this->emailModel = new Email($db);
         $this->emailAccountModel = new EmailAccount($db);
@@ -41,16 +43,16 @@ class GmailOAuth2Service {
         $this->redirectUri = "http://localhost:3000/callback";
     }
 
-    public function getAuthorizationUrl($user_id, $provider_id) {
+    public function getAuthorizationUrl($user_id, $email_id) {
         try {
-            $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $provider_id);
+            $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $email_id);
             if (!$emailAccount) {
-                throw new Exception("Conta de e-mail não encontrada para o usuário ID: $user_id e provider ID: $provider_id");
+                throw new Exception("Conta de e-mail não encontrada para o usuário ID: $user_id e email ID: $email_id");
             }
 
             $this->initializeOAuthParameters($emailAccount);
 
-            $extraParams = base64_encode(json_encode(['user_id' => $user_id, 'provider_id' => $provider_id]));
+            $extraParams = base64_encode(json_encode(['user_id' => $user_id, 'email_id' => $email_id]));
 
             $authorizationUrl = 'https://accounts.google.com/o/oauth2/v2/auth?' . http_build_query([
                 'client_id' => $this->clientId,
@@ -73,11 +75,11 @@ class GmailOAuth2Service {
         }
     }
 
-    public function getAccessToken($user_id, $provider_id, $code) {
+    public function getAccessToken($user_id, $email_id, $code) {
         try {
-            $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $provider_id);
+            $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $email_id);
             if (!$emailAccount) {
-                throw new Exception("Conta de e-mail não encontrada para o usuário ID: $user_id e provider ID: $provider_id");
+                throw new Exception("Conta de e-mail não encontrada para o usuário ID: $user_id e provider ID: $email_id");
             }
 
             $this->initializeOAuthParameters($emailAccount);
@@ -123,11 +125,11 @@ class GmailOAuth2Service {
         }
     }
 
-    public function refreshAccessToken($user_id, $provider_id) {
+    public function refreshAccessToken($user_id, $email_id) {
         try {
-            $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $provider_id);
+            $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $email_id);
             if (!$emailAccount) {
-                throw new Exception("Conta de e-mail não encontrada para o usuário ID: $user_id e provider ID: $provider_id");
+                throw new Exception("Conta de e-mail não encontrada para o usuário ID: $user_id e email ID: $email_id");
             }
 
             $this->initializeOAuthParameters($emailAccount);
@@ -172,11 +174,11 @@ class GmailOAuth2Service {
         }
     }
 
-    public function listFolders($user_id, $provider_id) {
+    public function listFolders($user_id, $email_id) {
         try {
-            $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $provider_id);
+            $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $email_id);
             if (!$emailAccount) {
-                throw new Exception("Conta de e-mail não encontrada para o usuário ID: $user_id e provider ID: $provider_id");
+                throw new Exception("Conta de e-mail não encontrada para o usuário ID: $user_id e email_id ID: $email_id");
             }
 
             $accessToken = $emailAccount['oauth_token'];
@@ -202,20 +204,20 @@ class GmailOAuth2Service {
         }
     }
 
-    public function listEmails($user_id, $provider_id, $labelIds = []) {
+    public function listEmails($user_id, $email_id, $labelIds = []) {
         try {
-            $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $provider_id);
+            $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $email_id);
             if (!$emailAccount) {
-                throw new Exception("Conta de e-mail não encontrada para o usuário ID: $user_id e provider ID: $provider_id");
+                throw new Exception("Conta de e-mail não encontrada para o usuário ID: $user_id e email ID: $email_id");
             }
-
+    
             $accessToken = $emailAccount['oauth_token'];
-
+    
             $query = [];
             if (!empty($labelIds)) {
                 $query['labelIds'] = implode(',', $labelIds);
             }
-
+    
             $response = $this->httpClient->get('https://gmail.googleapis.com/gmail/v1/users/me/messages', [
                 'headers' => [
                     'Authorization' => 'Bearer ' . $accessToken,
@@ -223,14 +225,13 @@ class GmailOAuth2Service {
                 ],
                 'query' => $query
             ]);
-
+    
             $body = json_decode($response->getBody(), true);
-
             $messages = $body['messages'] ?? [];
-
+    
             foreach ($messages as $message) {
                 $messageId = $message['id'];
-
+    
                 $messageResponse = $this->httpClient->get("https://gmail.googleapis.com/gmail/v1/users/me/messages/$messageId", [
                     'headers' => [
                         'Authorization' => 'Bearer ' . $accessToken,
@@ -240,10 +241,10 @@ class GmailOAuth2Service {
                         'format' => 'full'
                     ]
                 ]);
-
+    
                 $messageBody = json_decode($messageResponse->getBody(), true);
                 $emailData = $this->parseGmailMessage($messageBody);
-
+    
                 $existingEmail = $this->emailModel->getEmailByMessageId($messageId, $user_id);
                 if ($existingEmail) {
                     $needsUpdate = false;
@@ -289,13 +290,29 @@ class GmailOAuth2Service {
                         $messageId,
                         $emailData['conversationId']
                     );
-
+    
+                    $event = [
+                        'Status' => 'Success',
+                        'Message' => 'Email received successfully',
+                        'Data' => [
+                            'email_id' => $emailId,
+                            'subject' => $emailData['subject'],
+                            'from' => $emailData['fromAddress'],
+                            'to' => $emailData['toRecipients'],
+                            'received_at' => $emailData['date_received'],
+                            'user_id' => $user_id,
+                            'folder' => $emailData['folderName'],
+                            'uuid' => uniqid(),
+                        ]
+                    ];
+                    $this->webhookService->triggerEvent($event, $user_id);
+    
                     if (!empty($messageBody['payload']['parts'])) {
                         foreach ($messageBody['payload']['parts'] as $part) {
                             if (isset($part['filename']) && !empty($part['filename']) && isset($part['body']['attachmentId'])) {
                                 $attachmentId = $part['body']['attachmentId'];
                                 $attachment = $this->getGmailAttachment($accessToken, $messageId, $attachmentId);
-
+    
                                 if ($attachment && isset($attachment['data'])) {
                                     $contentBytes = base64_decode(strtr($attachment['data'], '-_', '+/'));
                                     if ($contentBytes !== false) {
@@ -313,9 +330,9 @@ class GmailOAuth2Service {
                     }
                 }
             }
-
+    
             return true;
-
+    
         } catch (RequestException $e) {
             $this->errorLogController->logError('Erro ao listar e-mails: ' . $e->getMessage(), __FILE__, __LINE__, $user_id);
             throw new Exception('Erro ao listar e-mails: ' . $e->getMessage());
@@ -324,6 +341,7 @@ class GmailOAuth2Service {
             throw new Exception('Erro ao listar e-mails: ' . $e->getMessage());
         }
     }
+    
 
     private function parseGmailMessage($message) {
         $payload = $message['payload'];
@@ -414,11 +432,11 @@ class GmailOAuth2Service {
         }
     }
 
-    public function moveEmail($user_id, $provider_id, $messageId, $destinationLabelId) {
+    public function moveEmail($user_id, $email_id, $messageId, $destinationLabelId) {
         try {
-            $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $provider_id);
+            $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $email_id);
             if (!$emailAccount) {
-                throw new Exception("Conta de e-mail não encontrada para o usuário ID: $user_id e provider ID: $provider_id");
+                throw new Exception("Conta de e-mail não encontrada para o usuário ID: $user_id e email ID: $email_id");
             }
     
             $accessToken = $emailAccount['oauth_token'];
@@ -463,11 +481,11 @@ class GmailOAuth2Service {
     }
     
 
-    public function deleteEmail($user_id, $provider_id, $messageId) {
+    public function deleteEmail($user_id, $email_id, $messageId) {
         try {
-            $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $provider_id);
+            $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $email_id);
             if (!$emailAccount) {
-                throw new Exception("Conta de e-mail não encontrada para o usuário ID: $user_id e provider ID: $provider_id");
+                throw new Exception("Conta de e-mail não encontrada para o usuário ID: $user_id e email ID: $email_id");
             }
 
             $accessToken = $emailAccount['oauth_token'];
@@ -491,11 +509,11 @@ class GmailOAuth2Service {
         }
     }
 
-    public function listEmailsByConversation($user_id, $provider_id, $conversationId) {
+    public function listEmailsByConversation($user_id, $email_id, $conversationId) {
         try {
-            $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $provider_id);
+            $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $email_id);
             if (!$emailAccount) {
-                throw new Exception("Conta de e-mail não encontrada para o usuário ID: $user_id e provider ID: $provider_id");
+                throw new Exception("Conta de e-mail não encontrada para o usuário ID: $user_id e email ID: $email_id");
             }
 
             $accessToken = $emailAccount['oauth_token'];
