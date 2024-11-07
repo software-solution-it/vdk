@@ -206,34 +206,48 @@ class EmailService {
         $query = "SELECT e.* 
                   FROM emails e 
                   WHERE e.id = :email_id";
-    
+        
         $stmt = $this->db->prepare($query);
         $stmt->bindParam(':email_id', $email_id);
         $stmt->execute();
         $email = $stmt->fetch(PDO::FETCH_ASSOC);
     
         if (!$email) {
-            return [];
+            return []; 
         }
     
+        $firstEmailId = $email['id'];
         $firstEmailReference = $email['references'] ?? null;
-        if (empty($firstEmailReference)) {
-            $firstEmailReference = $email['in_reply_to'] ?? null;
+        $firstEmailInReplyTo = $email['in_reply_to'] ?? null;
+    
+        $threadEmails = [];
+    
+        if (empty($firstEmailReference) && empty($firstEmailInReplyTo)) {
+            $threadEmails[] = $email;
+    
+            $query = "SELECT e.* 
+                      FROM emails e 
+                      WHERE e.in_reply_to = :in_reply_to 
+                      ORDER BY e.date_received ASC"; 
+    
+            $stmt = $this->db->prepare($query);
+            $stmt->bindParam(':in_reply_to', $firstEmailId);
+            $stmt->execute();
+            $replies = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+            $threadEmails = array_merge($threadEmails, $replies); 
+        } else {
+            $query = "SELECT e.* 
+                      FROM emails e 
+                      WHERE e.references = :references 
+                      ORDER BY e.date_received ASC"; 
+    
+            $stmt = $this->db->prepare($query);
+            $stmt->bindParam(':references', $firstEmailReference);
+            $stmt->execute();
+            $threadEmails = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            array_unshift($threadEmails, $email); 
         }
-    
-        if (empty($firstEmailReference)) {
-            return [$email];
-        }
-    
-        $query = "SELECT e.* 
-                  FROM emails e 
-                  WHERE e.references = :references 
-                  ORDER BY e.date_received ASC"; 
-    
-        $stmt = $this->db->prepare($query);
-        $stmt->bindParam(':references', $firstEmailReference);
-        $stmt->execute();
-        $threadEmails = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
         foreach ($threadEmails as &$threadEmail) {
             if (!empty($threadEmail['content'])) {
@@ -241,8 +255,9 @@ class EmailService {
             }
         }
     
-        return $threadEmails;
+        return $threadEmails; 
     }
+    
     
 
     public function checkEmailRecords($domain) {
