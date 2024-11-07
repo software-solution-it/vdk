@@ -35,7 +35,7 @@ class UserController {
     public function getUserById() {
         header('Content-Type: application/json');
         $id = $_GET['id'] ?? null;
-        if ($id) {
+        if ($id) { 
             $user = $this->userService->getUserById($id);
             if ($user) {
                 http_response_code(200);

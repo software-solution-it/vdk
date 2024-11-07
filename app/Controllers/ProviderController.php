@@ -12,7 +12,7 @@ class ProviderController {
 
     public function __construct() {
         $database = new Database();
-        $db = $database->getConnection();
+        $db = $database->getConnection(); 
         $this->providerService = new ProviderService($db);
         $this->errorLogController = new ErrorLogController();
     }

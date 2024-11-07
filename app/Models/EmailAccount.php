@@ -81,7 +81,7 @@ class EmailAccount {
 
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':user_id', $user_id);
-            $stmt->bindParam(':provider_id', $email_id);
+            $stmt->bindParam(':email_id', $email_id);
     
             $stmt->execute();
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
