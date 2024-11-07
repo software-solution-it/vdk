@@ -307,8 +307,8 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                                 continue;
                             }
                 
-                            $emailId = $this->emailModel->saveAttachment(
-                                $messageId,
+                            $this->emailModel->saveAttachment(
+                                $emailId,
                                 $filename,
                                 $fullMimeType,
                                 strlen($contentBytes),
