@@ -44,7 +44,7 @@ class IMAPController {
             echo json_encode([
                 'Status' => $result['status'] ? 'Success' : 'Error',
                 'Message' => $result['status'] ? 'Conexão IMAP testada com sucesso.' : 'Falha na conexão IMAP.',
-                'Data' => $result['status'] ? null : $result['message']
+                'Data' => $result['status'] ? $result['folders'] : $result['message']
             ]);
     
         } catch (\Exception $e) {
@@ -56,5 +56,6 @@ class IMAPController {
             ]);
         }
     }
+    
     
 }
