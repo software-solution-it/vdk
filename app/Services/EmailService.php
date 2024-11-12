@@ -256,32 +256,46 @@ class EmailService {
             $email['content'] = base64_encode($email['content']);
         }
     
-        // 2. Pegar o primeiro ID de referência ou usar o próprio ID do email
+        // 2. Pegar o primeiro ID de referência, ou usar o próprio ID do email se não houver referências
         $firstReference = trim(explode(',', $email['references'] ?? '')[0]) ?: $email['id'];
     
-        // 3. Buscar todos os emails no encadeamento com `LIKE` no campo `references`
+        // 3. Buscar o primeiro email no encadeamento usando o ID do firstReference
+        $queryFirstEmail = "SELECT e.* FROM emails e WHERE e.id = :firstReference";
+        $stmtFirstEmail = $this->db->prepare($queryFirstEmail);
+        $stmtFirstEmail->bindParam(':firstReference', $firstReference, PDO::PARAM_STR);
+        $stmtFirstEmail->execute();
+        $firstEmail = $stmtFirstEmail->fetch(PDO::FETCH_ASSOC);
+    
+        // 4. Codificar o conteúdo do primeiro email, se encontrado
+        if ($firstEmail && !empty($firstEmail['content'])) {
+            $firstEmail['content'] = base64_encode($firstEmail['content']);
+        }
+    
+        // 5. Buscar todos os emails no encadeamento que referenciem o firstReference
         $queryThread = "SELECT e.* 
                         FROM emails e 
-                        WHERE e.id = :firstReference 
-                        OR e.references LIKE :likeReference 
+                        WHERE e.id != :firstReference 
+                        AND (e.references LIKE :likeReference OR e.in_reply_to = :firstReference) 
                         ORDER BY e.date_received ASC";
     
         $stmtThread = $this->db->prepare($queryThread);
         $stmtThread->bindValue(':firstReference', $firstReference, PDO::PARAM_STR);
         $stmtThread->bindValue(':likeReference', '%' . $firstReference . '%', PDO::PARAM_STR);
-        
+    
         $stmtThread->execute();
         $threadEmails = $stmtThread->fetchAll(PDO::FETCH_ASSOC);
     
-        // 4. Codificar conteúdo em base64 para cada email no encadeamento
+        // 6. Codificar conteúdo em base64 para cada email no encadeamento
         foreach ($threadEmails as &$threadEmail) {
             if (!empty($threadEmail['content'])) {
                 $threadEmail['content'] = base64_encode($threadEmail['content']);
             }
         }
     
-        return $threadEmails;
+        // 7. Combinar o primeiro email com os demais emails do encadeamento
+        return array_merge([$firstEmail], $threadEmails);
     }
+    
     
     
     
