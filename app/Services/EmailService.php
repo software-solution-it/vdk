@@ -240,9 +240,8 @@ class EmailService {
             return false;
         }
     }
-
     public function listEmails($email_id) {
-        // Buscar email específico
+        // 1. Buscar email específico
         $querySingle = "SELECT e.* FROM emails e WHERE e.id = :email_id";
         $stmtSingle = $this->db->prepare($querySingle);
         $stmtSingle->bindParam(':email_id', $email_id, PDO::PARAM_INT);
@@ -257,48 +256,34 @@ class EmailService {
             $email['content'] = base64_encode($email['content']);
         }
     
-        // Obter emails anteriores usando cada referência individual no campo `references`
-        $parentEmails = [];
-        $references = array_map('trim', explode(',', $email['references'])); // Quebrar pelas vírgulas e remover espaços
+        // 2. Obter todos os IDs para buscar o encadeamento
+        $allReferences = array_map('trim', explode(',', $email['references'] ?? ''));
+        $allReferences[] = $email['id']; // Incluir o ID do próprio email na lista
+        $allReferences = array_unique(array_filter($allReferences)); // Remover duplicatas e itens vazios
     
-        foreach ($references as $referenceId) {
-            // Remover os caracteres de "<>" em torno dos IDs se existirem
-            $cleanReferenceId = trim($referenceId, "<>");
-            
-            // Usar LIKE para garantir correspondência parcial com o ID
-            $queryParent = "SELECT e.* FROM emails e WHERE e.id LIKE :reference_id";
-            $stmtParent = $this->db->prepare($queryParent);
-            $likeReferenceId = '%' . $cleanReferenceId . '%';
-            $stmtParent->bindParam(':reference_id', $likeReferenceId, PDO::PARAM_STR);
-            $stmtParent->execute();
-            
-            $parentEmail = $stmtParent->fetch(PDO::FETCH_ASSOC);
+        // Preparar a consulta de encadeamento
+        $placeholders = implode(',', array_fill(0, count($allReferences), '?')); // Ex: ?, ?, ?, ...
+        $queryThread = "SELECT e.* 
+                        FROM emails e 
+                        WHERE e.id IN ($placeholders)
+                        OR e.in_reply_to IN ($placeholders)
+                        OR " . implode(" OR ", array_map(fn($id) => "e.references LIKE ?", $allReferences)) . "
+                        ORDER BY e.date_received ASC";
     
-            if ($parentEmail) {
-                array_unshift($parentEmails, $parentEmail); // Adiciona no início para manter a ordem cronológica
-            }
+        $stmtThread = $this->db->prepare($queryThread);
+        
+        // 3. Vincular valores para cada parâmetro
+        $paramIndex = 1;
+        foreach ($allReferences as $ref) {
+            $stmtThread->bindValue($paramIndex++, $ref, PDO::PARAM_STR);           // e.id IN
+            $stmtThread->bindValue($paramIndex++, $ref, PDO::PARAM_STR);           // e.in_reply_to IN
+            $stmtThread->bindValue($paramIndex++, '%' . $ref . '%', PDO::PARAM_STR); // e.references LIKE
         }
     
-        // Combinar o email inicial com emails anteriores
-        $threadEmails = array_merge($parentEmails, [$email]);
+        $stmtThread->execute();
+        $threadEmails = $stmtThread->fetchAll(PDO::FETCH_ASSOC);
     
-        // Buscar respostas subsequentes
-        $queryReplies = "SELECT e.* 
-                         FROM emails e 
-                         WHERE e.in_reply_to = :email_id 
-                         OR e.references LIKE :like_email_id 
-                         ORDER BY e.date_received ASC";
-    
-        $stmtReplies = $this->db->prepare($queryReplies);
-        $stmtReplies->bindParam(':email_id', $email_id, PDO::PARAM_INT);
-        $likeEmailId = '%' . $email_id . '%';
-        $stmtReplies->bindParam(':like_email_id', $likeEmailId, PDO::PARAM_STR);
-        $stmtReplies->execute();
-    
-        $replies = $stmtReplies->fetchAll(PDO::FETCH_ASSOC);
-        $threadEmails = array_merge($threadEmails, $replies);
-    
-        // Codificar conteúdo em base64
+        // 4. Codificar conteúdo em base64 para cada email no encadeamento
         foreach ($threadEmails as &$threadEmail) {
             if (!empty($threadEmail['content'])) {
                 $threadEmail['content'] = base64_encode($threadEmail['content']);
@@ -307,6 +292,7 @@ class EmailService {
     
         return $threadEmails;
     }
+    
     
     
     
