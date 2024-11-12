@@ -239,8 +239,7 @@ class EmailService {
             error_log("Erro ao enviar e-mail: " . $e->getMessage());
             return false;
         }
-    }
-    public function listEmails($email_id) {
+    }public function listEmails($email_id) {
         // 1. Buscar email específico
         $querySingle = "SELECT e.* FROM emails e WHERE e.id = :email_id";
         $stmtSingle = $this->db->prepare($querySingle);
@@ -260,7 +259,7 @@ class EmailService {
         $firstReference = trim(explode(',', $email['references'] ?? '')[0]) ?: $email['id'];
     
         // 3. Buscar o primeiro email no encadeamento usando o ID do firstReference
-        $queryFirstEmail = "SELECT e.* FROM emails e WHERE e.email_id = :firstReference";
+        $queryFirstEmail = "SELECT e.* FROM emails e WHERE e.id = :firstReference";
         $stmtFirstEmail = $this->db->prepare($queryFirstEmail);
         $stmtFirstEmail->bindParam(':firstReference', $firstReference, PDO::PARAM_STR);
         $stmtFirstEmail->execute();
@@ -271,7 +270,7 @@ class EmailService {
             $firstEmail['content'] = base64_encode($firstEmail['content']);
         }
     
-        // 5. Buscar todos os emails no encadeamento que referenciem o firstReference
+        // 5. Buscar todos os emails que referenciam ou respondem ao `firstReference` para construir o encadeamento completo
         $queryThread = "SELECT e.* 
                         FROM emails e 
                         WHERE e.id != :firstReference 
@@ -292,7 +291,7 @@ class EmailService {
             }
         }
     
-        // 7. Combinar o primeiro email com os demais emails do encadeamento
+        // 7. Combinar o primeiro email com os demais emails do encadeamento para obter a lista completa
         return array_merge([$firstEmail], $threadEmails);
     }
     
