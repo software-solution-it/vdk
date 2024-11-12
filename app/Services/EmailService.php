@@ -240,7 +240,11 @@ class EmailService {
             return false;
         }
     }
-    public function listEmails($email_id) {
+    public function listEmails($email_id, $limit = 10, $offset = 0) {
+        $limit = (int)$limit;
+        $offset = (int)$offset;
+    
+        // 1. Buscar email específico
         $querySingle = "SELECT e.* FROM emails e WHERE e.id = :email_id";
         $stmtSingle = $this->db->prepare($querySingle);
         $stmtSingle->bindParam(':email_id', $email_id, PDO::PARAM_INT);
@@ -251,43 +255,33 @@ class EmailService {
             return [];
         }
     
-        if (!empty($email['content'])) {
-            $email['content'] = base64_encode($email['content']);
-        }
+        // 2. Pegar o primeiro Message-ID de referência, ou usar o próprio Message-ID do email se não houver referências
+        $references = isset($email['references']) ? explode(',', $email['references']) : [];
+        $firstReference = trim($references[0] ?? '') ?: $email['email_id'];
     
-
-        $firstReference = trim(explode(',', $email['references'] ?? '')[0]) ?: $email['id'];
-    
-        $queryFirstEmail = "SELECT e.* FROM emails e WHERE e.email_id = :firstReference";
-        $stmtFirstEmail = $this->db->prepare($queryFirstEmail);
-        $stmtFirstEmail->bindParam(':firstReference', $firstReference, PDO::PARAM_STR);
-        $stmtFirstEmail->execute();
-        $firstEmail = $stmtFirstEmail->fetch(PDO::FETCH_ASSOC);
-    
-        if ($firstEmail && !empty($firstEmail['content'])) {
-            $firstEmail['content'] = base64_encode($firstEmail['content']);
-        }
-    
+        // 3. Buscar todos os emails relacionados à thread
         $queryThread = "SELECT e.* 
                         FROM emails e 
-                        WHERE e.id != :firstReference 
-                        AND (e.references LIKE :likeReference OR e.in_reply_to = :firstReference) 
-                        ORDER BY e.date_received ASC";
+                        WHERE e.email_id = :firstReference 
+                           OR e.in_reply_to = :firstReference
+                        ORDER BY e.date_received ASC
+                        LIMIT :limit OFFSET :offset";
     
         $stmtThread = $this->db->prepare($queryThread);
         $stmtThread->bindValue(':firstReference', $firstReference, PDO::PARAM_STR);
-        $stmtThread->bindValue(':likeReference', '%' . $firstReference . '%', PDO::PARAM_STR);
-    
+        $stmtThread->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmtThread->bindValue(':offset', $offset, PDO::PARAM_INT);
         $stmtThread->execute();
-        $threadEmails = $stmtThread->fetchAll(PDO::FETCH_ASSOC);
+        $emails = $stmtThread->fetchAll(PDO::FETCH_ASSOC);
     
-        foreach ($threadEmails as &$threadEmail) {
+        // 4. Codificar conteúdo em base64 para cada email
+        foreach ($emails as &$threadEmail) {
             if (!empty($threadEmail['content'])) {
                 $threadEmail['content'] = base64_encode($threadEmail['content']);
             }
         }
-
-        return array_merge([$firstEmail], $threadEmails);
+    
+        return $emails;
     }
     
     
