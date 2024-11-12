@@ -24,7 +24,6 @@ class ConnectionSMTP {
 
         $smtp_host = $emailAccount['smtp_host'];
         $smtp_port = $emailAccount['smtp_port'];
-        $smtp_username = $emailAccount['username'];
         $smtp_password = $emailAccount['password']; 
         $encryption = $emailAccount['encryption'] ?? 'tls';
 
@@ -34,12 +33,11 @@ class ConnectionSMTP {
             $mail->isSMTP();
             $mail->Host       = $smtp_host;
             $mail->SMTPAuth   = true;
-            $mail->Username   = $smtp_username;
             $mail->Password   = $smtp_password;
             $mail->SMTPSecure = $encryption;
             $mail->Port       = $smtp_port;
 
-            $mail->setFrom($smtp_username); 
+            $mail->setFrom("Teste SMTP"); 
             $mail->addAddress($recipient);
             $mail->isHTML(true);
             $mail->Subject = 'SMTP Test Email';
