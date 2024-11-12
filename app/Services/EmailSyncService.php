@@ -211,10 +211,10 @@ public function consumeEmailSyncQueue($user_id, $provider_id, $queue_name) {
     
 
 
-    private function generateQueueName($user_id, $provider_id) {
-        return 'email_sync_queue_' . $user_id . '_' . $provider_id;
+    private function generateQueueName($user_id, $provider_id)
+    {
+        return 'email_sync_queue_' . $user_id . '_' . $provider_id . '_' . time();
     }
-    
 
     private function syncEmails($user_id, $email_account_id, $provider_id, $email, $imap_host, $imap_port, $password)
     {
