@@ -45,7 +45,7 @@ class ConnectionIMAP {
             }, $folders);
     
             $emailFolderModel = new EmailFolder($this->conn);
-            $emailFolderModel->saveFolders($email_id, $folderNames);
+            $emailFolderModel->syncFolders($email_id, $folderNames);
     
             return [
                 'status' => true,
