@@ -259,30 +259,31 @@ class EmailService {
         $references = isset($email['references']) ? explode(',', $email['references']) : [];
         $firstReference = trim($references[0] ?? '') ?: $email['email_id'];
     
-        // 3. Buscar todos os emails relacionados à thread
+        // 3. Buscar todos os emails relacionados à thread com LIMIT e OFFSET
         $queryThread = "SELECT e.* 
                         FROM emails e 
                         WHERE (e.email_id = :firstReference OR e.references LIKE :likeReference OR e.in_reply_to = :firstReference) 
-                        ORDER BY e.date_received ASC";
+                        ORDER BY e.date_received ASC
+                        LIMIT :limit OFFSET :offset";
     
         $stmtThread = $this->db->prepare($queryThread);
         $stmtThread->bindValue(':firstReference', $firstReference, PDO::PARAM_STR);
         $stmtThread->bindValue(':likeReference', '%' . $firstReference . '%', PDO::PARAM_STR);
+        $stmtThread->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmtThread->bindValue(':offset', $offset, PDO::PARAM_INT);
         $stmtThread->execute();
-        $allEmails = $stmtThread->fetchAll(PDO::FETCH_ASSOC);
+        $emails = $stmtThread->fetchAll(PDO::FETCH_ASSOC);
     
         // 4. Codificar conteúdo em base64 para cada email
-        foreach ($allEmails as &$threadEmail) {
+        foreach ($emails as &$threadEmail) {
             if (!empty($threadEmail['content'])) {
                 $threadEmail['content'] = base64_encode($threadEmail['content']);
             }
         }
     
-        // 5. Aplicar LIMIT e OFFSET ao array de emails
-        $slicedEmails = array_slice($allEmails, $offset, $limit);
-    
-        return $slicedEmails;
+        return $emails;
     }
+    
     
     
     
