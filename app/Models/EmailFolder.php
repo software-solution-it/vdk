@@ -12,14 +12,32 @@ class EmailFolder {
         $this->conn = $db;
     }
 
-    public function saveFolders($email_id, $folders) {
-        $query = "INSERT INTO " . $this->table . " (email_id, folder_name) VALUES (:email_id, :folder_name)";
-        $stmt = $this->conn->prepare($query);
+    public function syncFolders($email_id, $folders) {
+        $querySelect = "SELECT folder_name FROM " . $this->table . " WHERE email_id = :email_id";
+        $stmtSelect = $this->conn->prepare($querySelect);
+        $stmtSelect->bindParam(':email_id', $email_id);
+        $stmtSelect->execute();
+        $existingFolders = $stmtSelect->fetchAll(PDO::FETCH_COLUMN);
 
-        foreach ($folders as $folder_name) {
-            $stmt->bindParam(':email_id', $email_id);
-            $stmt->bindParam(':folder_name', $folder_name);
-            $stmt->execute();
+        $foldersToAdd = array_diff($folders, $existingFolders);
+        $foldersToDelete = array_diff($existingFolders, $folders); 
+
+        $queryInsert = "INSERT INTO " . $this->table . " (email_id, folder_name) VALUES (:email_id, :folder_name)";
+        $stmtInsert = $this->conn->prepare($queryInsert);
+        
+        foreach ($foldersToAdd as $folder_name) {
+            $stmtInsert->bindParam(':email_id', $email_id);
+            $stmtInsert->bindParam(':folder_name', $folder_name);
+            $stmtInsert->execute();
+        }
+
+        $queryDelete = "DELETE FROM " . $this->table . " WHERE email_id = :email_id AND folder_name = :folder_name";
+        $stmtDelete = $this->conn->prepare($queryDelete);
+        
+        foreach ($foldersToDelete as $folder_name) {
+            $stmtDelete->bindParam(':email_id', $email_id);
+            $stmtDelete->bindParam(':folder_name', $folder_name);
+            $stmtDelete->execute();
         }
 
         return true;
