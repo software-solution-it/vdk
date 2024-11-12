@@ -243,7 +243,7 @@ class EmailService {
 
     public function listEmails($email_id, $limit = 10, $offset = 0) {
         if ($limit === 1) {
-            $querySingle = "SELECT e.* FROM emails e WHERE e.email_id = :email_id";
+            $querySingle = "SELECT e.* FROM emails e WHERE e.id = :email_id";
             $stmtSingle = $this->db->prepare($querySingle);
             $stmtSingle->bindParam(':email_id', $email_id, PDO::PARAM_INT);
             $stmtSingle->execute();
@@ -256,7 +256,7 @@ class EmailService {
             return $email ? [$email] : [];
         }
     
-        $query = "SELECT e.* FROM emails e WHERE e.email_id = :email_id";
+        $query = "SELECT e.* FROM emails e WHERE e.id = :email_id";
         $stmt = $this->db->prepare($query);
         $stmt->bindParam(':email_id', $email_id, PDO::PARAM_INT);
         $stmt->execute();
@@ -269,27 +269,27 @@ class EmailService {
         $threadEmails = [];
     
         $parentEmails = [];
-        $currentParentId = $email['in_reply_to'];
+        $currentInReplyTo = $email['in_reply_to'];
     
-        while ($currentParentId) {
-            $queryParent = "SELECT e.* FROM emails e WHERE e.email_id = :parent_id";
+        while ($currentInReplyTo) {
+            $queryParent = "SELECT e.* FROM emails e WHERE e.id = :in_reply_to";
             $stmtParent = $this->db->prepare($queryParent);
-            $stmtParent->bindParam(':parent_id', $currentParentId, PDO::PARAM_INT);
+            $stmtParent->bindParam(':in_reply_to', $currentInReplyTo, PDO::PARAM_INT);
             $stmtParent->execute();
             $parentEmail = $stmtParent->fetch(PDO::FETCH_ASSOC);
     
             if ($parentEmail) {
-                array_unshift($parentEmails, $parentEmail); 
-                $currentParentId = $parentEmail['in_reply_to'];
+                array_unshift($parentEmails, $parentEmail); // Adiciona ao início para manter a ordem cronológica
+                $currentInReplyTo = $parentEmail['in_reply_to'];
             } else {
                 break;
             }
         }
     
-
+        // Adicionar o email inicial e o histórico retroativo à lista
         $threadEmails = array_merge($parentEmails, [$email]);
     
-
+        // Passo 2: Buscar respostas posteriores ao email especificado
         $queryReplies = "SELECT e.* 
                          FROM emails e 
                          WHERE e.in_reply_to LIKE :like_email_id 
@@ -306,7 +306,8 @@ class EmailService {
         
         $replies = $stmtReplies->fetchAll(PDO::FETCH_ASSOC);
         $threadEmails = array_merge($threadEmails, $replies);
-
+    
+        // Codificar o conteúdo de cada email na thread
         foreach ($threadEmails as &$threadEmail) {
             if (!empty($threadEmail['content'])) {
                 $threadEmail['content'] = base64_encode($threadEmail['content']);
