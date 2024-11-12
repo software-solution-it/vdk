@@ -260,7 +260,7 @@ class EmailService {
         $firstReference = trim(explode(',', $email['references'] ?? '')[0]) ?: $email['id'];
     
         // 3. Buscar o primeiro email no encadeamento usando o ID do firstReference
-        $queryFirstEmail = "SELECT e.* FROM emails e WHERE e.id = :firstReference";
+        $queryFirstEmail = "SELECT e.* FROM emails e WHERE e.email_id = :firstReference";
         $stmtFirstEmail = $this->db->prepare($queryFirstEmail);
         $stmtFirstEmail->bindParam(':firstReference', $firstReference, PDO::PARAM_STR);
         $stmtFirstEmail->execute();
