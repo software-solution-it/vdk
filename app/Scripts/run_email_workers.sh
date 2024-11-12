@@ -27,14 +27,25 @@ sync_email_in_loop() {
 }
 
 while true; do
-    EMAIL_LIST=$(mysql -u ${DATABASE_USER} -p${DATABASE_PASS} -D ${DATABASE_NAME} -sse "SELECT user_id, id as email_id FROM email_accounts;")
+    EMAIL_LIST=$(mysql --disable-cache -u ${DATABASE_USER} -p${DATABASE_PASS} -D ${DATABASE_NAME} -sse "SELECT user_id, id as email_id, updated_at FROM email_accounts;")
 
-    while IFS=$'\t' read -r user_id email_id; do
-        if [[ -z "${active_workers[${email_id}]}" || ! -e "/proc/${active_workers[${email_id}]}" ]]; then
+    while IFS=$'\t' read -r user_id email_id updated_at; do
+        current_key="${user_id}_${email_id}"
+        
+        if [[ -z "${active_workers[${email_id}]}" || "${active_workers[${email_id}]}" != "$updated_at" ]]; then
+            pkill -f "email_sync_worker.php ${user_id} ${email_id}" 2>/dev/null
+            
             sync_email_in_loop "${user_id}" "${email_id}" &
-            active_workers[${email_id}]=$!
+            active_workers[${email_id}]=$updated_at
         fi
     done <<< "$EMAIL_LIST"
 
-    sleep 15
+    for email_id in "${!active_workers[@]}"; do
+        if ! grep -q "${email_id}" <<< "$EMAIL_LIST"; then
+            pkill -f "email_sync_worker.php .* ${email_id}" 2>/dev/null
+            unset active_workers[${email_id}]
+        fi
+    done
+
+    sleep 60
 done
