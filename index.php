@@ -211,7 +211,7 @@ switch ($request_uri[0]) {
             $controller->getEmailAccountByUserId($userId);
         } else {
             http_response_code(400);
-            echo json_encode(['message' => 'User ID is required']);
+            echo json_encode(['message' => 'user_id is required']);
         }
         break;
 
@@ -223,7 +223,7 @@ switch ($request_uri[0]) {
                 $controller->getEmailAccountById($id);
             } else {
                 http_response_code(400);
-                echo json_encode(['message' => 'User ID is required']);
+                echo json_encode(['message' => 'id is required']);
             }
             break;
 
