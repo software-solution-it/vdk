@@ -166,53 +166,6 @@ class OutlookOAuth2Controller {
         }
     }
 
-    public function authenticateImap()
-    {
-        header('Content-Type: application/json');
-        $data = json_decode(file_get_contents('php://input'), true);
-
-        if (!isset($data['user_id']) || !isset($data['email_id'])) {
-            http_response_code(400);
-            echo json_encode([
-                'Status' => 'Error',
-                'Message' => 'user_id and email_id are required.',
-                'Data' => null
-            ]);
-            return;
-        }
-
-        $user_id = intval($data['user_id']);
-        $email_id = intval($data['email_id']);
-
-        if ($user_id <= 0 || $email_id <= 0) {
-            http_response_code(400);
-            echo json_encode([
-                'Status' => 'Error',
-                'Message' => 'Invalid user_id or email_id.',
-                'Data' => null
-            ]);
-            return;
-        }
-
-        try {
-            $result = $this->outlookOAuth2Service->authenticateImap($user_id, $email_id);
-            http_response_code(200);
-            echo json_encode([
-                'Status' => 'Success',
-                'Message' => 'Authenticated successfully.',
-                'Data' => null
-            ]);
-        } catch (Exception $e) {
-            $this->errorLogController->logError("Erro ao autenticar no IMAP: " . $e->getMessage(), __FILE__, __LINE__);
-            http_response_code(500);
-            echo json_encode([
-                'Status' => 'Error',
-                'Message' => 'Erro ao autenticar no IMAP: ' . $e->getMessage(),
-                'Data' => null
-            ]);
-        }
-    }
-
     public function moveEmail()
     {
         header('Content-Type: application/json');

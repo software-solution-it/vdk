@@ -175,6 +175,7 @@ class EmailService {
     
             if ($mail->send()) {
                 $event = [
+                    'Code' => 200,
                     'Status' => 'Success',
                     'Message' => 'Email sent successfully', 
                     'Data' => [ 
@@ -184,6 +185,7 @@ class EmailService {
                         'cc' => $ccEmails,
                         'bcc' => $bccEmails,
                         'sent_at' => date('Y-m-d H:i:s'),
+                        'email_account_id' => $email_account_id,
                         'user_id' => $user_id
                     ]
                 ];
@@ -192,10 +194,47 @@ class EmailService {
     
                 return true;
             } else {
+                $event = [
+                    'Code' => 400,
+                    'Status' => 'Failed',
+                    'Message' => 'Failed to send email', 
+                    'Data' => [ 
+                        'subject' => $subject,
+                        'from' => $smtpConfig['email'],
+                        'to' => $recipientEmails,
+                        'cc' => $ccEmails,
+                        'bcc' => $bccEmails,
+                        'sent_at' => date('Y-m-d H:i:s'),
+                        'email_account_id' => $email_account_id,
+                        'user_id' => $user_id
+                    ]
+                ];
+    
+                $this->webhookService->triggerEvent($event, $user_id);
+
                 error_log("Falha ao enviar o e-mail.");
                 return false;
             }
         } catch (Exception $e) {
+
+            $event = [
+                'Code' => 500,
+                'Status' => 'Failed',
+                'Message' => 'Failed to send email', 
+                'Data' => [ 
+                    'subject' => $subject,
+                    'from' => $smtpConfig['email'],
+                    'to' => $recipientEmails,
+                    'cc' => $ccEmails,
+                    'bcc' => $bccEmails,
+                    'sent_at' => date('Y-m-d H:i:s'),
+                    'email_account_id' => $email_account_id,
+                    'user_id' => $user_id
+                ]
+            ];
+
+            $this->webhookService->triggerEvent($event, $user_id);
+
             $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
             error_log("Erro ao enviar e-mail: " . $e->getMessage());
             return false;
@@ -216,38 +255,23 @@ class EmailService {
             return []; 
         }
     
-        $firstEmailId = $email['id'];
-        $firstEmailReference = $email['references'] ?? null;
-        $firstEmailInReplyTo = $email['in_reply_to'] ?? null;
-    
         $threadEmails = [];
     
-        if (empty($firstEmailReference) && empty($firstEmailInReplyTo)) {
-            $threadEmails[] = $email;
+        $threadEmails[] = $email;
     
-            $query = "SELECT e.* 
-                      FROM emails e 
-                      WHERE e.in_reply_to = :in_reply_to 
-                      ORDER BY e.date_received ASC"; 
+        $queryReplies = "SELECT e.* 
+                         FROM emails e 
+                         WHERE e.in_reply_to = :in_reply_to 
+                         OR e.references = :references 
+                         ORDER BY e.date_received ASC"; 
     
-            $stmt = $this->db->prepare($query);
-            $stmt->bindParam(':in_reply_to', $firstEmailId);
-            $stmt->execute();
-            $replies = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-            $threadEmails = array_merge($threadEmails, $replies); 
-        } else {
-            $query = "SELECT e.* 
-                      FROM emails e 
-                      WHERE e.references = :references 
-                      ORDER BY e.date_received ASC"; 
-    
-            $stmt = $this->db->prepare($query);
-            $stmt->bindParam(':references', $firstEmailReference);
-            $stmt->execute();
-            $threadEmails = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            array_unshift($threadEmails, $email); 
-        }
+        $stmtReplies = $this->db->prepare($queryReplies);
+        $stmtReplies->bindParam(':in_reply_to', $email['id']);
+        $stmtReplies->bindParam(':references', $email['id']); 
+        $stmtReplies->execute();
+        
+        $replies = $stmtReplies->fetchAll(PDO::FETCH_ASSOC);
+        $threadEmails = array_merge($threadEmails, $replies);
     
         foreach ($threadEmails as &$threadEmail) {
             if (!empty($threadEmail['content'])) {
@@ -255,8 +279,9 @@ class EmailService {
             }
         }
     
-        return $threadEmails; 
+        return $threadEmails;
     }
+    
     
     
 

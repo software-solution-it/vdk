@@ -204,26 +204,20 @@ class GmailOAuth2Service {
         }
     }
 
-    public function listEmails($user_id, $email_id, $labelIds = []) {
+    public function syncEmailsGmail($user_id, $email_account_id, $provider_id) {
         try {
-            $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $email_id);
+            $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $provider_id);
             if (!$emailAccount) {
-                throw new Exception("Conta de e-mail não encontrada para o usuário ID: $user_id e email ID: $email_id");
+                throw new Exception("Conta de e-mail não encontrada para o usuário ID: $user_id e email ID: $provider_id");
             }
     
             $accessToken = $emailAccount['oauth_token'];
-    
-            $query = [];
-            if (!empty($labelIds)) {
-                $query['labelIds'] = implode(',', $labelIds);
-            }
     
             $response = $this->httpClient->get('https://gmail.googleapis.com/gmail/v1/users/me/messages', [
                 'headers' => [
                     'Authorization' => 'Bearer ' . $accessToken,
                     'Accept' => 'application/json'
                 ],
-                'query' => $query
             ]);
     
             $body = json_decode($response->getBody(), true);
@@ -295,6 +289,7 @@ class GmailOAuth2Service {
                         'Status' => 'Success',
                         'Message' => 'Email received successfully',
                         'Data' => [
+                            'email_account_id' => $email_account_id,
                             'email_id' => $emailId,
                             'subject' => $emailData['subject'],
                             'from' => $emailData['fromAddress'],
@@ -334,9 +329,46 @@ class GmailOAuth2Service {
             return true;
     
         } catch (RequestException $e) {
+
+            $event = [
+                'Status' => 'Failed',
+                'Message' => 'Failed to sync emails', 
+                'Data' => [
+                    'email_account_id' => $email_account_id,
+                    'email_id' => $emailId,
+                    'subject' => $emailData['subject'],
+                    'from' => $emailData['fromAddress'],
+                    'to' => $emailData['toRecipients'],
+                    'received_at' => $emailData['date_received'],
+                    'user_id' => $user_id,
+                    'folder' => $emailData['folderName'],
+                    'uuid' => uniqid(),
+                ]
+            ];
+            $this->webhookService->triggerEvent($event, $user_id);
+
             $this->errorLogController->logError('Erro ao listar e-mails: ' . $e->getMessage(), __FILE__, __LINE__, $user_id);
             throw new Exception('Erro ao listar e-mails: ' . $e->getMessage());
         } catch (Exception $e) {
+
+
+            $event = [
+                'Status' => 'Failed',
+                'Message' => 'Failed to sync emails', 
+                'Data' => [
+                    'email_account_id' => $email_account_id,
+                    'email_id' => $emailId,
+                    'subject' => $emailData['subject'],
+                    'from' => $emailData['fromAddress'],
+                    'to' => $emailData['toRecipients'],
+                    'received_at' => $emailData['date_received'],
+                    'user_id' => $user_id,
+                    'folder' => $emailData['folderName'],
+                    'uuid' => uniqid(),
+                ]
+            ];
+            $this->webhookService->triggerEvent($event, $user_id);
+
             $this->errorLogController->logError('Erro ao listar e-mails: ' . $e->getMessage(), __FILE__, __LINE__, $user_id);
             throw new Exception('Erro ao listar e-mails: ' . $e->getMessage());
         }

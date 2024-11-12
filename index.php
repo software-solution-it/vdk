@@ -199,12 +199,12 @@ switch ($request_uri[0]) {
         $emailController->viewEmail($email_id);
         break;
 
-    case '/api/email/create':
+    case '/api/email-account/create':
         $controller = new EmailAccountController();
         $controller->createEmailAccount();
         break;
 
-    case '/api/email/account':
+    case '/api/email-account/accountByUserId':
         $userId = $_GET['user_id'] ?? null;
         if ($userId) {
             $controller = new EmailAccountController();
@@ -215,7 +215,19 @@ switch ($request_uri[0]) {
         }
         break;
 
-    case '/api/email/update':
+
+        case '/api/email-account/accountById':
+            $id = $_GET['id'] ?? null;
+            if ($id) {
+                $controller = new EmailAccountController();
+                $controller->getEmailAccountById($id);
+            } else {
+                http_response_code(400);
+                echo json_encode(['message' => 'User ID is required']);
+            }
+            break;
+
+    case '/api/email-account/update':
         $controller = new EmailAccountController();
         $id = $_GET['id'] ?? null;
         if ($id) {
@@ -225,7 +237,7 @@ switch ($request_uri[0]) {
         }
         break;
 
-    case '/api/email/delete':
+    case '/api/email-account/delete':
         $controller = new EmailAccountController();
         $id = $_GET['id'] ?? null;
         if ($id) {

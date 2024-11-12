@@ -112,4 +112,10 @@ class EmailAccountService {
 
         return $result; 
     }
+
+    public function getEmailAccountById($id) {
+        $result = $this->emailAccountModel->getEmailAccountById($id);
+
+        return $result; 
+    }
 }

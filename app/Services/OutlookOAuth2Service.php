@@ -28,7 +28,7 @@ class OutlookOAuth2Service {
         'User.Read',
         'Mail.Read',
         'Mail.Send',
-        'Mail.ReadWrite', // Adicionado para operações de escrita
+        'Mail.ReadWrite',
         'IMAP.AccessAsUser.All',
         'SMTP.Send'
     ];
@@ -185,7 +185,7 @@ class OutlookOAuth2Service {
         }
     }
 
-    public function authenticateImap($user_id, $email_id) {
+    public function syncEmailsOutlook($user_id, $email_account_id, $email_id) {
         try {
             $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $email_id);
     
@@ -310,6 +310,7 @@ class OutlookOAuth2Service {
                             'Status' => 'Success',
                             'Message' => 'Email saved successfully',
                             'Data' => [
+                                'email_account_id' => $email_account_id,
                                 'email_id' => $emailId,
                                 'subject' => $subject,
                                 'from' => $fromAddress,
@@ -357,9 +358,46 @@ class OutlookOAuth2Service {
             return true;
     
         } catch (RequestException $e) {
+
+            $event = [
+                'Status' => 'Failed',
+                'Message' => 'Failed to sync emails', 
+                'Data' => [
+                    'email_account_id' => $email_account_id,
+                    'email_id' => $emailId,
+                    'subject' => $subject,
+                    'from' => $fromAddress,
+                    'to' => $toRecipients,
+                    'received_at' => $date_received,
+                    'user_id' => $user_id,
+                    'folder' => $folderName,
+                    'uuid' => uniqid(),
+                ]
+            ];
+            $this->webhookService->triggerEvent($event, $user_id);
+
+
             $this->errorLogController->logError('Error while listing emails: ' . $e->getMessage(), __FILE__, __LINE__, $user_id);
             throw new Exception('Error while listing emails: ' . $e->getMessage());
         } catch (Exception $e) {
+
+            $event = [
+                'Status' => 'Failed',
+                'Message' => 'Failed to sync emails', 
+                'Data' => [
+                    'email_account_id' => $email_account_id,
+                    'email_id' => $emailId,
+                    'subject' => $subject,
+                    'from' => $fromAddress,
+                    'to' => $toRecipients,
+                    'received_at' => $date_received,
+                    'user_id' => $user_id,
+                    'folder' => $folderName,
+                    'uuid' => uniqid(),
+                ]
+            ];
+            $this->webhookService->triggerEvent($event, $user_id);
+
             $this->errorLogController->logError('Error while saving emails and attachments: ' . $e->getMessage(), __FILE__, __LINE__, $user_id);
             throw new Exception('Error while saving emails and attachments: ' . $e->getMessage());
         }

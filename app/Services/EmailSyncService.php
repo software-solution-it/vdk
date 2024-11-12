@@ -90,17 +90,18 @@ class EmailSyncService
 
                 $this->syncEmails(
                     $task['user_id'],
+                    $task['email_account_id'],
                     $task['provider_id'],
                     $task['email'],
                     $task['imap_host'],
                     $task['imap_port'],
                     $task['password']
                 );
-            }else if($task['provider_id'] == 3){
-                $this->outlookOAuth2Service->authenticateImap($task['user_id'], $task['provider_id']);
+            }   else if($task['provider_id'] == 3){ 
+                $this->outlookOAuth2Service->syncEmailsOutlook($task['user_id'],$task['email_account_id'], $task['provider_id']);
 
-            }else if ($task['provider_id'] == 1){
-                $this->gmailOauth2Service->listEmails($task['user_id'], $task['provider_id']);
+            }   else if ($task['provider_id'] == 1){
+                $this->gmailOauth2Service->syncEmailsGmail($task['user_id'],$task['email_account_id'], $task['provider_id']);
             }
 
                 $msg->ack();
@@ -172,6 +173,7 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
         $message = [
             'user_id' => $user_id,
             'provider_id' => $emailAccount['provider_id'],
+            'email_account_id' => $emailAccount['id'],
             'email' => $emailAccount['email'],
             'password' => EncryptionHelper::decrypt($emailAccount['password']),
             'oauth2_token' => $emailAccount['oauth_token'] ?? null,
@@ -205,7 +207,7 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
         return 'email_sync_queue_' . $user_id . '_' . $provider_id . '_' . time();
     }
 
-    private function syncEmails($user_id, $provider_id, $email, $imap_host, $imap_port, $password)
+    private function syncEmails($user_id,$email_account_id, $provider_id, $email, $imap_host, $imap_port, $password)
     {
         error_log("Sincronizando e-mails para o usuário $user_id e provedor $provider_id");
 
@@ -253,7 +255,6 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                         continue;
                  }
                 
-                    // Verifica se o e-mail já foi salvo
                     $existingEmail = $this->emailModel->emailExistsByMessageId($messageId,$user_id);
                     if ($existingEmail) {
                         error_log("E-mail com Message-ID $messageId já foi processado. Ignorando...");
@@ -321,6 +322,7 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                         'Status' => 'Success', 
                         'Message' => 'Email received successfully', 
                         'Data' => [
+                            'email_account_id' => $email_account_id,
                             'email_id' => $emailId,
                             'message_id' => $messageId,
                             'subject' => $subject,
@@ -336,15 +338,32 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                     $this->webhookService->triggerEvent($event, $user_id);
                 
                     $uidCounter++;
-                
-                    if ($date_received) {
-                        $lastEmailDate = $date_received;
-                    }
                 }
 
                 error_log("Sincronização de e-mails concluída para a pasta " . $mailbox->getName());
             }
         } catch (Exception $e) {
+
+            $event = [
+                'Code' => 500,
+                'Status' => 'Failed',
+                'Message' => 'Failed to sync emails', 
+                'Data' => [
+                    'email_account_id' => $email_account_id,
+                    'email_id' => $emailId,
+                    'message_id' => $messageId,
+                    'subject' => $subject,
+                    'from' => $fromAddress,
+                    'to' => array_map(fn(EmailAddress $addr) => $addr->getAddress(), iterator_to_array($message->getTo())),
+                    'received_at' => $date_received,
+                    'user_id' => $user_id,
+                    'folder' => $mailbox->getName(),
+                    'uuid' => uniqid(),
+            ]
+        ];
+
+            $this->webhookService->triggerEvent($event, $user_id);
+
             error_log("Erro durante a sincronização de e-mails: " . $e->getMessage());
             $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__, $user_id);
             throw $e;

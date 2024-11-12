@@ -103,4 +103,27 @@ class EmailAccountController {
             ]);
         }
     }
+
+
+    
+    public function getEmailAccountById($id) {
+        header('Content-Type: application/json');
+        try {
+            $result = $this->emailAccountService->getEmailAccountById($id);
+            http_response_code(200);
+            echo json_encode([
+                'Status' => 'Success',
+                'Message' => 'Email accounts retrieved successfully.',
+                'Data' => $result
+            ]);
+        } catch (\Exception $e) {
+            $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
+            http_response_code(500);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Error retrieving email accounts: ' . $e->getMessage(),
+                'Data' => null
+            ]);
+        }
+    }
 }
