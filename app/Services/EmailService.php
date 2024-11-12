@@ -256,30 +256,20 @@ class EmailService {
             $email['content'] = base64_encode($email['content']);
         }
     
-        // 2. Obter todos os IDs para buscar o encadeamento
-        $allReferences = array_map('trim', explode(',', $email['references'] ?? ''));
-        $allReferences[] = $email['id']; // Incluir o ID do próprio email na lista
-        $allReferences = array_unique(array_filter($allReferences)); // Remover duplicatas e itens vazios
+        // 2. Pegar o primeiro ID de referência ou usar o próprio ID do email
+        $firstReference = trim(explode(',', $email['references'] ?? '')[0]) ?: $email['id'];
     
-        // Preparar a consulta de encadeamento
-        $placeholders = implode(',', array_fill(0, count($allReferences), '?'));
+        // 3. Buscar todos os emails no encadeamento com `LIKE` no campo `references`
         $queryThread = "SELECT e.* 
                         FROM emails e 
-                        WHERE e.id IN ($placeholders)
-                        OR e.in_reply_to IN ($placeholders)
-                        OR e.references LIKE CONCAT('%', ?, '%')
+                        WHERE e.id = :firstReference 
+                        OR e.references LIKE :likeReference 
                         ORDER BY e.date_received ASC";
     
         $stmtThread = $this->db->prepare($queryThread);
+        $stmtThread->bindValue(':firstReference', $firstReference, PDO::PARAM_STR);
+        $stmtThread->bindValue(':likeReference', '%' . $firstReference . '%', PDO::PARAM_STR);
         
-        // 3. Vincular valores para cada parâmetro
-        $paramIndex = 1;
-        foreach ($allReferences as $ref) {
-            $stmtThread->bindValue($paramIndex++, $ref, PDO::PARAM_STR); // e.id IN
-            $stmtThread->bindValue($paramIndex++, $ref, PDO::PARAM_STR); // e.in_reply_to IN
-            $stmtThread->bindValue($paramIndex++, $ref, PDO::PARAM_STR); // e.references LIKE
-        }
-    
         $stmtThread->execute();
         $threadEmails = $stmtThread->fetchAll(PDO::FETCH_ASSOC);
     
@@ -292,7 +282,6 @@ class EmailService {
     
         return $threadEmails;
     }
-    
     
     
     
