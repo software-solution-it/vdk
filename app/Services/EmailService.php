@@ -241,7 +241,7 @@ class EmailService {
         }
     }
 
-    public function listEmails($email_id, $limit = 10, $offset = 0) {
+    public function listEmails($email_id) { 
         // Buscar email específico
         $querySingle = "SELECT e.* FROM emails e WHERE e.id = :email_id";
         $stmtSingle = $this->db->prepare($querySingle);
@@ -285,15 +285,12 @@ class EmailService {
                          FROM emails e 
                          WHERE e.in_reply_to = :email_id 
                          OR e.references LIKE :like_email_id 
-                         ORDER BY e.date_received ASC
-                         LIMIT :limit OFFSET :offset";
+                         ORDER BY e.date_received ASC";
     
         $stmtReplies = $this->db->prepare($queryReplies);
         $stmtReplies->bindParam(':email_id', $email_id, PDO::PARAM_INT);
         $likeEmailId = '%' . $email_id . '%';
         $stmtReplies->bindParam(':like_email_id', $likeEmailId, PDO::PARAM_STR);
-        $stmtReplies->bindParam(':limit', $limit, PDO::PARAM_INT);
-        $stmtReplies->bindParam(':offset', $offset, PDO::PARAM_INT);
         $stmtReplies->execute();
     
         $replies = $stmtReplies->fetchAll(PDO::FETCH_ASSOC);
