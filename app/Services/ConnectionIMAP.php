@@ -20,16 +20,16 @@ class ConnectionIMAP {
         if (!$emailAccount) {
             return ['status' => false, 'message' => 'Email account not found'];
         }
-
+    
         $imap_host = $emailAccount['imap_host'];
         $imap_port = $emailAccount['imap_port'];
         $imap_username = $emailAccount['email'];
         $imap_password = EncryptionHelper::decrypt($emailAccount['password']);
-
+    
         $mailbox = "{" . $imap_host . ":" . $imap_port . "/imap/ssl}";
-
+    
         $imap = imap_open($mailbox, $imap_username, $imap_password);
-
+    
         if ($imap) {
             $folders = imap_list($imap, $mailbox, '*');
             imap_close($imap);
@@ -37,11 +37,16 @@ class ConnectionIMAP {
             if ($folders === false) {
                 return ['status' => false, 'message' => 'Failed to retrieve folder list: ' . imap_last_error()];
             }
-
+    
+            // Extrair apenas o nome da pasta
+            $folderNames = array_map(function($folder) use ($mailbox) {
+                return str_replace($mailbox, '', $folder);  // Remove o caminho do mailbox
+            }, $folders);
+    
             return [
                 'status' => true,
                 'message' => 'IMAP connection successful',
-                'folders' => $folders
+                'folders' => $folderNames
             ];
         } else {
             return ['status' => false, 'message' => 'IMAP connection failed: ' . imap_last_error()];
