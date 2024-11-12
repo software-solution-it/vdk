@@ -5,6 +5,7 @@ use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 use App\Models\EmailAccount; 
 use App\Config\Database;
+use App\Helpers\EncryptionHelper;
 
 class ConnectionSMTP {
     private $emailAccountModel;
@@ -24,7 +25,8 @@ class ConnectionSMTP {
 
         $smtp_host = $emailAccount['smtp_host'];
         $smtp_port = $emailAccount['smtp_port'];
-        $smtp_password = $emailAccount['password']; 
+        $smtp_username = $emailAccount['email'];
+        $smtp_password = EncryptionHelper::decrypt($emailAccount['password']);
         $encryption = $emailAccount['encryption'] ?? 'tls';
 
         $mail = new PHPMailer(true);
@@ -33,11 +35,12 @@ class ConnectionSMTP {
             $mail->isSMTP();
             $mail->Host       = $smtp_host;
             $mail->SMTPAuth   = true;
+            $mail->Username   = $smtp_username;
             $mail->Password   = $smtp_password;
             $mail->SMTPSecure = $encryption;
             $mail->Port       = $smtp_port;
 
-            $mail->setFrom("Teste SMTP"); 
+            $mail->setFrom($smtp_username); 
             $mail->addAddress($recipient);
             $mail->isHTML(true);
             $mail->Subject = 'SMTP Test Email';
