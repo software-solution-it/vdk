@@ -9,7 +9,7 @@ declare -A last_updated
 
 while true; do
     # Obter a lista atualizada de emails ativos e a última atualização
-    EMAIL_LIST=$(mysql -u ${DATABASE_USER} -p${DATABASE_PASS} -D ${DATABASE_NAME} -sse "SELECT user_id, id as email_id, updatedAt FROM email_accounts;")
+    EMAIL_LIST=$(mysql -u ${DATABASE_USER} -p${DATABASE_PASS} -D ${DATABASE_NAME} -sse "SELECT user_id, id as email_id, updated_at FROM email_accounts;")
 
     declare -A current_emails
     while IFS=$'\t' read -r user_id email_id updated_at; do
