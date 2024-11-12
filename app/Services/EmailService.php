@@ -241,7 +241,7 @@ class EmailService {
         }
     }
 
-    public function listEmails($email_id) { 
+    public function listEmails($email_id) {
         // Buscar email específico
         $querySingle = "SELECT e.* FROM emails e WHERE e.id = :email_id";
         $stmtSingle = $this->db->prepare($querySingle);
@@ -257,23 +257,25 @@ class EmailService {
             $email['content'] = base64_encode($email['content']);
         }
     
-        // Obter emails anteriores
-        $threadEmails = [];
+        // Obter emails anteriores usando cada referência individual no campo `references`
         $parentEmails = [];
-        $currentInReplyTo = $email['in_reply_to'];
+        $references = array_map('trim', explode(',', $email['references'])); // Quebrar pelas vírgulas e remover espaços
     
-        while ($currentInReplyTo) {
-            $queryParent = "SELECT e.* FROM emails e WHERE e.id = :in_reply_to";
+        foreach ($references as $referenceId) {
+            // Remover os caracteres de "<>" em torno dos IDs se existirem
+            $cleanReferenceId = trim($referenceId, "<>");
+            
+            // Usar LIKE para garantir correspondência parcial com o ID
+            $queryParent = "SELECT e.* FROM emails e WHERE e.id LIKE :reference_id";
             $stmtParent = $this->db->prepare($queryParent);
-            $stmtParent->bindParam(':in_reply_to', $currentInReplyTo, PDO::PARAM_INT);
+            $likeReferenceId = '%' . $cleanReferenceId . '%';
+            $stmtParent->bindParam(':reference_id', $likeReferenceId, PDO::PARAM_STR);
             $stmtParent->execute();
+            
             $parentEmail = $stmtParent->fetch(PDO::FETCH_ASSOC);
     
             if ($parentEmail) {
                 array_unshift($parentEmails, $parentEmail); // Adiciona no início para manter a ordem cronológica
-                $currentInReplyTo = $parentEmail['in_reply_to'];
-            } else {
-                break;
             }
         }
     
