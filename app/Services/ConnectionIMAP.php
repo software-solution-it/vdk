@@ -22,7 +22,7 @@ class ConnectionIMAP {
 
         $imap_host = $emailAccount['imap_host'];
         $imap_port = $emailAccount['imap_port'];
-        $imap_username = $emailAccount['username'];
+        $imap_username = $emailAccount['email'];
         $imap_password = $emailAccount['password'];
 
         $mailbox = "{" . $imap_host . ":" . $imap_port . "/imap/ssl}";
