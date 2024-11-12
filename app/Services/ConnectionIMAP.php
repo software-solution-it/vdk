@@ -3,11 +3,12 @@ namespace App\Services;
 
 use App\Models\EmailAccount; 
 use App\Config\Database;
+use App\Helpers\EncryptionHelper;
 
 class ConnectionIMAP {
     private $emailAccountModel;
 
-    public function __construct() {
+    public function __construct() { 
         $database = new Database();
         $db = $database->getConnection();
         $this->emailAccountModel = new EmailAccount($db); 
@@ -23,7 +24,7 @@ class ConnectionIMAP {
         $imap_host = $emailAccount['imap_host'];
         $imap_port = $emailAccount['imap_port'];
         $imap_username = $emailAccount['email'];
-        $imap_password = $emailAccount['password'];
+        $imap_password = EncryptionHelper::decrypt($emailAccount['password']);
 
         $mailbox = "{" . $imap_host . ":" . $imap_port . "/imap/ssl}";
 
