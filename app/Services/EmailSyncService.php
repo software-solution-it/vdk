@@ -117,7 +117,7 @@ class EmailSyncService
                     error_log("Erro ao marcar o job como executado.");
                 }
 
-                $this->syncEmailsByUserIdAndProviderId($user_id, $provider_id);
+                $this->syncEmailsByUserIdAndProviderId($task['user_id'], $task['email_account_id']);
 
             } catch (Exception $e) {
                 error_log("Erro ao sincronizar e-mails: " . $e->getMessage());
