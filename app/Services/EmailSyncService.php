@@ -13,8 +13,6 @@ use App\Services\RabbitMQService;
 use App\Services\WebhookService;
 use App\Controllers\ErrorLogController;
 use Exception;
-use App\Models\JobQueue;
-
 class EmailSyncService
 {
     private $emailModel;
@@ -23,7 +21,7 @@ class EmailSyncService
     private $webhookService;
     private $errorLogController; 
     private $db;
-    private $jobQueueModel;
+
     private $outlookOAuth2Service;
 
     private $gmailOauth2Service;
@@ -43,7 +41,6 @@ class EmailSyncService
         $this->outlookOAuth2Service  = new OutlookOAuth2Service();
         $this->gmailOauth2Service = new GmailOAuth2Service();
         $this->emailFolderModel = new EmailFolder($db);
-        $this->jobQueueModel = new JobQueue($db);
     }
 
     
@@ -77,21 +74,24 @@ class EmailSyncService
     }
 }
 
-public function consumeEmailSyncQueue($user_id, $provider_id, $queue_name) {
-    error_log("Iniciando o consumidor RabbitMQ para sincronização de e-mails...");
+    public function consumeEmailSyncQueue($user_id, $provider_id, $queue_name)
+    {
+        error_log("Iniciando o consumidor RabbitMQ para sincronização de e-mails...");
 
-    $callback = function ($msg) use ($user_id, $provider_id, $queue_name) {
-        error_log("Recebida tarefa de sincronização: " . $msg->body);
-        $task = json_decode($msg->body, true);
+        $callback = function ($msg) use ($user_id, $provider_id, $queue_name) {
+            error_log("Recebida tarefa de sincronização: " . $msg->body);
+            $task = json_decode($msg->body, true);
 
-        if (!$task) {
-            error_log("Erro ao decodificar a mensagem da fila.");
-            $msg->nack(false, true);
-            return;
-        }
+            if (!$task) {
+                error_log("Erro ao decodificar a mensagem da fila.");
+                $msg->nack(false, true);
+                return;
+            }
 
-        try {
-            if ($task['is_basic']) {
+            try {
+
+                if($task['is_basic']){
+
                 $this->syncEmails(
                     $task['user_id'],
                     $task['email_account_id'],
@@ -101,37 +101,41 @@ public function consumeEmailSyncQueue($user_id, $provider_id, $queue_name) {
                     $task['imap_port'],
                     $task['password']
                 );
-            } else if ($task['provider_id'] == 3) {
-                $this->outlookOAuth2Service->syncEmailsOutlook($task['user_id'], $task['email_account_id'], $task['provider_id']);
-            } else if ($task['provider_id'] == 1) {
-                $this->gmailOauth2Service->syncEmailsGmail($task['user_id'], $task['email_account_id'], $task['provider_id']);
+            }   else if($task['provider_id'] == 3){ 
+                $this->outlookOAuth2Service->syncEmailsOutlook($task['user_id'],$task['email_account_id'], $task['provider_id']);
+
+            }   else if ($task['provider_id'] == 1){
+                $this->gmailOauth2Service->syncEmailsGmail($task['user_id'],$task['email_account_id'], $task['provider_id']);
             }
 
-            $msg->ack();
-            error_log("Sincronização concluída para a mensagem na fila.");
+                $msg->ack();
+                error_log("Sincronização concluída para a mensagem na fila.");
 
-            $existingJob = $this->jobQueueModel->getJobByQueueName($queue_name);
-            if ($existingJob) {
-                $this->jobQueueModel->markAsExecuted($existingJob['id']);
+                if ($this->rabbitMQService->markJobAsExecuted($queue_name)) {
+                    error_log("Job marcado como executado com sucesso.");
+                } else {
+                    error_log("Erro ao marcar o job como executado.");
+                }
+
+                $this->syncEmailsByUserIdAndProviderId($user_id, $provider_id);
+
+            } catch (Exception $e) {
+                error_log("Erro ao sincronizar e-mails: " . $e->getMessage());
+                $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__, $user_id);
+                $msg->nack(false, true);
+                throw $e;
             }
+        };
 
+        try {
+            error_log("Aguardando nova mensagem na fila: " . $queue_name);
+            $this->rabbitMQService->consumeQueue($queue_name, $callback);
         } catch (Exception $e) {
-            error_log("Erro ao sincronizar e-mails: " . $e->getMessage());
-            $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__, $user_id);
-            $msg->nack(false, true);
+            error_log("Erro ao consumir a fila RabbitMQ: " . $e->getMessage());
+            $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
+            throw $e;
         }
-    };
-
-    try {
-        error_log("Aguardando nova mensagem na fila: " . $queue_name);
-        $this->rabbitMQService->consumeQueue($queue_name, $callback);
-    } catch (Exception $e) {
-        error_log("Erro ao consumir a fila RabbitMQ: " . $e->getMessage());
-        $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
-        throw $e;
     }
-}
-
 
 
     public function getEmailAccountByUserIdAndProviderId($user_id, $provider_id)
@@ -151,64 +155,55 @@ public function consumeEmailSyncQueue($user_id, $provider_id, $queue_name) {
     }
     
 
-    public function syncEmailsByUserIdAndProviderId($user_id, $email_id) {
-        set_time_limit(0);
-    
-        $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $email_id);
-    
-        if (!$emailAccount) {
-            error_log("Conta de e-mail não encontrada para user_id={$user_id} e email_id={$email_id}");
-            $this->errorLogController->logError("Conta de e-mail não encontrada para user_id={$user_id} e email_id={$email_id}", __FILE__, __LINE__, $user_id);
-            return json_encode(['status' => false, 'message' => 'Conta de e-mail não encontrada.']);
-        }
-    
-        $queue_name = $this->generateQueueName($user_id, $emailAccount['provider_id']);
-    
-        $existingJob = $this->jobQueueModel->getJobByQueueName($queue_name);
-    
-        if ($existingJob && $existingJob['is_executed'] == 0) {
-            error_log("Sincronização já em andamento para queue_name=$queue_name. Abortando...");
-            return json_encode(['status' => false, 'message' => 'Sincronização já em andamento.']);
-        }
-    
-        $this->jobQueueModel->queue_name = $queue_name;
-        $this->jobQueueModel->user_id = $user_id;
-        $this->jobQueueModel->create();
-    
-        error_log("Conta de e-mail encontrada: " . $emailAccount['email']);
-        error_log("Senha Descriptografada: " . EncryptionHelper::decrypt($emailAccount['password']));
-    
-        try {
-            $message = [
-                'user_id' => $user_id,
-                'provider_id' => $emailAccount['provider_id'],
-                'email_account_id' => $emailAccount['id'],
-                'email' => $emailAccount['email'],
-                'password' => EncryptionHelper::decrypt($emailAccount['password']),
-                'oauth2_token' => $emailAccount['oauth_token'] ?? null,
-                'refresh_token' => $emailAccount['refresh_token'] ?? null,
-                'client_id' => $emailAccount['client_id'] ?? null,
-                'client_secret' => $emailAccount['client_secret'] ?? null,
-                'tenant_id' => $emailAccount['tenant_id'] ?? null,
-                'auth_code' => $emailAccount['auth_code'] ?? null,
-                'is_basic' => $emailAccount['is_basic'] ?? 0,
-                'imap_host' => $emailAccount['imap_host'],
-                'imap_port' => $emailAccount['imap_port'],
-                'created_at' => date('Y-m-d H:i:s'),
-                'updated_at' => date('Y-m-d H:i:s'),
-            ];
-            $this->rabbitMQService->publishMessage($queue_name, $message, $user_id);
-    
-            $this->consumeEmailSyncQueue($user_id, $emailAccount['provider_id'], $queue_name);
-    
-            return json_encode(['status' => true, 'message' => 'Sincronização de e-mails iniciada com sucesso.']);
-        } catch (Exception $e) {
-            error_log("Erro ao adicionar tarefa de sincronização no RabbitMQ: " . $e->getMessage());
-            $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__, $user_id);
-            return json_encode(['status' => false, 'message' => 'Erro ao iniciar a sincronização de e-mails.']);
-        }
+public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
+{
+    set_time_limit(0);
+
+    $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $email_id);
+
+    if (!$emailAccount) {
+        error_log("Conta de e-mail não encontrada para user_id={$user_id} e email_id={$email_id}");
+        $this->errorLogController->logError("Conta de e-mail não encontrada para user_id={$user_id} e email_id={$email_id}", __FILE__, __LINE__, $user_id);
+        
+        return json_encode(['status' => false, 'message' => 'Conta de e-mail não encontrada.']);
     }
-    
+
+    $queue_name = $this->generateQueueName($user_id, $emailAccount['provider_id']);
+
+    error_log("Conta de e-mail encontrada: " . $emailAccount['email']);
+    error_log("Senha Descriptografada: " . EncryptionHelper::decrypt($emailAccount['password']));
+
+    try {
+        $message = [
+            'user_id' => $user_id,
+            'provider_id' => $emailAccount['provider_id'],
+            'email_account_id' => $emailAccount['id'],
+            'email' => $emailAccount['email'],
+            'password' => EncryptionHelper::decrypt($emailAccount['password']),
+            'oauth2_token' => $emailAccount['oauth_token'] ?? null,
+            'refresh_token' => $emailAccount['refresh_token'] ?? null,
+            'client_id' => $emailAccount['client_id'] ?? null,
+            'client_secret' => $emailAccount['client_secret'] ?? null,
+            'tenant_id' => $emailAccount['tenant_id'] ?? null,
+            'auth_code' => $emailAccount['auth_code'] ?? null,
+            'is_basic' => $emailAccount['is_basic'] ?? 0,
+            'imap_host' => $emailAccount['imap_host'],
+            'imap_port' => $emailAccount['imap_port'],
+            'created_at' => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s'),
+        ];
+        $this->rabbitMQService->publishMessage($queue_name, $message, $user_id);
+
+        $this->consumeEmailSyncQueue($user_id, $emailAccount['provider_id'], $queue_name);
+
+        return json_encode(['status' => true, 'message' => 'Sincronização de e-mails iniciada com sucesso.']);
+    } catch (Exception $e) {
+        error_log("Erro ao adicionar tarefa de sincronização no RabbitMQ: " . $e->getMessage());
+        $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__, $user_id);
+        
+        return json_encode(['status' => false, 'message' => 'Erro ao iniciar a sincronização de e-mails.']);
+    }
+}
 
 
     private function generateQueueName($user_id, $provider_id)
