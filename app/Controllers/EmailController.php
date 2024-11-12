@@ -333,9 +333,14 @@ class EmailController {
         }
     }
 
-    public function listEmails($email_id, $limit = 10, $offset = 0) {
+    public function listEmails() {
         header('Content-Type: application/json');
         
+        // Obter parâmetros da requisição
+        $email_id = isset($_GET['email_id']) ? $_GET['email_id'] : null;
+        $limit = isset($_GET['limit']) ? $_GET['limit'] : 10;
+        $offset = isset($_GET['offset']) ? $_GET['offset'] : 0;
+    
         $requiredParams = ['email_id'];
     
         $params = [
@@ -390,6 +395,7 @@ class EmailController {
             ]);
         }
     }
+    
     
     
 
