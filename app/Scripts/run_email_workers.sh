@@ -2,6 +2,10 @@ LOCK_DIR="/tmp/email_sync_locks"
 
 mkdir -p "${LOCK_DIR}"
 
+DATABASE_USER="root" 
+DATABASE_PASS="root" 
+DATABASE_NAME="mail"
+
 EMAIL_LIST=$(mysql -u ${DATABASE_USER} -p${DATABASE_PASS} -D ${DATABASE_NAME} -sse "SELECT user_id, id as email_id FROM email_accounts;")
 
 while IFS=$'\t' read -r user_id email_id; do
