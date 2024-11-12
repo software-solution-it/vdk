@@ -241,13 +241,24 @@ class EmailService {
         }
     }
 
-    public function listEmails($email_id) {
-        $query = "SELECT e.* 
-                  FROM emails e 
-                  WHERE e.id = :email_id";
-        
+    public function listEmails($email_id, $limit = 10, $offset = 0) {
+        if ($limit === 1) {
+            $querySingle = "SELECT e.* FROM emails e WHERE e.id = :email_id";
+            $stmtSingle = $this->db->prepare($querySingle);
+            $stmtSingle->bindParam(':email_id', $email_id, PDO::PARAM_INT);
+            $stmtSingle->execute();
+            $email = $stmtSingle->fetch(PDO::FETCH_ASSOC);
+    
+            if ($email && !empty($email['content'])) {
+                $email['content'] = base64_encode($email['content']);
+            }
+    
+            return $email ? [$email] : [];
+        }
+    
+        $query = "SELECT e.* FROM emails e WHERE e.id = :email_id";
         $stmt = $this->db->prepare($query);
-        $stmt->bindParam(':email_id', $email_id);
+        $stmt->bindParam(':email_id', $email_id, PDO::PARAM_INT);
         $stmt->execute();
         $email = $stmt->fetch(PDO::FETCH_ASSOC);
     
@@ -257,22 +268,45 @@ class EmailService {
     
         $threadEmails = [];
     
-        $threadEmails[] = $email;
+        $parentEmails = [];
+        $currentParentId = $email['in_reply_to'];
     
+        while ($currentParentId) {
+            $queryParent = "SELECT e.* FROM emails e WHERE e.id = :parent_id";
+            $stmtParent = $this->db->prepare($queryParent);
+            $stmtParent->bindParam(':parent_id', $currentParentId, PDO::PARAM_INT);
+            $stmtParent->execute();
+            $parentEmail = $stmtParent->fetch(PDO::FETCH_ASSOC);
+    
+            if ($parentEmail) {
+                array_unshift($parentEmails, $parentEmail); 
+                $currentParentId = $parentEmail['in_reply_to'];
+            } else {
+                break;
+            }
+        }
+    
+
+        $threadEmails = array_merge($parentEmails, [$email]);
+    
+
         $queryReplies = "SELECT e.* 
                          FROM emails e 
-                         WHERE e.in_reply_to = :in_reply_to 
-                         OR e.references = :references 
-                         ORDER BY e.date_received ASC"; 
+                         WHERE e.in_reply_to LIKE :like_email_id 
+                         OR e.references LIKE :like_email_id 
+                         ORDER BY e.date_received ASC
+                         LIMIT :limit OFFSET :offset";
     
         $stmtReplies = $this->db->prepare($queryReplies);
-        $stmtReplies->bindParam(':in_reply_to', $email['id']);
-        $stmtReplies->bindParam(':references', $email['id']); 
+        $likeEmailId = '%' . $email_id . '%';
+        $stmtReplies->bindParam(':like_email_id', $likeEmailId, PDO::PARAM_STR);
+        $stmtReplies->bindParam(':limit', $limit, PDO::PARAM_INT);
+        $stmtReplies->bindParam(':offset', $offset, PDO::PARAM_INT);
         $stmtReplies->execute();
         
         $replies = $stmtReplies->fetchAll(PDO::FETCH_ASSOC);
         $threadEmails = array_merge($threadEmails, $replies);
-    
+
         foreach ($threadEmails as &$threadEmail) {
             if (!empty($threadEmail['content'])) {
                 $threadEmail['content'] = base64_encode($threadEmail['content']);
@@ -281,6 +315,8 @@ class EmailService {
     
         return $threadEmails;
     }
+    
+    
     
     
     

@@ -333,11 +333,18 @@ class EmailController {
         }
     }
 
-    public function listEmails($email_id) {
+    public function listEmails($email_id, $limit = 10, $offset = 0) {
         header('Content-Type: application/json');
         
         $requiredParams = ['email_id'];
-        if (!$this->validateParams($requiredParams, ['email_id' => $email_id])) {
+    
+        $params = [
+            'email_id' => $email_id,
+            'limit' => $limit,
+            'offset' => $offset
+        ];
+    
+        if (!$this->validateParams($requiredParams, $params)) {
             http_response_code(400);
             echo json_encode([
                 'Status' => 'Error',
@@ -346,8 +353,26 @@ class EmailController {
             return;
         }
     
+        if (!is_numeric($limit) || $limit <= 0) {
+            http_response_code(400);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'O parâmetro "limit" deve ser um número inteiro positivo.'
+            ]);
+            return;
+        }
+    
+        if (!is_numeric($offset) || $offset < 0) {
+            http_response_code(400);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'O parâmetro "offset" deve ser um número inteiro igual ou maior que zero.'
+            ]);
+            return;
+        }
+    
         try {
-            $emails = $this->emailService->listEmails($email_id);
+            $emails = $this->emailService->listEmails($email_id, (int)$limit, (int)$offset);
             
             http_response_code(200);
             echo json_encode([
@@ -365,6 +390,7 @@ class EmailController {
             ]);
         }
     }
+    
     
 
     public function viewEmail($email_id) {
