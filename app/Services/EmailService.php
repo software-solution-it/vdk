@@ -261,16 +261,15 @@ class EmailService {
     
         // 3. Buscar todos os emails relacionados à thread com LIMIT e OFFSET
         $queryThread = "SELECT e.* 
-                        FROM emails e 
-                        WHERE (e.email_id = :firstReference OR e.references LIKE :likeReference OR e.in_reply_to = :firstReference) 
-                        ORDER BY e.date_received ASC
-                        LIMIT :limit OFFSET :offset";
+        FROM emails e 
+        WHERE (e.email_id = :firstReference OR e.references LIKE :likeReference OR e.in_reply_to = :firstReference) 
+        ORDER BY e.date_received ASC
+        LIMIT $limit OFFSET $offset";
+
     
         $stmtThread = $this->db->prepare($queryThread);
         $stmtThread->bindValue(':firstReference', $firstReference, PDO::PARAM_STR);
         $stmtThread->bindValue(':likeReference', '%' . $firstReference . '%', PDO::PARAM_STR);
-        $stmtThread->bindValue(':limit', $limit, PDO::PARAM_INT);
-        $stmtThread->bindValue(':offset', $offset, PDO::PARAM_INT);
         $stmtThread->execute();
         $emails = $stmtThread->fetchAll(PDO::FETCH_ASSOC);
     
