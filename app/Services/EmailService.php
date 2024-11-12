@@ -243,7 +243,7 @@ class EmailService {
 
     public function listEmails($email_id, $limit = 10, $offset = 0) {
         if ($limit === 1) {
-            $querySingle = "SELECT e.* FROM emails e WHERE e.id = :email_id";
+            $querySingle = "SELECT e.* FROM emails e WHERE e.email_id = :email_id";
             $stmtSingle = $this->db->prepare($querySingle);
             $stmtSingle->bindParam(':email_id', $email_id, PDO::PARAM_INT);
             $stmtSingle->execute();
@@ -256,7 +256,7 @@ class EmailService {
             return $email ? [$email] : [];
         }
     
-        $query = "SELECT e.* FROM emails e WHERE e.id = :email_id";
+        $query = "SELECT e.* FROM emails e WHERE e.email_id = :email_id";
         $stmt = $this->db->prepare($query);
         $stmt->bindParam(':email_id', $email_id, PDO::PARAM_INT);
         $stmt->execute();
@@ -272,7 +272,7 @@ class EmailService {
         $currentParentId = $email['in_reply_to'];
     
         while ($currentParentId) {
-            $queryParent = "SELECT e.* FROM emails e WHERE e.id = :parent_id";
+            $queryParent = "SELECT e.* FROM emails e WHERE e.email_id = :parent_id";
             $stmtParent = $this->db->prepare($queryParent);
             $stmtParent->bindParam(':parent_id', $currentParentId, PDO::PARAM_INT);
             $stmtParent->execute();
