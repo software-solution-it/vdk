@@ -262,12 +262,12 @@ class EmailService {
         $allReferences = array_unique(array_filter($allReferences)); // Remover duplicatas e itens vazios
     
         // Preparar a consulta de encadeamento
-        $placeholders = implode(',', array_fill(0, count($allReferences), '?')); // Ex: ?, ?, ?, ...
+        $placeholders = implode(',', array_fill(0, count($allReferences), '?'));
         $queryThread = "SELECT e.* 
                         FROM emails e 
                         WHERE e.id IN ($placeholders)
                         OR e.in_reply_to IN ($placeholders)
-                        OR " . implode(" OR ", array_map(fn($id) => "e.references LIKE ?", $allReferences)) . "
+                        OR e.references LIKE CONCAT('%', ?, '%')
                         ORDER BY e.date_received ASC";
     
         $stmtThread = $this->db->prepare($queryThread);
@@ -275,9 +275,9 @@ class EmailService {
         // 3. Vincular valores para cada parâmetro
         $paramIndex = 1;
         foreach ($allReferences as $ref) {
-            $stmtThread->bindValue($paramIndex++, $ref, PDO::PARAM_STR);           // e.id IN
-            $stmtThread->bindValue($paramIndex++, $ref, PDO::PARAM_STR);           // e.in_reply_to IN
-            $stmtThread->bindValue($paramIndex++, '%' . $ref . '%', PDO::PARAM_STR); // e.references LIKE
+            $stmtThread->bindValue($paramIndex++, $ref, PDO::PARAM_STR); // e.id IN
+            $stmtThread->bindValue($paramIndex++, $ref, PDO::PARAM_STR); // e.in_reply_to IN
+            $stmtThread->bindValue($paramIndex++, $ref, PDO::PARAM_STR); // e.references LIKE
         }
     
         $stmtThread->execute();
@@ -292,7 +292,6 @@ class EmailService {
     
         return $threadEmails;
     }
-    
     
     
     
