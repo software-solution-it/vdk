@@ -18,12 +18,15 @@ $email_id = intval($argv[2]);
 $database = new Database();
 $db = $database->getConnection();
 
-$emailSyncService = new EmailSyncService($db);
-
-echo "Iniciando sincronizacao para user_id=$user_id e email_id=$email_id\n";
 try {
-$emailSyncService->startConsumer($user_id, $email_id);
+    $emailSyncService = new EmailSyncService($db);
+    echo "Iniciando sincronizacao para user_id=$user_id e email_id=$email_id\n";
+    $emailSyncService->startConsumer($user_id, $email_id);
 } catch (Exception $e) {
     error_log("Erro ao iniciar a sincronizacao: " . $e->getMessage());
     exit(1);
+} finally {
+    if ($db) {
+        $db = null; // Fechar a conexão com o banco de dados
+    }
 }
