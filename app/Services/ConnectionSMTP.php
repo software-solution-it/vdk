@@ -40,6 +40,8 @@ class ConnectionSMTP {
             $mail->SMTPSecure = $encryption;
             $mail->Port       = $smtp_port;
 
+            $mail->CharSet = 'UTF-8';
+
             $mail->setFrom($smtp_username); 
             $mail->addAddress($recipient);
             $mail->isHTML(true);

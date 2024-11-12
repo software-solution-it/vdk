@@ -2,16 +2,18 @@
 namespace App\Services;
 
 use App\Models\EmailAccount; 
+use App\Models\EmailFolder;
 use App\Config\Database;
 use App\Helpers\EncryptionHelper;
 
 class ConnectionIMAP {
     private $emailAccountModel;
+    private $conn;
 
     public function __construct() { 
         $database = new Database();
-        $db = $database->getConnection();
-        $this->emailAccountModel = new EmailAccount($db); 
+        $this->conn = $database->getConnection();
+        $this->emailAccountModel = new EmailAccount($this->conn); 
     }
 
     public function testIMAPConnection($user_id, $email_id) {
@@ -33,19 +35,21 @@ class ConnectionIMAP {
         if ($imap) {
             $folders = imap_list($imap, $mailbox, '*');
             imap_close($imap);
-            
+    
             if ($folders === false) {
                 return ['status' => false, 'message' => 'Failed to retrieve folder list: ' . imap_last_error()];
             }
     
-            // Extrair apenas o nome da pasta
             $folderNames = array_map(function($folder) use ($mailbox) {
-                return str_replace($mailbox, '', $folder);  // Remove o caminho do mailbox
+                return str_replace($mailbox, '', $folder);
             }, $folders);
+    
+            $emailFolderModel = new EmailFolder($this->conn);
+            $emailFolderModel->saveFolders($email_id, $folderNames);
     
             return [
                 'status' => true,
-                'message' => 'IMAP connection successful',
+                'message' => 'IMAP connection successful and folders saved',
                 'folders' => $folderNames
             ];
         } else {
