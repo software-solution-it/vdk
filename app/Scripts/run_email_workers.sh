@@ -6,6 +6,34 @@ WORKER_SCRIPT="/home/suporte/vdk/app/Worker/email_sync_worker.php"
 
 declare -A active_workers
 
+sync_email_in_loop() {
+    local user_id=$1
+    local email_id=$2
+    local lock_file="/tmp/email_sync_${email_id}.lock"
+
+    while true; do
+        {
+            if flock -n 200; then
+                # Verificar se o email ainda existe no banco de dados antes de sincronizar
+                EXISTS=$(mysql -u ${DATABASE_USER} -p${DATABASE_PASS} -D ${DATABASE_NAME} -sse "SELECT COUNT(*) FROM email_accounts WHERE id=${email_id} AND user_id=${user_id};")
+                
+                if [[ $EXISTS -eq 0 ]]; then
+                    echo "Conta de e-mail não encontrada para user_id=${user_id} e email_id=${email_id}. Finalizando worker."
+                    break  # Finaliza o loop se o email não existe
+                fi
+
+                echo "Iniciando worker para user_id=${user_id} e email_id=${email_id}"
+                ${PHP_BIN} ${WORKER_SCRIPT} ${user_id} ${email_id} > /dev/null 2>&1
+                
+                echo "Worker finalizado para user_id=${user_id} e email_id=${email_id}. Reiniciando..."
+            else
+                echo "Worker já em execução para email_id=${email_id}. Aguardando para reiniciar..."
+                sleep 5
+            fi
+        } 200>"${lock_file}"
+    done
+}
+
 while true; do
     # Obter a lista atualizada de emails ativos do banco
     EMAIL_LIST=$(mysql -u ${DATABASE_USER} -p${DATABASE_PASS} -D ${DATABASE_NAME} -sse "SELECT user_id, id as email_id FROM email_accounts;")
@@ -19,22 +47,7 @@ while true; do
 
         # Verificar se o worker já está ativo para o email_id
         if [[ -z "${active_workers[${email_id}]}" || ! -e "/proc/${active_workers[${email_id}]}" ]]; then
-            # Iniciar um novo worker e capturar o PID
-            {
-                if flock -n 200; then
-                    echo "Iniciando worker para user_id=${user_id} e email_id=${email_id}"
-                    while true; do
-                        ${PHP_BIN} ${WORKER_SCRIPT} ${user_id} ${email_id} > /dev/null 2>&1
-                        if [[ $? -ne 0 ]]; then
-                            echo "Erro no worker para email_id=${email_id}. Tentando novamente em 5 segundos..."
-                            sleep 5
-                        else
-                            break
-                        fi
-                    done
-                    echo "Worker finalizado para user_id=${user_id} e email_id=${email_id}"
-                fi
-            } 200>"${lock_file}" &
+            sync_email_in_loop "${user_id}" "${email_id}" &
             active_workers[${email_id}]=$!
         fi
     done <<< "$EMAIL_LIST"
