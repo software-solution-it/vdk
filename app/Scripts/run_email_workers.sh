@@ -1,5 +1,4 @@
 LOCK_DIR="/tmp/email_sync_locks"
-
 mkdir -p "${LOCK_DIR}"
 
 DATABASE_USER="root" 
@@ -16,13 +15,19 @@ while IFS=$'\t' read -r user_id email_id; do
         continue
     fi
 
+    # Cria o lock file
     touch "${LOCK_FILE}"
 
     echo "Iniciando worker para user_id=${user_id} e email_id=${email_id}"
     ${PHP_BIN} ${WORKER_SCRIPT} ${user_id} ${email_id} > /dev/null 2>&1 &
 
+    # Salvar o PID do processo no lock file para controle
+    echo $! > "${LOCK_FILE}"
+
+    # Usar um subshell para esperar pelo término do processo e então remover o lock file
     (
-        wait $!
+        pid=$(<"${LOCK_FILE}")
+        wait "${pid}"
         rm -f "${LOCK_FILE}"
     ) &
 
