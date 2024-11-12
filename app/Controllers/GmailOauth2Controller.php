@@ -243,7 +243,7 @@ class GmailOauth2Controller {
         }
 
         try {
-            $emails = $this->gmailOAuth2Service->listEmails($user_id, $email_id, $labelIds);
+            $emails = $this->gmailOAuth2Service->syncEmailsGmail($user_id, $email_id, $labelIds);
             http_response_code(200);
             echo json_encode([
                 'Status' => 'Success',
