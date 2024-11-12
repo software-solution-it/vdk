@@ -275,16 +275,18 @@ class EmailService {
             $firstEmail['content'] = base64_encode($firstEmail['content']);
         }
     
-        $queryThread = "SELECT e.* 
-                        FROM emails e 
-                        WHERE e.email_id != :firstReference 
-                        AND (e.references LIKE :likeReference OR e.in_reply_to = :firstReference) 
-                        ORDER BY e.date_received ASC 
-                        LIMIT $limit OFFSET $offset";
+    $queryThread = "SELECT e.* 
+                    FROM emails e 
+                    WHERE e.email_id != :firstReference 
+                    AND (e.references LIKE :likeReference OR e.in_reply_to = :firstReference) 
+                    ORDER BY e.date_received ASC 
+                    LIMIT :limit OFFSET :offset";
     
         $stmtThread = $this->db->prepare($queryThread);
         $stmtThread->bindValue(':firstReference', $firstReference, PDO::PARAM_STR);
         $stmtThread->bindValue(':likeReference', '%' . $firstReference . '%', PDO::PARAM_STR);
+        $stmtThread->bindValue(':limit', (int)$limit, PDO::PARAM_INT);
+        $stmtThread->bindValue(':offset', (int)$offset, PDO::PARAM_INT);
         $stmtThread->execute();
         $threadEmails = $stmtThread->fetchAll(PDO::FETCH_ASSOC);
     
