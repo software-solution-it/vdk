@@ -333,32 +333,34 @@ class EmailController {
         }
     }
 
+
     public function listEmails() {
         header('Content-Type: application/json');
         
-        // Obter parâmetros da requisição
-        $email_id = isset($_GET['email_id']) ? $_GET['email_id'] : null;
-        $limit = isset($_GET['limit']) ? $_GET['limit'] : 10;
-        $offset = isset($_GET['offset']) ? $_GET['offset'] : 0;
+        $folder_id = isset($_GET['folder_id']) ? $_GET['folder_id'] : null;
+        $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 20; 
+        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1; 
     
-        $requiredParams = ['email_id'];
+        $offset = ($page - 1) * $limit;
+    
+        $requiredParams = ['folder_id'];
     
         $params = [
-            'email_id' => $email_id,
+            'folder_id' => $folder_id,
             'limit' => $limit,
-            'offset' => $offset
+            'page' => $page
         ];
     
         if (!$this->validateParams($requiredParams, $params)) {
             http_response_code(400);
             echo json_encode([
                 'Status' => 'Error',
-                'Message' => 'O parâmetro "email_id" é obrigatório.'
+                'Message' => 'O parâmetro "folder_id" é obrigatório.'
             ]);
             return;
         }
     
-        if (!is_numeric($limit) || $limit <= 0) {
+        if ($limit <= 0) {
             http_response_code(400);
             echo json_encode([
                 'Status' => 'Error',
@@ -367,17 +369,17 @@ class EmailController {
             return;
         }
     
-        if (!is_numeric($offset) || $offset < 0) {
+        if ($page <= 0) {
             http_response_code(400);
             echo json_encode([
                 'Status' => 'Error',
-                'Message' => 'O parâmetro "offset" deve ser um número inteiro igual ou maior que zero.'
+                'Message' => 'O parâmetro "page" deve ser um número inteiro positivo maior que zero.'
             ]);
             return;
         }
     
         try {
-            $emails = $this->emailService->listEmails($email_id, (int)$limit, (int)$offset);
+            $emails = $this->emailService->listEmails($folder_id, $limit, $offset);
             
             http_response_code(200);
             echo json_encode([
@@ -395,6 +397,7 @@ class EmailController {
             ]);
         }
     }
+    
     
     
     

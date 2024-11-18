@@ -22,28 +22,29 @@ class Email {
         $subject, 
         $sender, 
         $recipient, 
-        $body, 
+        $body_html, 
+        $body_text, 
         $date_received, 
         $references, 
         $in_reply_to, 
         $isRead, 
-        $folder,
+        $folder_id,
         $cc,
         $uid,
-        $conversation_id // Adicionado
+        $conversation_id
     ) {
         if (is_null($email_id) || is_null($sender)) {
-        
             return false; 
         }
-
+    
         $subject = $subject ?? 'Sem Assunto';
-        $body = $body ?? 'Sem Conteúdo';
-
+        $body_html = $body_html ?? null;
+        $body_text = $body_text ?? 'Sem Conteúdo';
+    
         $query = "INSERT INTO " . $this->table . " 
-                  (user_id, email_id, subject, sender, recipient, body, date_received, `references`, in_reply_to, is_read, folder, cc, uid, conversation_id) 
+                  (user_id, email_id, subject, sender, recipient, body_html, body_text, date_received, `references`, in_reply_to, is_read, folder_id, cc, uid, conversation_id) 
                   VALUES 
-                  (:user_id, :email_id, :subject, :sender, :recipient, :body, :date_received, :references, :in_reply_to, :is_read, :folder, :cc, :uid, :conversation_id)";
+                  (:user_id, :email_id, :subject, :sender, :recipient, :body_html, :body_text, :date_received, :references, :in_reply_to, :is_read, :folder_id, :cc, :uid, :conversation_id)";
         
         $stmt = $this->conn->prepare($query);
         
@@ -52,22 +53,25 @@ class Email {
         $stmt->bindParam(':subject', $subject);
         $stmt->bindParam(':sender', $sender);
         $stmt->bindParam(':recipient', $recipient);
-        $stmt->bindParam(':body', $body);
+        $stmt->bindParam(':body_html', $body_html);
+        $stmt->bindParam(':body_text', $body_text);
         $stmt->bindParam(':date_received', $date_received);
         $stmt->bindParam(':references', $references);
         $stmt->bindParam(':in_reply_to', $in_reply_to);
         $stmt->bindParam(':is_read', $isRead);
-        $stmt->bindParam(':folder', $folder);
+        $stmt->bindParam(':folder_id', $folder_id);
         $stmt->bindParam(':cc', $cc);
         $stmt->bindParam(':uid', $uid); 
-        $stmt->bindParam(':conversation_id', $conversation_id); // Novo parâmetro
-
+        $stmt->bindParam(':conversation_id', $conversation_id); 
+    
         if ($stmt->execute()) {
             return $this->conn->lastInsertId();
         } else {
             return false; 
         }
     }
+    
+    
 
     public function saveAttachment($email_id, $filename, $mimeType, $size, $content) {
         try {
@@ -238,6 +242,36 @@ class Email {
         }
     }
 
+    public function getEmailIdsByFolder($user_id, $folder) {
+        try {
+            $query = "SELECT email_id FROM " . $this->table . " WHERE user_id = :user_id AND folder = :folder";
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':user_id', $user_id);
+            $stmt->bindParam(':folder', $folder);
+            $stmt->execute();
+            
+            return $stmt->fetchAll(PDO::FETCH_COLUMN);
+        } catch (Exception $e) {
+            $this->errorLogController->logError('Erro ao buscar email_ids por pasta: ' . $e->getMessage(), __FILE__, __LINE__);
+            throw new Exception('Erro ao buscar email_ids por pasta: ' . $e->getMessage());
+        }
+    }
+    
+
+    public function deleteEmailByMessageId($messageId, $user_id) {
+        try {
+            $query = "DELETE FROM " . $this->table . " WHERE email_id = :message_id AND user_id = :user_id";
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':message_id', $messageId);
+            $stmt->bindParam(':user_id', $user_id);
+            
+            return $stmt->execute();
+        } catch (Exception $e) {
+            $this->errorLogController->logError('Erro ao deletar e-mail por Message-ID: ' . $e->getMessage(), __FILE__, __LINE__);
+            throw new Exception('Erro ao deletar e-mail por Message-ID: ' . $e->getMessage());
+        }
+    }
+
     // Método para deletar um e-mail
     public function deleteEmail($messageId) {
         try {
@@ -325,6 +359,44 @@ class Email {
         } catch (Exception $e) {
             error_log($e->getMessage());
             return false;
+        }
+    }
+
+
+    public function getLastEmailSyncDateByFolderId($user_id, $folder_id) {
+        try {
+            $query = "SELECT MAX(date_received) as last_date 
+                      FROM " . $this->table . " 
+                      WHERE user_id = :user_id AND folder_id = :folder_id";
+            
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
+            $stmt->bindParam(':folder_id', $folder_id, PDO::PARAM_INT);
+            $stmt->execute();
+            
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            return $result['last_date'] ?? null;
+        } catch (Exception $e) {
+            $this->errorLogController->logError('Erro ao buscar a última data de sincronização do e-mail por Folder ID: ' . $e->getMessage(), __FILE__, __LINE__, $user_id);
+            throw new Exception('Erro ao buscar a última data de sincronização do e-mail por Folder ID: ' . $e->getMessage());
+        }
+    }
+    
+    public function getEmailIdsByFolderId($user_id, $folder_id) {
+        try {
+            $query = "SELECT email_id FROM " . $this->table . " 
+                      WHERE user_id = :user_id AND folder_id = :folder_id";
+            
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
+            $stmt->bindParam(':folder_id', $folder_id, PDO::PARAM_INT);
+            $stmt->execute();
+            
+            return $stmt->fetchAll(PDO::FETCH_COLUMN);
+        } catch (Exception $e) {
+            $this->errorLogController->logError('Erro ao buscar os IDs dos e-mails por Folder ID: ' . $e->getMessage(), __FILE__, __LINE__, $user_id);
+            throw new Exception('Erro ao buscar os IDs dos e-mails por Folder ID: ' . $e->getMessage());
         }
     }
     

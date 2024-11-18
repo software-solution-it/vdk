@@ -240,66 +240,20 @@ class EmailService {
             return false;
         }
     }
-    public function listEmails($email_id) {
-        // 1. Buscar email específico
-        $querySingle = "SELECT e.* FROM emails e WHERE e.id = :email_id";
-        $stmtSingle = $this->db->prepare($querySingle);
-        $stmtSingle->bindParam(':email_id', $email_id, PDO::PARAM_INT);
-        $stmtSingle->execute();
-        $email = $stmtSingle->fetch(PDO::FETCH_ASSOC);
+    public function listEmails($folder_id, $limit, $offset) {
+        $query = "SELECT e.* FROM emails e WHERE e.folder_id = :folder_id LIMIT :limit OFFSET :offset";
+        
+        $stmt = $this->db->prepare($query);
+        
+        $stmt->bindParam(':folder_id', $folder_id, PDO::PARAM_INT);
+        $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
     
-        if (!$email) {
-            return []; // Email não encontrado
-        }
-    
-        if (!empty($email['content'])) {
-            $email['content'] = base64_encode($email['content']);
-        }
-    
-        // 2. Pegar o primeiro Message-ID de referência, ou usar o próprio Message-ID do email se não houver referências
-        $references = isset($email['references']) ? explode(',', $email['references']) : [];
-        $firstReference = trim($references[0] ?? '') ?: $email['email_id'];
-    
-        // 3. Buscar o primeiro email no encadeamento usando o Message-ID do firstReference
-        $queryFirstEmail = "SELECT e.* FROM emails e WHERE e.email_id = :firstReference";
-        $stmtFirstEmail = $this->db->prepare($queryFirstEmail);
-        $stmtFirstEmail->bindParam(':firstReference', $firstReference, PDO::PARAM_STR);
-        $stmtFirstEmail->execute();
-        $firstEmail = $stmtFirstEmail->fetch(PDO::FETCH_ASSOC);
-    
-        // Se não encontrar, usar o email atual como primeiro email
-        if (!$firstEmail) {
-            $firstEmail = $email;
-        }
-    
-        // 4. Codificar o conteúdo do primeiro email, se encontrado
-        if ($firstEmail && !empty($firstEmail['content'])) {
-            $firstEmail['content'] = base64_encode($firstEmail['content']);
-        }
-    
-        // 5. Buscar todos os emails no encadeamento que referenciem o firstReference
-        $queryThread = "SELECT e.* 
-                        FROM emails e 
-                        WHERE e.email_id != :firstReference 
-                        AND (e.references LIKE :likeReference OR e.in_reply_to = :firstReference) 
-                        ORDER BY e.date_received ASC";
-    
-        $stmtThread = $this->db->prepare($queryThread);
-        $stmtThread->bindValue(':firstReference', $firstReference, PDO::PARAM_STR);
-        $stmtThread->bindValue(':likeReference', '%' . $firstReference . '%', PDO::PARAM_STR);
-    
-        $stmtThread->execute();
-        $threadEmails = $stmtThread->fetchAll(PDO::FETCH_ASSOC);
-    
-        // 6. Codificar conteúdo em base64 para cada email no encadeamento
-        foreach ($threadEmails as &$threadEmail) {
-            if (!empty($threadEmail['content'])) {
-                $threadEmail['content'] = base64_encode($threadEmail['content']);
-            }
-        }
-    
-        // 7. Combinar o primeiro email com os demais emails do encadeamento
-        return array_merge([$firstEmail], $threadEmails);
+        $stmt->execute();
+        
+        $emails = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        return $emails;
     }
     
     

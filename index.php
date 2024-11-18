@@ -11,11 +11,9 @@ use App\Controllers\IMAPController;
 use App\Controllers\EmailAccountController;
 use App\Controllers\ProviderController;
 use App\Controllers\EmailSyncController;
-use App\Controllers\ConnectionController;
 use App\Controllers\WebhookController;
+use App\Controllers\EmailFolderController;
 use App\Controllers\OutlookOAuth2Controller;
-use App\Controllers\ImapTestController;
-use App\Helpers\AuthMiddleware;
 
 //AuthMiddleware::verifyBearerToken();
 
@@ -35,7 +33,7 @@ switch ($request_uri[0]) {
         $auth = new AuthController();
         $auth->verifyLoginCode();
         break;
-        
+
 
     case '/api/auth/forgot-password':
         $auth = new AuthController();
@@ -62,40 +60,51 @@ switch ($request_uri[0]) {
         $controller->refreshAccessToken();
         break;
 
-        case '/api/gmail/oauth/authorization':
-            $controller = new GmailOauth2Controller();
-            $controller->getAuthorizationUrl();
-            break;
-    
-        case '/api/gmail/oauth/token':
-            $controller = new GmailOauth2Controller();
-            $controller->getAccessToken();
-            break;
-    
-        case '/api/gmail/oauth/refresh':
-            $controller = new GmailOauth2Controller();
-            $controller->refreshAccessToken();
-            break;
+    case '/api/gmail/oauth/authorization':
+        $controller = new GmailOauth2Controller();
+        $controller->getAuthorizationUrl();
+        break;
 
-            case '/api/gmail/oauth/list':
-                $controller = new GmailOauth2Controller();
-                $controller->listEmails();
-                break;
+    case '/api/gmail/oauth/token':
+        $controller = new GmailOauth2Controller();
+        $controller->getAccessToken();
+        break;
 
-                case '/api/gmail/oauth/move':
-                    $controller = new GmailOauth2Controller();
-                    $controller->moveEmail();
-                    break;
-                
-                case '/api/gmail/oauth/delete':
-                    $controller = new GmailOauth2Controller();
-                    $controller->deleteEmail();
-                    break;
-                
-                case '/api/gmail/oauth/list/conversation':
-                    $controller = new GmailOauth2Controller();
-                    $controller->listEmailsByConversation();
-                    break;
+    case '/api/gmail/oauth/refresh':
+        $controller = new GmailOauth2Controller();
+        $controller->refreshAccessToken();
+        break;
+
+    case '/api/gmail/oauth/list':
+        $controller = new GmailOauth2Controller();
+        $controller->listEmails();
+        break;
+
+    case '/api/gmail/oauth/move':
+        $controller = new GmailOauth2Controller();
+        $controller->moveEmail();
+        break;
+
+    case '/api/gmail/oauth/delete':
+        $controller = new GmailOauth2Controller();
+        $controller->deleteEmail();
+        break;
+
+    case '/api/gmail/oauth/list/conversation':
+        $controller = new GmailOauth2Controller();
+        $controller->listEmailsByConversation();
+        break;
+
+    case '/api/email/folders': 
+        $controller = new EmailFolderController();
+        $email_id = $_GET['email_id'] ?? null;
+        if ($email_id) {
+            $controller->getFoldersByEmailId($email_id);
+        } else {
+            http_response_code(400);
+            echo json_encode(['message' => 'email_id is required']);
+        }
+        break;
 
     case '/api/outlook/oauth/move':
         $controller = new OutlookOAuth2Controller();
@@ -175,22 +184,22 @@ switch ($request_uri[0]) {
         $emailController = new EmailController();
         $emailController->sendMultipleEmails();
         break;
-        
 
-        case '/api/imap/test':
-            $imapController = new IMAPController();
-            $imapController->testConnection();
-            break;
 
-            case '/api/smtp/test':
-                $smtpController = new SMTPController();
-                $smtpController->testConnection();
-                break;
+    case '/api/imap/test':
+        $imapController = new IMAPController();
+        $imapController->testConnection();
+        break;
+
+    case '/api/smtp/test':
+        $smtpController = new SMTPController();
+        $smtpController->testConnection();
+        break;
 
     case '/api/email/list':
         $emailController = new EmailController();
         $email_id = isset($_GET['email_id']) ? $_GET['email_id'] : null;
-        $emailController->listEmails($email_id,);
+        $emailController->listEmails();
         break;
 
     case '/api/email/view':
@@ -216,16 +225,16 @@ switch ($request_uri[0]) {
         break;
 
 
-        case '/api/email-account/accountById':
-            $id = $_GET['id'] ?? null;
-            if ($id) {
-                $controller = new EmailAccountController();
-                $controller->getEmailAccountById($id);
-            } else {
-                http_response_code(400);
-                echo json_encode(['message' => 'id is required']);
-            }
-            break;
+    case '/api/email-account/accountById':
+        $id = $_GET['id'] ?? null;
+        if ($id) {
+            $controller = new EmailAccountController();
+            $controller->getEmailAccountById($id);
+        } else {
+            http_response_code(400);
+            echo json_encode(['message' => 'id is required']);
+        }
+        break;
 
     case '/api/email-account/update':
         $controller = new EmailAccountController();
