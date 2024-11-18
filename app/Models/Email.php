@@ -31,7 +31,8 @@ class Email {
         $folder_id,
         $cc,
         $uid,
-        $conversation_id
+        $conversation_id,
+        $from
     ) {
         if (is_null($email_id) || is_null($sender)) {
             return false; 
@@ -42,9 +43,9 @@ class Email {
         $body_text = $body_text ?? 'Sem Conteúdo';
     
         $query = "INSERT INTO " . $this->table . " 
-                  (user_id, email_id, subject, sender, recipient, body_html, body_text, date_received, `references`, in_reply_to, is_read, folder_id, cc, uid, conversation_id) 
+                  (user_id, email_id, subject, sender, recipient, body_html, body_text, date_received, `references`, in_reply_to, is_read, folder_id, cc, uid, conversation_id, `from`) 
                   VALUES 
-                  (:user_id, :email_id, :subject, :sender, :recipient, :body_html, :body_text, :date_received, :references, :in_reply_to, :is_read, :folder_id, :cc, :uid, :conversation_id)";
+                  (:user_id, :email_id, :subject, :sender, :recipient, :body_html, :body_text, :date_received, :references, :in_reply_to, :is_read, :folder_id, :cc, :uid, :conversation_id, :from)";
         
         $stmt = $this->conn->prepare($query);
         
@@ -63,6 +64,7 @@ class Email {
         $stmt->bindParam(':cc', $cc);
         $stmt->bindParam(':uid', $uid); 
         $stmt->bindParam(':conversation_id', $conversation_id); 
+        $stmt->bindParam(':from', $from);
     
         if ($stmt->execute()) {
             return $this->conn->lastInsertId();
@@ -70,6 +72,7 @@ class Email {
             return false; 
         }
     }
+    
     
     
 

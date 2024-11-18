@@ -265,6 +265,7 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                         $messageId = $message->getId();
                         $processedMessageIds[] = $messageId;
                         $fromAddress = $message->getFrom()->getAddress();
+                        $fromName = $message->getFrom()->getName() ?? null;
                         $subject = $message->getSubject() ?? 'Sem Assunto';
                         $date_received = $message->getDate()->format('Y-m-d H:i:s');
                         $isRead = $message->isSeen() ? 1 : 0;
@@ -312,7 +313,8 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                             $folderId,
                             $cc,
                             $uidCounter,
-                            null
+                            null,
+                            from: $fromName
                         );
     
                         // Now process inline images
