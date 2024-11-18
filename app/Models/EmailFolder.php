@@ -61,14 +61,23 @@ class EmailFolder {
         }
     }
     
-    
-
-    
-    
-    
     public function getFoldersByEmailAccountId($email_id) {
         try {
             $query = "SELECT id FROM " . $this->table . " WHERE email_id = :email_id";
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':email_id', $email_id, PDO::PARAM_INT);
+            $stmt->execute();
+    
+            return $stmt->fetchAll(PDO::FETCH_COLUMN);
+        } catch (Exception $e) {
+            $this->errorLogController->logError('Erro ao obter pastas por Email Account ID: ' . $e->getMessage(), __FILE__, __LINE__, null);
+            throw new Exception('Erro ao obter pastas por Email Account ID: ' . $e->getMessage());
+        }
+    }
+
+    public function getFoldersNameByEmailAccountId($email_id) {
+        try {
+            $query = "SELECT folder_name, id FROM " . $this->table . " WHERE email_id = :email_id";
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':email_id', $email_id, PDO::PARAM_INT);
             $stmt->execute();
