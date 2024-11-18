@@ -34,14 +34,37 @@ class EmailSyncService
     public function __construct($db)
     {
         $this->db = $db;
-        $this->emailModel = new Email($db);
-        $this->emailAccountModel = new EmailAccount($db);
-        $this->rabbitMQService = new RabbitMQService($db);
-        $this->webhookService = new WebhookService();
-        $this->errorLogController = new ErrorLogController();
-        $this->outlookOAuth2Service  = new OutlookOAuth2Service();
-        $this->gmailOauth2Service = new GmailOAuth2Service();
-        $this->emailFolderModel = new EmailFolder($db);
+    
+        try {
+            error_log("Iniciando instância de Email");
+            $this->emailModel = new Email($db);
+    
+            error_log("Iniciando instância de EmailAccount");
+            $this->emailAccountModel = new EmailAccount($db);
+    
+            error_log("Iniciando instância de RabbitMQService");
+            $this->rabbitMQService = new RabbitMQService($db);
+    
+            error_log("Iniciando instância de WebhookService");
+            $this->webhookService = new WebhookService();
+    
+            error_log("Iniciando instância de ErrorLogController");
+            $this->errorLogController = new ErrorLogController();
+    
+            error_log("Iniciando instância de OutlookOAuth2Service");
+            $this->outlookOAuth2Service  = new OutlookOAuth2Service();
+    
+            error_log("Iniciando instância de GmailOAuth2Service");
+            $this->gmailOauth2Service = new GmailOAuth2Service();
+    
+            error_log("Iniciando instância de EmailFolder");
+            $this->emailFolderModel = new EmailFolder($db);
+    
+            error_log("Construtor de EmailSyncService concluído com sucesso.");
+        } catch (Exception $e) {
+            error_log("Erro no construtor de EmailSyncService: " . $e->getMessage());
+            throw $e;
+        }
     }
 
     
