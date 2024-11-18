@@ -1,6 +1,31 @@
 <?php
 
 require __DIR__ . '/vendor/autoload.php';
+
+set_exception_handler(function ($exception) {
+    $errorMessage = "Exceção não capturada: " . $exception->getMessage() .
+                    " em " . $exception->getFile() .
+                    " na linha " . $exception->getLine();
+
+    error_log($errorMessage);
+
+    if (ini_get('display_errors')) {
+        echo json_encode([
+            'status' => false,
+            'error' => $exception->getMessage(),
+            'file' => $exception->getFile(),
+            'line' => $exception->getLine()
+        ]);
+    } else {
+        echo json_encode([
+            'status' => false,
+        ]);
+    }
+
+    exit(1);
+});
+
+
 use App\Controllers\AuthController;
 use App\Controllers\GmailOauth2Controller;
 use App\Controllers\SMTPController;
