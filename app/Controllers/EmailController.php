@@ -410,7 +410,7 @@ class EmailController {
         }
 
         try {
-            $email = $this->emailService->viewEmail($email_id);
+            $email = $this->emailService->viewEmailThread($email_id);
             if ($email) {
                 http_response_code(200);
                 echo json_encode([
