@@ -48,7 +48,12 @@ class EmailSyncService
 
     public function startConsumer($user_id, $email_id)
     {
+        try{
         $this->syncEmailsByUserIdAndProviderId($user_id, $email_id);
+    } catch (Exception $e) {
+        $this->errorLogController->logError("Erro no startConsumer: " . $e->getMessage(), __FILE__, __LINE__, $user_id);
+        throw $e; // Relance a exceção se quiser que seja capturada pelo catch externo
+    }
     }
 
     public function reconnectRabbitMQ() {
@@ -158,6 +163,7 @@ class EmailSyncService
 
 public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
 {
+    try {
     set_time_limit(0);
 
     $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $email_id);
@@ -174,7 +180,7 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
     error_log("Conta de e-mail encontrada: " . $emailAccount['email']);
     error_log("Senha Descriptografada: " . EncryptionHelper::decrypt($emailAccount['password']));
 
-    try {
+
         $message = [
             'user_id' => $user_id,
             'provider_id' => $emailAccount['provider_id'],
