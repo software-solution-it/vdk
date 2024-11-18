@@ -295,7 +295,7 @@ class EmailService {
         try {
             $thread = [];
             
-            do {
+            while ($email_id) {
                 // Busca o e-mail atual
                 $query = "
                     SELECT id, email_id, subject, sender, recipient, body, date_received, in_reply_to, `references`, folder_id
@@ -308,7 +308,7 @@ class EmailService {
                 
                 $email = $stmt->fetch(PDO::FETCH_ASSOC);
                 if (!$email) {
-                    break; // Para se não encontrar mais nenhum e-mail
+                    break; // Encerra se não encontrar mais correspondências
                 }
     
                 // Adiciona o e-mail atual à thread
@@ -316,8 +316,7 @@ class EmailService {
     
                 // Atualiza o email_id para rastrear o próximo e-mail anterior
                 $email_id = $email['in_reply_to'];
-    
-            } while ($email_id); // Continua enquanto houver `in_reply_to`
+            }
     
             // Ordena a thread por data (do mais antigo para o mais recente)
             usort($thread, function ($a, $b) {
