@@ -241,7 +241,25 @@ class EmailService {
         }
     }
     public function listEmails($folder_id, $limit, $offset) {
-        $query = "SELECT e.* FROM emails e WHERE e.folder_id = :folder_id LIMIT :limit OFFSET :offset";
+        $query = "
+            SELECT 
+                e.email_id,
+                e.body_text,
+                e.from,
+                e.date_received,
+                COUNT(a.attachment_id) AS attachment_count
+            FROM 
+                emails e
+            LEFT JOIN 
+                email_attachments a
+            ON 
+                e.email_id = a.email_id
+            WHERE 
+                e.folder_id = :folder_id
+            GROUP BY 
+                e.email_id, e.body_text, e.from, e.date_received
+            LIMIT 
+                :limit OFFSET :offset";
         
         $stmt = $this->db->prepare($query);
         
