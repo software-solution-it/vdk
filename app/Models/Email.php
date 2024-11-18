@@ -16,6 +16,37 @@ class Email {
         $this->errorLogController = new ErrorLogController();
     }
 
+
+    public function getConversationByInReplyTo($in_reply_to) {
+        try {
+            $query = "
+                SELECT 
+                    conversation_id, 
+                    MAX(conversation_step) AS max_step 
+                FROM mail.emails 
+                WHERE email_id = :in_reply_to 
+                GROUP BY conversation_id
+            ";
+    
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':in_reply_to', $in_reply_to, PDO::PARAM_STR);
+            $stmt->execute();
+    
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+            if ($result) {
+                return $result;
+            }
+    
+            return null; // Retorna null se não encontrar uma conversa
+        } catch (Exception $e) {
+            $this->errorLogController->logError("Erro ao buscar conversa por in_reply_to: " . $e->getMessage(), __FILE__, __LINE__, null);
+            throw new Exception("Erro ao buscar conversa por in_reply_to: " . $e->getMessage());
+        }
+    }
+    
+    
+
     public function saveEmail(
         $user_id, 
         $email_id, 
@@ -32,6 +63,7 @@ class Email {
         $cc,
         $uid,
         $conversation_id,
+        $conversation_step,  // Novo campo
         $from
     ) {
         if (is_null($email_id) || is_null($sender)) {
@@ -43,9 +75,9 @@ class Email {
         $body_text = $body_text ?? 'Sem Conteúdo';
     
         $query = "INSERT INTO " . $this->table . " 
-                  (user_id, email_id, subject, sender, recipient, body_html, body_text, date_received, `references`, in_reply_to, is_read, folder_id, cc, uid, conversation_id, `from`) 
+                  (user_id, email_id, subject, sender, recipient, body_html, body_text, date_received, `references`, in_reply_to, is_read, folder_id, cc, uid, conversation_id, conversation_step, `from`) 
                   VALUES 
-                  (:user_id, :email_id, :subject, :sender, :recipient, :body_html, :body_text, :date_received, :references, :in_reply_to, :is_read, :folder_id, :cc, :uid, :conversation_id, :from)";
+                  (:user_id, :email_id, :subject, :sender, :recipient, :body_html, :body_text, :date_received, :references, :in_reply_to, :is_read, :folder_id, :cc, :uid, :conversation_id, :conversation_step, :from)";
         
         $stmt = $this->conn->prepare($query);
         
@@ -64,6 +96,7 @@ class Email {
         $stmt->bindParam(':cc', $cc);
         $stmt->bindParam(':uid', $uid); 
         $stmt->bindParam(':conversation_id', $conversation_id); 
+        $stmt->bindParam(':conversation_step', $conversation_step); // Novo campo
         $stmt->bindParam(':from', $from);
     
         if ($stmt->execute()) {
@@ -72,6 +105,7 @@ class Email {
             return false; 
         }
     }
+    
     
     
     

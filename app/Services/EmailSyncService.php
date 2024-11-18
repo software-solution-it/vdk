@@ -234,9 +234,7 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                 }
             }
             $folders = $this->emailFolderModel->syncFolders($email_account_id, $folderNames); 
-            
     
-            // Corrected method name and parameter
             $storedFolders = $this->emailFolderModel->getFoldersByEmailAccountId($email_account_id);
     
             foreach ($mailboxes as $mailbox) {
@@ -251,10 +249,8 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                     error_log("Pasta " . $folderName . " não está sincronizada no banco de dados. Ignorando...");
                     continue;
                 }
-                
     
                 $folderId = $folders[$folderName];
-    
                 $messages = $mailbox->getMessages();
     
                 $storedMessageIds = $this->emailModel->getEmailIdsByFolderId($user_id, $folderId);
@@ -298,26 +294,44 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                         $ccAddresses = $message->getCc();
                         $cc = $ccAddresses ? implode(', ', array_map(fn(EmailAddress $addr) => $addr->getAddress(), $ccAddresses)) : null;
     
+                        // Adicionar lógica para conversation_id e conversation_step
+                        $conversation_id = null;
+                        $conversation_step = 1;
+    
+                        if ($inReplyTo) {
+                            $conversationDetails = $this->emailModel->getConversationByInReplyTo($inReplyTo);
+                            if ($conversationDetails) {
+                                $conversation_id = $conversationDetails['conversation_id'];
+                                $conversation_step = $conversationDetails['max_step'] + 1; // Incrementa o passo
+                            } else {
+                                $conversation_id = $messageId; // Define um novo conversation_id
+                            }
+                        } else {
+                            $conversation_id = $messageId; // Inicia uma nova conversa
+                        }
+    
                         $emailId = $this->emailModel->saveEmail(
                             $user_id,
                             $messageId,
                             $subject,
                             $fromAddress,
                             implode(', ', array_map(fn(EmailAddress $addr) => $addr->getAddress(), iterator_to_array($message->getTo()))),
-                            $body_html,
+                            $body_html, 
                             $body_text,
                             $date_received,
                             $references,
                             $inReplyTo,
                             $isRead,
-                            $folderId,
+                            $folderId, 
                             $cc,
                             $uidCounter,
-                            null,
-                            from: $fromName
+                            $conversation_id,
+                            $conversation_step,
+                            $fromName
+                             
                         );
     
-                        // Now process inline images
+                        // Processamento de imagens inline
                         if ($body_html) {
                             preg_match_all('/<img[^>]+src="data:image\/([^;]+);base64,([^"]+)"/', $body_html, $matches, PREG_SET_ORDER);
     
@@ -345,7 +359,7 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                             }
                         }
     
-                        // Process attachments
+                        // Processamento de anexos
                         if ($message->hasAttachments()) {
                             $attachments = $message->getAttachments();
                             foreach ($attachments as $attachment) {
@@ -425,6 +439,7 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
         }
         error_log("Sincronização de e-mails concluída para o usuário $user_id e provedor $provider_id");
     }
+    
     
     
     
