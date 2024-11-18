@@ -292,39 +292,46 @@ class EmailService {
     }
 
     public function viewEmailThread($email_id) {
-        $query = "
-            SELECT id, references, in_reply_to 
-            FROM mail.emails 
-            WHERE id = :email_id
-        ";
-        $stmt = $this->db->prepare($query);
-        $stmt->bindParam(':email_id', $email_id, PDO::PARAM_INT);
-        $stmt->execute();
-        
-        $email = $stmt->fetch(PDO::FETCH_ASSOC);
-        if (!$email) {
-            throw new Exception("E-mail não encontrado com o ID: $email_id");
+        try {
+            // Consulta para obter os detalhes do e-mail
+            $query = "
+                SELECT id, `references`, in_reply_to 
+                FROM mail.emails 
+                WHERE id = :email_id
+            ";
+            $stmt = $this->db->prepare($query);
+            $stmt->bindParam(':email_id', $email_id, PDO::PARAM_INT);
+            $stmt->execute();
+            
+            $email = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$email) {
+                throw new Exception("E-mail não encontrado com o ID: $email_id");
+            }
+    
+            $references = $email['references'];
+            $in_reply_to = $email['in_reply_to'];
+    
+            // Consulta para obter todos os e-mails relacionados à thread
+            $query = "
+                SELECT id, user_id, email_id, subject, sender, recipient, cc, body, date_received, `references`, in_reply_to, is_read, created_at, updated_at, uid, `from`, folder_id, body_html, body_text
+                FROM mail.emails
+                WHERE 
+                    `references` LIKE :references OR in_reply_to = :in_reply_to
+                ORDER BY date_received DESC
+            ";
+            $stmt = $this->db->prepare($query);
+    
+            // Ajusta o parâmetro para a busca por substring
+            $references_like = '%' . $references . '%';
+            $stmt->bindParam(':references', $references_like, PDO::PARAM_STR);
+            $stmt->bindParam(':in_reply_to', $in_reply_to, PDO::PARAM_STR);
+            $stmt->execute();
+    
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            $this->errorLogController->logError("Erro ao visualizar o e-mail: " . $e->getMessage(), __FILE__, __LINE__, null);
+            throw new Exception("Erro ao visualizar o e-mail: " . $e->getMessage());
         }
-    
-        $references = $email['references'];
-        $in_reply_to = $email['in_reply_to'];
-    
-        $query = "
-            SELECT id, user_id, email_id, subject, sender, recipient, cc, body, date_received, `references`, in_reply_to, is_read, created_at, updated_at, uid, `from`, folder_id, body_html, body_text
-            FROM mail.emails
-            WHERE 
-                `references` LIKE :references OR in_reply_to = :in_reply_to
-            ORDER BY date_received DESC
-        ";
-        $stmt = $this->db->prepare($query);
-    
-        // Ajusta o parâmetro para a busca por substring
-        $references_like = '%' . $references . '%';
-        $stmt->bindParam(':references', $references_like, PDO::PARAM_STR);
-        $stmt->bindParam(':in_reply_to', $in_reply_to, PDO::PARAM_STR);
-        $stmt->execute();
-    
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
     
 
