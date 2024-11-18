@@ -218,7 +218,6 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
     
         try {
             $server = new Server($imap_host, $imap_port);
-            $this->errorLogController->logError("Imap host " . $imap_host . " Imap Pass: " . $imap_port, __FILE__, __LINE__, $user_id);
             $connection = $server->authenticate($email, $password);
     
             $mailboxes = $connection->getMailboxes(); 
