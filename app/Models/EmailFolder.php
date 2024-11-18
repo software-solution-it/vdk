@@ -17,35 +17,43 @@ class EmailFolder {
         $this->errorLogController = new ErrorLogController();
     }
 
-    public function syncFolder($email_id, $folder_name)
+    public function syncFolders($email_id, $folders)
     {
         try {
-            // Verifica se a pasta já existe
-            $query = "SELECT id FROM " . $this->table . " WHERE email_id = :email_id AND folder_name = :folder_name";
-            $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(':email_id', $email_id);
-            $stmt->bindParam(':folder_name', $folder_name);
-            $stmt->execute();
-            $existingFolder = $stmt->fetch(PDO::FETCH_ASSOC);
+            // Obtém as pastas já existentes no banco de dados
+            $querySelect = "SELECT id, folder_name FROM " . $this->table . " WHERE email_id = :email_id";
+            $stmtSelect = $this->conn->prepare($querySelect);
+            $stmtSelect->bindParam(':email_id', $email_id, PDO::PARAM_INT);
+            $stmtSelect->execute();
+            $existingFolders = $stmtSelect->fetchAll(PDO::FETCH_KEY_PAIR); // Retorna um array associativo [folder_name => id]
     
-            if ($existingFolder) {
-                // Retorna o ID da pasta existente
-                return $existingFolder['id'];
-            } else {
-                // Insere uma nova pasta
-                $query = "INSERT INTO " . $this->table . " (email_id, folder_name) VALUES (:email_id, :folder_name)";
-                $stmt = $this->conn->prepare($query);
-                $stmt->bindParam(':email_id', $email_id);
-                $stmt->bindParam(':folder_name', $folder_name);
-                $stmt->execute();
+            $folderIds = [];
     
-                return $this->conn->lastInsertId();
+            // Insere as pastas que não existem
+            $queryInsert = "INSERT INTO " . $this->table . " (email_id, folder_name) VALUES (:email_id, :folder_name)";
+            $stmtInsert = $this->conn->prepare($queryInsert);
+    
+            foreach ($folders as $folderName) {
+                if (isset($existingFolders[$folderName])) {
+                    // Pasta já existe, adiciona o ID ao resultado
+                    $folderIds[$folderName] = $existingFolders[$folderName];
+                } else {
+                    // Insere a nova pasta
+                    $stmtInsert->bindParam(':email_id', $email_id, PDO::PARAM_INT);
+                    $stmtInsert->bindParam(':folder_name', $folderName, PDO::PARAM_STR);
+                    $stmtInsert->execute();
+    
+                    $folderIds[$folderName] = $this->conn->lastInsertId();
+                }
             }
+    
+            return $folderIds;
         } catch (Exception $e) {
-            $this->errorLogController->logError('Erro ao sincronizar pasta: ' . $e->getMessage(), __FILE__, __LINE__, null);
-            throw new Exception('Erro ao sincronizar pasta: ' . $e->getMessage());
+            $this->errorLogController->logError('Erro ao sincronizar pastas: ' . $e->getMessage(), __FILE__, __LINE__, null);
+            throw new Exception('Erro ao sincronizar pastas: ' . $e->getMessage());
         }
     }
+    
     
     
     public function getFoldersByEmailAccountId($email_id) {

@@ -227,15 +227,14 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
             $connection = $server->authenticate($email, $password);
     
             $mailboxes = $connection->getMailboxes(); 
-            $folders = [];
-    
+            $folderNames = [];
             foreach ($mailboxes as $mailbox) {
                 if (!($mailbox->getAttributes() & \LATT_NOSELECT)) {
-                    $folderName = $mailbox->getName();
-                    $folderId = $this->emailFolderModel->syncFolder($email_account_id, $folderName);
-                    $folders[$folderName] = $folderId; 
+                    $folderNames[] = $mailbox->getName(); 
                 }
             }
+            $folders = $this->emailFolderModel->syncFolders($email_account_id, $folderNames); 
+            
     
             // Corrected method name and parameter
             $storedFolders = $this->emailFolderModel->getFoldersByEmailAccountId($email_account_id);
@@ -248,10 +247,11 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
     
                 $folderName = $mailbox->getName();
     
-                if (!isset($folders[$folderName]) || !in_array($folders[$folderName], $storedFolders)) {
+                if (!isset($folders[$folderName])) {
                     error_log("Pasta " . $folderName . " não está sincronizada no banco de dados. Ignorando...");
                     continue;
                 }
+                
     
                 $folderId = $folders[$folderName];
     
