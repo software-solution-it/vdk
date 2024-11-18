@@ -39,8 +39,8 @@ class EmailFolder {
                     $folderIds[$folderName] = $existingFolders[$folderName];
                 } else {
                     // Insere a nova pasta
-                    $stmtInsert->bindParam(':email_id', $email_id, PDO::PARAM_INT);
-                    $stmtInsert->bindParam(':folder_name', $folderName, PDO::PARAM_STR);
+                    $stmtInsert->bindValue(':email_id', $email_id, PDO::PARAM_INT);
+                    $stmtInsert->bindValue(':folder_name', $folderName, PDO::PARAM_STR);
                     $stmtInsert->execute();
     
                     $folderIds[$folderName] = $this->conn->lastInsertId();
