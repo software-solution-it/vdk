@@ -255,13 +255,7 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
     
                 $folderId = $folders[$folderName];
     
-                $lastSyncDateForFolder = $this->emailModel->getLastEmailSyncDateByFolderId($user_id, $folderId);
-                $lastSyncDateForFolderFormatted = $lastSyncDateForFolder ? new \DateTime($lastSyncDateForFolder) : null;
-    
-                error_log("Última data de sincronização para a pasta " . $folderName . ": " . ($lastSyncDateForFolderFormatted ? $lastSyncDateForFolderFormatted->format('d-M-Y') : 'Sincronizando todos os e-mails'));
-    
-                $search = $lastSyncDateForFolderFormatted ? new Since($lastSyncDateForFolderFormatted) : null;
-                $messages = $search ? $mailbox->getMessages($search) : $mailbox->getMessages();
+                $messages = $mailbox->getMessages();
     
                 $storedMessageIds = $this->emailModel->getEmailIdsByFolderId($user_id, $folderId);
                 $processedMessageIds = []; 
