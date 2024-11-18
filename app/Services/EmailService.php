@@ -293,56 +293,36 @@ class EmailService {
 
     public function viewEmailThread($email_id) {
         try {
-            $thread = [];
-            $processed_ids = []; // Para evitar loops ou duplicatas
+            // Busca o conversation_id com base no email_id
+            $query = "
+                SELECT conversation_id
+                FROM mail.emails
+                WHERE id = :email_id
+            ";
+            $stmt = $this->db->prepare($query);
+            $stmt->bindParam(':email_id', $email_id, PDO::PARAM_INT);
+            $stmt->execute();
     
-            // Rastreia para trás (e-mails anteriores)
-            while ($email_id && !in_array($email_id, $processed_ids)) {
-                $query = "
-                    SELECT id, email_id, subject, sender, recipient, body, date_received, in_reply_to, `references`, folder_id
-                    FROM mail.emails 
-                    WHERE id = :email_id
-                ";
-                $stmt = $this->db->prepare($query);
-                $stmt->bindParam(':email_id', $email_id, PDO::PARAM_INT);
-                $stmt->execute();
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
     
-                $email = $stmt->fetch(PDO::FETCH_ASSOC);
-                if (!$email) {
-                    break;
-                }
-    
-                $thread[] = $email;
-                $processed_ids[] = $email_id; // Marca como processado
-                $email_id = $email['in_reply_to']; // Vai para o e-mail anterior
+            if (!$result || !$result['conversation_id']) {
+                throw new Exception("E-mail não pertence a uma conversa ou não encontrado.");
             }
     
-            // Rastreia para frente (e-mails posteriores)
-            $current_id = $thread[0]['id'] ?? null;
-            while ($current_id) {
-                $query = "
-                    SELECT id, email_id, subject, sender, recipient, body, date_received, in_reply_to, `references`, folder_id
-                    FROM mail.emails 
-                    WHERE in_reply_to = :current_id
-                ";
-                $stmt = $this->db->prepare($query);
-                $stmt->bindParam(':current_id', $current_id, PDO::PARAM_INT);
-                $stmt->execute();
+            $conversation_id = $result['conversation_id'];
     
-                $email = $stmt->fetch(PDO::FETCH_ASSOC);
-                if (!$email) {
-                    break;
-                }
+            // Busca todos os e-mails pertencentes à mesma conversa
+            $query = "
+                SELECT id, email_id, subject, sender, recipient, body, date_received, in_reply_to, `references`, folder_id, conversation_step
+                FROM mail.emails
+                WHERE conversation_id = :conversation_id
+                ORDER BY conversation_step ASC
+            ";
+            $stmt = $this->db->prepare($query);
+            $stmt->bindParam(':conversation_id', $conversation_id, PDO::PARAM_STR);
+            $stmt->execute();
     
-                $thread[] = $email;
-                $processed_ids[] = $current_id; // Marca como processado
-                $current_id = $email['id']; // Vai para o próximo e-mail na sequência
-            }
-    
-            // Ordena a thread por data (do mais antigo para o mais recente)
-            usort($thread, function ($a, $b) {
-                return strtotime($a['date_received']) <=> strtotime($b['date_received']);
-            });
+            $thread = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
             return $thread;
         } catch (Exception $e) {
@@ -350,6 +330,7 @@ class EmailService {
             throw new Exception("Erro ao visualizar a thread: " . $e->getMessage());
         }
     }
+    
     
 
     public function getEmailThread($conversation_Id) {

@@ -29,7 +29,7 @@ class EmailFolderController {
                 'Message' => 'email_id is required.',
                 'Data' => null
             ], JSON_UNESCAPED_UNICODE);
-            return;
+            return; 
         }
 
         try {
