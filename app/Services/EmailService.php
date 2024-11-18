@@ -294,9 +294,10 @@ class EmailService {
     public function viewEmailThread($email_id) {
         try {
             $thread = [];
-            
-            while ($email_id) {
-                // Busca o e-mail atual
+            $processed_ids = []; // Para evitar loops ou duplicatas
+    
+            // Rastreia para trás (e-mails anteriores)
+            while ($email_id && !in_array($email_id, $processed_ids)) {
                 $query = "
                     SELECT id, email_id, subject, sender, recipient, body, date_received, in_reply_to, `references`, folder_id
                     FROM mail.emails 
@@ -305,17 +306,37 @@ class EmailService {
                 $stmt = $this->db->prepare($query);
                 $stmt->bindParam(':email_id', $email_id, PDO::PARAM_INT);
                 $stmt->execute();
-                
+    
                 $email = $stmt->fetch(PDO::FETCH_ASSOC);
                 if (!$email) {
-                    break; // Encerra se não encontrar mais correspondências
+                    break;
                 }
     
-                // Adiciona o e-mail atual à thread
                 $thread[] = $email;
+                $processed_ids[] = $email_id; // Marca como processado
+                $email_id = $email['in_reply_to']; // Vai para o e-mail anterior
+            }
     
-                // Atualiza o email_id para rastrear o próximo e-mail anterior
-                $email_id = $email['in_reply_to'];
+            // Rastreia para frente (e-mails posteriores)
+            $current_id = $thread[0]['id'] ?? null;
+            while ($current_id) {
+                $query = "
+                    SELECT id, email_id, subject, sender, recipient, body, date_received, in_reply_to, `references`, folder_id
+                    FROM mail.emails 
+                    WHERE in_reply_to = :current_id
+                ";
+                $stmt = $this->db->prepare($query);
+                $stmt->bindParam(':current_id', $current_id, PDO::PARAM_INT);
+                $stmt->execute();
+    
+                $email = $stmt->fetch(PDO::FETCH_ASSOC);
+                if (!$email) {
+                    break;
+                }
+    
+                $thread[] = $email;
+                $processed_ids[] = $current_id; // Marca como processado
+                $current_id = $email['id']; // Vai para o próximo e-mail na sequência
             }
     
             // Ordena a thread por data (do mais antigo para o mais recente)
