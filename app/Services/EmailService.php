@@ -247,7 +247,7 @@ class EmailService {
                 e.body_text,
                 e.from,
                 e.date_received,
-                COUNT(a.attachment_id) AS attachment_count
+                COUNT(a.id) AS attachment_count
             FROM 
                 emails e
             LEFT JOIN 
