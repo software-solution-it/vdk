@@ -17,44 +17,40 @@ class EmailFolder {
         $this->errorLogController = new ErrorLogController();
     }
 
-    public function syncFolders($email_id, $folders) {
-        $querySelect = "SELECT id, folder_name FROM " . $this->table . " WHERE email_id = :email_id";
-        $stmtSelect = $this->conn->prepare($querySelect);
-        $stmtSelect->bindParam(':email_id', $email_id);
-        $stmtSelect->execute();
-        $existingFolders = $stmtSelect->fetchAll(PDO::FETCH_KEY_PAIR); // Retorna um array associativo [folder_name => id]
+    public function syncFolder($email_id, $folder_name)
+    {
+        try {
+            // Verifica se a pasta já existe
+            $query = "SELECT id FROM " . $this->table . " WHERE email_id = :email_id AND folder_name = :folder_name";
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':email_id', $email_id);
+            $stmt->bindParam(':folder_name', $folder_name);
+            $stmt->execute();
+            $existingFolder = $stmt->fetch(PDO::FETCH_ASSOC);
     
-        $foldersToAdd = array_diff($folders, array_keys($existingFolders));
-        $foldersToDelete = array_diff(array_keys($existingFolders), $folders);
+            if ($existingFolder) {
+                // Retorna o ID da pasta existente
+                return $existingFolder['id'];
+            } else {
+                // Insere uma nova pasta
+                $query = "INSERT INTO " . $this->table . " (email_id, folder_name) VALUES (:email_id, :folder_name)";
+                $stmt = $this->conn->prepare($query);
+                $stmt->bindParam(':email_id', $email_id);
+                $stmt->bindParam(':folder_name', $folder_name);
+                $stmt->execute();
     
-        $queryInsert = "INSERT INTO " . $this->table . " (email_id, folder_name) VALUES (:email_id, :folder_name)";
-        $stmtInsert = $this->conn->prepare($queryInsert);
-    
-        foreach ($foldersToAdd as $folder_name) {
-            $stmtInsert->bindParam(':email_id', $email_id);
-            $stmtInsert->bindParam(':folder_name', $folder_name);
-            $stmtInsert->execute();
-    
-            $existingFolders[$folder_name] = $this->conn->lastInsertId();
+                return $this->conn->lastInsertId();
+            }
+        } catch (Exception $e) {
+            $this->errorLogController->logError('Erro ao sincronizar pasta: ' . $e->getMessage(), __FILE__, __LINE__, null);
+            throw new Exception('Erro ao sincronizar pasta: ' . $e->getMessage());
         }
-    
-        $queryDelete = "DELETE FROM " . $this->table . " WHERE email_id = :email_id AND folder_name = :folder_name";
-        $stmtDelete = $this->conn->prepare($queryDelete);
-    
-        foreach ($foldersToDelete as $folder_name) {
-            $stmtDelete->bindParam(':email_id', $email_id);
-            $stmtDelete->bindParam(':folder_name', $folder_name);
-            $stmtDelete->execute();
-    
-            unset($existingFolders[$folder_name]);
-        }
-    
-        return $existingFolders;
     }
+    
     
     public function getFoldersByEmailAccountId($email_id) {
         try {
-            $query = "SELECT folder_id FROM " . $this->table . " WHERE email_id = :email_id";
+            $query = "SELECT id FROM " . $this->table . " WHERE email_id = :email_id";
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':email_id', $email_id, PDO::PARAM_INT);
             $stmt->execute();
@@ -65,5 +61,6 @@ class EmailFolder {
             throw new Exception('Erro ao obter pastas por Email Account ID: ' . $e->getMessage());
         }
     }
+    
     
 }
