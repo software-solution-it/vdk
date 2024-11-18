@@ -231,7 +231,8 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                 }
             }
     
-            $storedFolders = $this->emailFolderModel->getFoldersByEmailId($email_account_id);
+            // Corrected method name and parameter
+            $storedFolders = $this->emailFolderModel->getFoldersByEmailAccountId($email_account_id);
     
             foreach ($mailboxes as $mailbox) {
                 if ($mailbox->getAttributes() & \LATT_NOSELECT) {
@@ -260,127 +261,140 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                 $processedMessageIds = []; 
     
                 foreach ($messages as $message) {
-                    $messageId = $message->getId();
-                    $processedMessageIds[] = $messageId;
-                    $fromAddress = $message->getFrom()->getAddress();
-                    $subject = $message->getSubject() ?? 'Sem Assunto';
-                    $date_received = $message->getDate()->format('Y-m-d H:i:s');
-                    $isRead = $message->isSeen() ? 1 : 0;
+                    try {
+                        $messageId = $message->getId();
+                        $processedMessageIds[] = $messageId;
+                        $fromAddress = $message->getFrom()->getAddress();
+                        $subject = $message->getSubject() ?? 'Sem Assunto';
+                        $date_received = $message->getDate()->format('Y-m-d H:i:s');
+                        $isRead = $message->isSeen() ? 1 : 0;
+                        $body_html = $message->getBodyHtml();
+                        $body_text = $message->getBodyText();
     
-                    $body_html = $message->getBodyHtml();
+                        $bcc = $message->getBcc();
+                        if ($bcc && count($bcc) > 0) {
+                            error_log("E-mail contém CCO (BCC). Ignorando o processamento.");
+                            continue;
+                        }
     
-                    if ($body_html) {
-                        preg_match_all('/<img[^>]+src="data:image\/([^;]+);base64,([^"]+)"/', $body_html, $matches, PREG_SET_ORDER);
+                        if (!$messageId || !$fromAddress) {
+                            error_log("E-mail com Message-ID ou From nulo. Ignorando...");
+                            continue;
+                        }
     
-                        foreach ($matches as $match) {
-                            $imageType = $match[1];
-                            $base64Data = $match[2];
-                            $decodedContent = base64_decode($base64Data);
+                        $existingEmail = $this->emailModel->emailExistsByMessageId($messageId, $user_id);
+                        if ($existingEmail) {
+                            error_log("E-mail com Message-ID $messageId já foi processado. Ignorando...");
+                            continue;
+                        }
     
-                            if ($decodedContent !== false) {
-                                $filename = uniqid("inline_img_") . '.' . $imageType;
-                                $fullMimeType = 'image/' . $imageType;
+                        $inReplyTo = $message->getInReplyTo();
+                        if (is_array($inReplyTo)) {
+                            $inReplyTo = implode(', ', $inReplyTo);
+                        }
+                        $references = implode(', ', $message->getReferences());
     
-                                $this->emailModel->saveAttachment(
-                                    $emailId,
-                                    $filename,
-                                    $fullMimeType,
-                                    strlen($decodedContent),
-                                    $decodedContent
-                                );
+                        $ccAddresses = $message->getCc();
+                        $cc = $ccAddresses ? implode(', ', array_map(fn(EmailAddress $addr) => $addr->getAddress(), $ccAddresses)) : null;
+    
+                        $emailId = $this->emailModel->saveEmail(
+                            $user_id,
+                            $messageId,
+                            $subject,
+                            $fromAddress,
+                            implode(', ', array_map(fn(EmailAddress $addr) => $addr->getAddress(), iterator_to_array($message->getTo()))),
+                            $body_html,
+                            $body_text,
+                            $date_received,
+                            $references,
+                            $inReplyTo,
+                            $isRead,
+                            $folderId,
+                            $cc,
+                            $uidCounter,
+                            null
+                        );
+    
+                        // Now process inline images
+                        if ($body_html) {
+                            preg_match_all('/<img[^>]+src="data:image\/([^;]+);base64,([^"]+)"/', $body_html, $matches, PREG_SET_ORDER);
+    
+                            foreach ($matches as $match) {
+                                try {
+                                    $imageType = $match[1];
+                                    $base64Data = $match[2];
+                                    $decodedContent = base64_decode($base64Data);
+    
+                                    if ($decodedContent !== false) {
+                                        $filename = uniqid("inline_img_") . '.' . $imageType;
+                                        $fullMimeType = 'image/' . $imageType;
+    
+                                        $this->emailModel->saveAttachment(
+                                            $emailId,
+                                            $filename,
+                                            $fullMimeType,
+                                            strlen($decodedContent),
+                                            $decodedContent
+                                        );
+                                    }
+                                } catch (Exception $e) {
+                                    $this->errorLogController->logError("Erro ao processar imagem embutida: " . $e->getMessage(), __FILE__, __LINE__, $user_id);
+                                }
                             }
                         }
-                    }
     
-                    $body_text = $message->getBodyText();
-                    $bcc = $message->getBcc();
-                    if ($bcc && count($bcc) > 0) {
-                        error_log("E-mail contém CCO (BCC). Ignorando o processamento.");
-                        continue;
-                    }
-    
-                    if (!$messageId || !$fromAddress) {
-                        error_log("E-mail com Message-ID ou From nulo. Ignorando...");
-                        continue;
-                    }
-    
-                    $existingEmail = $this->emailModel->emailExistsByMessageId($messageId, $user_id);
-                    if ($existingEmail) {
-                        error_log("E-mail com Message-ID $messageId já foi processado. Ignorando...");
-                        continue;
-                    }
-    
-                    $inReplyTo = $message->getInReplyTo();
-                    if (is_array($inReplyTo)) {
-                        $inReplyTo = implode(', ', $inReplyTo);
-                    }
-                    $references = implode(', ', $message->getReferences());
-    
-                    $ccAddresses = $message->getCc();
-                    $cc = $ccAddresses ? implode(', ', array_map(fn(EmailAddress $addr) => $addr->getAddress(), $ccAddresses)) : null;
-    
-                    $emailId = $this->emailModel->saveEmail(
-                        $user_id,
-                        $messageId,
-                        $subject,
-                        $fromAddress,
-                        implode(', ', array_map(fn(EmailAddress $addr) => $addr->getAddress(), iterator_to_array($message->getTo()))),
-                        $body_html,
-                        $body_text,
-                        $date_received,
-                        $references,
-                        $inReplyTo,
-                        $isRead,
-                        $folderId,
-                        $cc,
-                        $uidCounter,
-                        null
-                    );
-    
-                    if ($message->hasAttachments()) {
-                        $attachments = $message->getAttachments();
-                        foreach ($attachments as $attachment) {
-                            $filename = $attachment->getFilename();
-                            if (is_null($filename) || empty($filename)) {
-                                error_log("Anexo ignorado: o nome do arquivo está nulo.");
-                                continue;
+                        // Process attachments
+                        if ($message->hasAttachments()) {
+                            $attachments = $message->getAttachments();
+                            foreach ($attachments as $attachment) {
+                                try {
+                                    $filename = $attachment->getFilename();
+                                    if (is_null($filename) || empty($filename)) {
+                                        error_log("Anexo ignorado: o nome do arquivo está nulo.");
+                                        continue;
+                                    }
+                                    $mimeTypeName = $attachment->getType();
+                                    $subtype = $attachment->getSubtype();
+                                    $fullMimeType = $mimeTypeName . '/' . $subtype;
+                                    $contentBytes = $attachment->getDecodedContent();
+                                    if ($contentBytes === false) {
+                                        error_log("Falha ao obter o conteúdo do anexo: $filename");
+                                        continue;
+                                    }
+                                    $this->emailModel->saveAttachment(
+                                        $emailId,
+                                        $filename,
+                                        $fullMimeType,
+                                        strlen($contentBytes),
+                                        $contentBytes
+                                    );
+                                } catch (Exception $e) {
+                                    $this->errorLogController->logError("Erro ao salvar anexo: " . $e->getMessage(), __FILE__, __LINE__, $user_id);
+                                }
                             }
-                            $mimeTypeName = $attachment->getType();
-                            $subtype = $attachment->getSubtype();
-                            $fullMimeType = $mimeTypeName . '/' . $subtype;
-                            $contentBytes = $attachment->getDecodedContent();
-                            if ($contentBytes === false) {
-                                error_log("Falha ao obter o conteúdo do anexo: $filename");
-                                continue;
-                            }
-                            $this->emailModel->saveAttachment(
-                                $emailId,
-                                $filename,
-                                $fullMimeType,
-                                strlen($contentBytes),
-                                $contentBytes
-                            );
                         }
-                    }
     
-                    $event = [
-                        'Status' => 'Success',
-                        'Message' => 'Email received successfully',
-                        'Data' => [
-                            'email_account_id' => $email_account_id,
-                            'email_id' => $emailId,
-                            'message_id' => $messageId,
-                            'subject' => $subject,
-                            'from' => $fromAddress,
-                            'to' => array_map(fn(EmailAddress $addr) => $addr->getAddress(), iterator_to_array($message->getTo())),
-                            'received_at' => $date_received,
-                            'user_id' => $user_id,
-                            'folder_id' => $folderId,
-                            'uuid' => uniqid(),
-                        ]
-                    ];
-                    $this->webhookService->triggerEvent($event, $user_id);
-                    $uidCounter++;
+                        $event = [
+                            'Status' => 'Success',
+                            'Message' => 'Email received successfully',
+                            'Data' => [
+                                'email_account_id' => $email_account_id,
+                                'email_id' => $emailId,
+                                'message_id' => $messageId,
+                                'subject' => $subject,
+                                'from' => $fromAddress,
+                                'to' => array_map(fn(EmailAddress $addr) => $addr->getAddress(), iterator_to_array($message->getTo())),
+                                'received_at' => $date_received,
+                                'user_id' => $user_id,
+                                'folder_id' => $folderId,
+                                'uuid' => uniqid(),
+                            ]
+                        ];
+                        $this->webhookService->triggerEvent($event, $user_id);
+                        $uidCounter++;
+                    } catch (Exception $e) {
+                        $this->errorLogController->logError("Erro ao processar e-mail: " . $e->getMessage(), __FILE__, __LINE__, $user_id);
+                    }
                 }
     
                 $deletedMessageIds = array_diff($storedMessageIds, $processedMessageIds);
