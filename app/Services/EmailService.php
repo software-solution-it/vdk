@@ -243,7 +243,7 @@ class EmailService {
     public function listEmails($folder_id, $limit, $offset) {
         $query = "
             SELECT 
-                e.email_id,
+                e.id,
                 e.body_text,
                 e.from,
                 e.date_received,
@@ -253,7 +253,7 @@ class EmailService {
             LEFT JOIN 
                 email_attachments a
             ON 
-                e.email_id = a.email_id
+                e.id = a.email_id
             WHERE 
                 e.folder_id = :folder_id
             GROUP BY 
