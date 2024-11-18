@@ -12,6 +12,6 @@ class EmailFolderService {
     }
 
     public function getFoldersByEmailId($email_id) {
-        return $this->emailFolderModel->getFoldersByEmailId($email_id);
+        return $this->emailFolderModel->getFoldersByEmailAccountId($email_id);
     }
 }
