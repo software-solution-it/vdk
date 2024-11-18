@@ -294,21 +294,16 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                         $ccAddresses = $message->getCc();
                         $cc = $ccAddresses ? implode(', ', array_map(fn(EmailAddress $addr) => $addr->getAddress(), $ccAddresses)) : null;
     
-                        // Adicionar lógica para conversation_id e conversation_step
                         $conversation_id = null;
-                        $conversation_step = 1;
-    
-                        if ($inReplyTo) {
-                            $conversationDetails = $this->emailModel->getConversationByInReplyTo($inReplyTo);
-                            if ($conversationDetails) {
-                                $conversation_id = $conversationDetails['conversation_id'];
-                                $conversation_step = $conversationDetails['max_step'] + 1; // Incrementa o passo
-                            } else {
-                                $conversation_id = $messageId; // Define um novo conversation_id
-                            }
-                        } else {
-                            $conversation_id = $messageId; // Inicia uma nova conversa
+                        $conversation_step = 1; 
+
+                        if (!empty($references)) {
+                            $referenceCount = count(explode(', ', $references));
+                            $conversation_step = $referenceCount + 1;
                         }
+                
+                        $conversation_id = $references ? explode(', ', $references)[0] : $messageId;
+                
     
                         $emailId = $this->emailModel->saveEmail(
                             $user_id,
