@@ -20,23 +20,27 @@ class EmailFolder {
     public function syncFolders($email_id, $folders)
     {
         try {
-            $querySelect = "SELECT id, folder_name FROM " . $this->table . " WHERE email_id = :email_id";
+            // Buscar pastas existentes
+            $querySelect = "SELECT folder_name, id FROM " . $this->table . " WHERE email_id = :email_id";
             $stmtSelect = $this->conn->prepare($querySelect);
             $stmtSelect->bindParam(':email_id', $email_id, PDO::PARAM_INT);
             $stmtSelect->execute();
-            $existingFolders = $stmtSelect->fetchAll(PDO::FETCH_KEY_PAIR);
+            $existingFolders = $stmtSelect->fetchAll(PDO::FETCH_KEY_PAIR); // ['Trash' => id]
     
             $folderIds = [];
     
-            $queryInsert = "INSERT IGNORE INTO " . $this->table . " (email_id, folder_name) VALUES (:email_id, :folder_name)";
+            // Preparar inserção de novas pastas
+            $queryInsert = "INSERT INTO " . $this->table . " (email_id, folder_name) VALUES (:email_id, :folder_name)";
             $stmtInsert = $this->conn->prepare($queryInsert);
     
             foreach ($folders as $folderName) {
-                if (isset($existingFolders[$folderName])) {
+                if (array_key_exists($folderName, $existingFolders)) {
+                    // Pasta já existe, use o ID existente
                     $folderIds[$folderName] = $existingFolders[$folderName];
                 } else {
-                    $stmtInsert->bindValue(':email_id', $email_id, PDO::PARAM_INT);
-                    $stmtInsert->bindValue(':folder_name', $folderName, PDO::PARAM_STR);
+                    // Pasta não existe, insira no banco
+                    $stmtInsert->bindParam(':email_id', $email_id, PDO::PARAM_INT);
+                    $stmtInsert->bindParam(':folder_name', $folderName, PDO::PARAM_STR);
                     $stmtInsert->execute();
     
                     $folderIds[$folderName] = $this->conn->lastInsertId();
@@ -49,6 +53,7 @@ class EmailFolder {
             throw new Exception('Erro ao sincronizar pastas: ' . $e->getMessage());
         }
     }
+    
     
 
     
