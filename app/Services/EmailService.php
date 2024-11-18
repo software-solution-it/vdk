@@ -244,7 +244,7 @@ class EmailService {
         $query = "
             SELECT 
                 e.id,
-                e.body_text,
+                e.body_html,
                 e.from,
                 e.date_received,
                 COUNT(a.id) AS attachment_count
@@ -257,7 +257,7 @@ class EmailService {
             WHERE 
                 e.folder_id = :folder_id
             GROUP BY 
-                e.email_id, e.body_text, e.from, e.date_received
+                e.email_id, e.body_html, e.from, e.date_received
             LIMIT 
                 :limit OFFSET :offset";
         
