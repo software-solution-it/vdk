@@ -20,7 +20,7 @@ class EmailFolder {
     public function syncFolders($email_id, $folders)
     {
         try {
-            // Buscar pastas existentes
+            // Buscar pastas existentes no banco para o email_id
             $querySelect = "SELECT folder_name, id FROM " . $this->table . " WHERE email_id = :email_id";
             $stmtSelect = $this->conn->prepare($querySelect);
             $stmtSelect->bindParam(':email_id', $email_id, PDO::PARAM_INT);
@@ -29,16 +29,23 @@ class EmailFolder {
     
             $folderIds = [];
     
-            // Preparar inserção de novas pastas
-            $queryInsert = "INSERT INTO " . $this->table . " (email_id, folder_name) VALUES (:email_id, :folder_name)";
-            $stmtInsert = $this->conn->prepare($queryInsert);
-    
             foreach ($folders as $folderName) {
-                if (array_key_exists($folderName, $existingFolders)) {
-                    // Pasta já existe, use o ID existente
-                    $folderIds[$folderName] = $existingFolders[$folderName];
+                // Verifica se já existe uma pasta similar
+                $existingId = null;
+                foreach ($existingFolders as $existingFolderName => $id) {
+                    if (strcasecmp($folderName, $existingFolderName) === 0) { // Ignora maiúsculas/minúsculas
+                        $existingId = $id;
+                        break;
+                    }
+                }
+    
+                if ($existingId !== null) {
+                    // Se já existir, reutilizar o ID
+                    $folderIds[$folderName] = $existingId;
                 } else {
-                    // Pasta não existe, insira no banco
+                    // Inserir nova pasta
+                    $queryInsert = "INSERT INTO " . $this->table . " (email_id, folder_name) VALUES (:email_id, :folder_name)";
+                    $stmtInsert = $this->conn->prepare($queryInsert);
                     $stmtInsert->bindParam(':email_id', $email_id, PDO::PARAM_INT);
                     $stmtInsert->bindParam(':folder_name', $folderName, PDO::PARAM_STR);
                     $stmtInsert->execute();
