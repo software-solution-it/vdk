@@ -7,6 +7,9 @@ WORKER_SCRIPT="/home/suporte/vdk/app/Worker/email_sync_worker.php"
 declare -A active_workers
 declare -A last_updated
 
+# Limpeza de arquivos de lock ao iniciar o script
+rm -f /tmp/email_sync_*.lock
+
 echo "Iniciando script..."
 
 while true; do
