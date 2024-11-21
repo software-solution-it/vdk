@@ -7,11 +7,16 @@ WORKER_SCRIPT="/home/suporte/vdk/app/Worker/email_sync_worker.php"
 declare -A active_workers
 declare -A last_updated
 
+echo "Iniciando script..."
+
 while true; do
+    echo "Consultando banco de dados..."
     EMAIL_LIST=$(mysql -u ${DATABASE_USER} -p${DATABASE_PASS} -D ${DATABASE_NAME} -sse "SELECT user_id, id as email_id, updated_at FROM email_accounts;")
+    echo "Resultado da consulta: $EMAIL_LIST"
 
     declare -A current_emails
     while IFS=$'\t' read -r user_id email_id updated_at; do
+        echo "Processando email_id=${email_id}, user_id=${user_id}..."
         current_emails[${email_id}]=1
 
         lock_file="/tmp/email_sync_${email_id}.lock"
@@ -46,7 +51,7 @@ while true; do
         fi
     done <<< "$EMAIL_LIST"
 
- for email_id in "${!active_workers[@]}"; do
+    for email_id in "${!active_workers[@]}"; do
         if [[ -z "${current_emails[${email_id}]}" ]]; then
             echo "Finalizando worker para email_id=${email_id} que foi deletado do banco."
             kill "${active_workers[${email_id}]}" 2>/dev/null
@@ -58,5 +63,6 @@ while true; do
 
     unset current_emails
 
+    echo "Aguardando 5 segundos antes de próxima execução..."
     sleep 5
 done
