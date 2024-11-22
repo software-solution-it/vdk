@@ -363,19 +363,24 @@ class EmailService {
             $stmt = $this->db->prepare($query);
             $stmt->bindParam(':attachment_id', $attachment_id, PDO::PARAM_INT);
             $stmt->execute();
-
+    
             $attachment = $stmt->fetch(PDO::FETCH_ASSOC);
-
+    
             if (!$attachment) {
                 throw new Exception("Anexo não encontrado.");
             }
-
+    
+            $attachment['content_base64'] = base64_encode($attachment['content']);
+    
+            unset($attachment['content']);
+    
             return $attachment;
         } catch (Exception $e) {
             $this->errorLogController->logError("Erro ao buscar o anexo: " . $e->getMessage(), __FILE__, __LINE__, null);
             throw new Exception("Erro ao buscar o anexo: " . $e->getMessage());
         }
     }
+    
     
     
 
