@@ -293,7 +293,6 @@ class EmailService {
 
     public function viewEmailThread($email_id) {
         try {
-            // Busca o conversation_id com base no email_id
             $query = "
                 SELECT conversation_id
                 FROM mail.emails
@@ -311,9 +310,18 @@ class EmailService {
     
             $conversation_id = $result['conversation_id'];
     
-            // Busca todos os e-mails pertencentes à mesma conversa
             $query = "
-                SELECT id, email_id, subject, sender, recipient, body, date_received, in_reply_to, `references`, folder_id, conversation_step
+                SELECT 
+                    id AS email_id, 
+                    subject, 
+                    sender, 
+                    recipient, 
+                    body, 
+                    date_received, 
+                    in_reply_to, 
+                    `references`, 
+                    folder_id, 
+                    conversation_step
                 FROM mail.emails
                 WHERE conversation_id = :conversation_id
                 ORDER BY conversation_step ASC
@@ -322,14 +330,39 @@ class EmailService {
             $stmt->bindParam(':conversation_id', $conversation_id, PDO::PARAM_STR);
             $stmt->execute();
     
-            $thread = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $emails = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-            return $thread;
+            $query = "
+                SELECT 
+                    email_id, 
+                    id AS attachment_id, 
+                    filename AS attachment_filename, 
+                    mime_type AS attachment_mime_type, 
+                    `size` AS attachment_size, 
+                    content AS attachment_content
+                FROM mail.email_attachments
+                WHERE email_id IN (
+                    SELECT id
+                    FROM mail.emails
+                    WHERE conversation_id = :conversation_id
+                )
+            ";
+            $stmt = $this->db->prepare($query);
+            $stmt->bindParam(':conversation_id', $conversation_id, PDO::PARAM_STR);
+            $stmt->execute();
+    
+            $attachments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+            return [
+                'emails' => $emails,
+                'attachments' => $attachments
+            ];
         } catch (Exception $e) {
             $this->errorLogController->logError("Erro ao visualizar a thread: " . $e->getMessage(), __FILE__, __LINE__, null);
             throw new Exception("Erro ao visualizar a thread: " . $e->getMessage());
         }
     }
+    
     
     
 
