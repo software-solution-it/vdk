@@ -294,7 +294,17 @@ class EmailService {
     public function viewEmailThread($email_id) {
         try {
             $query = "
-                SELECT conversation_id
+                SELECT id AS email_id, 
+                       conversation_id, 
+                       subject, 
+                       sender, 
+                       recipient, 
+                       body, 
+                       date_received, 
+                       in_reply_to, 
+                       `references`, 
+                       folder_id, 
+                       conversation_step
                 FROM mail.emails
                 WHERE id = :email_id
             ";
@@ -302,13 +312,37 @@ class EmailService {
             $stmt->bindParam(':email_id', $email_id, PDO::PARAM_INT);
             $stmt->execute();
     
-            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            $email = $stmt->fetch(PDO::FETCH_ASSOC);
     
-            if (!$result || !$result['conversation_id']) {
-                throw new Exception("E-mail não pertence a uma conversa ou não encontrado.");
+            if (!$email) {
+                throw new Exception("E-mail não encontrado.");
             }
     
-            $conversation_id = $result['conversation_id'];
+            if (empty($email['conversation_id'])) {
+                $query = "
+                    SELECT 
+                        email_id, 
+                        id AS attachment_id, 
+                        filename AS attachment_filename, 
+                        mime_type AS attachment_mime_type, 
+                        `size` AS attachment_size, 
+                        content AS attachment_content
+                    FROM mail.email_attachments
+                    WHERE email_id = :email_id
+                ";
+                $stmt = $this->db->prepare($query);
+                $stmt->bindParam(':email_id', $email_id, PDO::PARAM_INT);
+                $stmt->execute();
+    
+                $attachments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+                return [
+                    'emails' => [$email], 
+                    'attachments' => $attachments
+                ];
+            }
+    
+            $conversation_id = $email['conversation_id'];
     
             $query = "
                 SELECT 
@@ -362,6 +396,7 @@ class EmailService {
             throw new Exception("Erro ao visualizar a thread: " . $e->getMessage());
         }
     }
+    
     
     
     
