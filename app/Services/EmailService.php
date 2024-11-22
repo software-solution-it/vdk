@@ -322,7 +322,32 @@ class EmailService {
     
             $thread = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-            return $thread;
+            // Array para armazenar todos os anexos da thread
+            $allAttachments = [];
+    
+            // Iterar sobre cada e-mail na thread para buscar os anexos
+            foreach ($thread as &$email) {
+                $email_id = $email['id'];
+                $query = "
+                    SELECT id, email_id, filename, mime_type, `size`, content
+                    FROM mail.email_attachments
+                    WHERE email_id = :email_id
+                ";
+                $stmt = $this->db->prepare($query);
+                $stmt->bindParam(':email_id', $email_id, PDO::PARAM_INT);
+                $stmt->execute();
+    
+                $attachments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                // Adicionar os anexos ao array geral de anexos
+                $allAttachments = array_merge($allAttachments, $attachments);
+            }
+    
+            // Retornar a thread junto com todos os anexos
+            return [
+                'emails' => $thread,
+                'attachments' => $allAttachments,
+            ];
         } catch (Exception $e) {
             $this->errorLogController->logError("Erro ao visualizar a thread: " . $e->getMessage(), __FILE__, __LINE__, null);
             throw new Exception("Erro ao visualizar a thread: " . $e->getMessage());
