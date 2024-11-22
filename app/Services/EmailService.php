@@ -293,19 +293,8 @@ class EmailService {
 
     public function viewEmailThread($email_id) {
         try {
-            // Primeiro, obtemos o email e verificamos sua existência
             $query = "
-                SELECT id AS email_id, 
-                       conversation_id, 
-                       subject, 
-                       sender, 
-                       recipient, 
-                       body, 
-                       date_received, 
-                       in_reply_to, 
-                       `references`, 
-                       folder_id, 
-                       conversation_step
+                SELECT conversation_id
                 FROM mail.emails
                 WHERE id = :email_id
             ";
@@ -313,94 +302,49 @@ class EmailService {
             $stmt->bindParam(':email_id', $email_id, PDO::PARAM_INT);
             $stmt->execute();
     
-            $email = $stmt->fetch(PDO::FETCH_ASSOC);
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
     
-            if (!$email) {
-                throw new Exception("E-mail não encontrado.");
+            if (!$result || !$result['conversation_id']) {
+                throw new Exception("E-mail não pertence a uma conversa ou não encontrado.");
             }
     
-            // Caso o email não pertença a uma conversa, retornamos somente ele
-            if (empty($email['conversation_id'])) {
-                // Buscar anexos relacionados a este email
-                $query = "
-                    SELECT 
-                        email_id, 
-                        id AS attachment_id, 
-                        filename AS attachment_filename, 
-                        mime_type AS attachment_mime_type, 
-                        `size` AS attachment_size, 
-                        content AS attachment_content
-                    FROM mail.email_attachments
-                    WHERE email_id = :email_id
-                ";
-                $stmt = $this->db->prepare($query);
-                $stmt->bindParam(':email_id', $email_id, PDO::PARAM_INT);
-                $stmt->execute();
-    
-                $attachments = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-                return [
-                    'emails' => [$email], // Apenas o email em um array
-                    'attachments' => $attachments
-                ];
-            }
-    
-            // Caso pertença a uma conversa, buscamos todos os emails dessa conversa
-            $conversation_id = $email['conversation_id'];
+            $conversation_id = $result['conversation_id'];
     
             $query = "
                 SELECT 
-                    id AS email_id, 
-                    subject, 
-                    sender, 
-                    recipient, 
-                    body, 
-                    date_received, 
-                    in_reply_to, 
-                    `references`, 
-                    folder_id, 
-                    conversation_step
-                FROM mail.emails
-                WHERE conversation_id = :conversation_id
-                ORDER BY conversation_step ASC
+                    e.id AS email_id, 
+                    e.subject, 
+                    e.sender, 
+                    e.recipient, 
+                    e.body, 
+                    e.date_received, 
+                    e.in_reply_to, 
+                    e.`references`, 
+                    e.folder_id, 
+                    e.conversation_step,
+                    a.id AS attachment_id,
+                    a.filename AS attachment_filename,
+                    a.mime_type AS attachment_mime_type,
+                    a.`size` AS attachment_size,
+                    a.content AS attachment_content
+                FROM mail.emails e
+                LEFT JOIN mail.email_attachments a ON e.id = a.email_id
+                WHERE e.conversation_id = :conversation_id
+                ORDER BY e.conversation_step ASC
             ";
             $stmt = $this->db->prepare($query);
             $stmt->bindParam(':conversation_id', $conversation_id, PDO::PARAM_STR);
             $stmt->execute();
     
-            $emails = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $thread = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-            // Buscar anexos relacionados a todos os emails da conversa
-            $query = "
-                SELECT 
-                    email_id, 
-                    id AS attachment_id, 
-                    filename AS attachment_filename, 
-                    mime_type AS attachment_mime_type, 
-                    `size` AS attachment_size, 
-                    content AS attachment_content
-                FROM mail.email_attachments
-                WHERE email_id IN (
-                    SELECT id
-                    FROM mail.emails
-                    WHERE conversation_id = :conversation_id
-                )
-            ";
-            $stmt = $this->db->prepare($query);
-            $stmt->bindParam(':conversation_id', $conversation_id, PDO::PARAM_STR);
-            $stmt->execute();
-    
-            $attachments = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-            return [
-                'emails' => $emails,
-                'attachments' => $attachments
-            ];
+            return $thread;
         } catch (Exception $e) {
             $this->errorLogController->logError("Erro ao visualizar a thread: " . $e->getMessage(), __FILE__, __LINE__, null);
             throw new Exception("Erro ao visualizar a thread: " . $e->getMessage());
         }
     }
+    
     
     
     
