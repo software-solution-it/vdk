@@ -233,6 +233,12 @@ switch ($request_uri[0]) {
         $emailController->viewEmail($email_id);
         break;
 
+
+        case '/api/email/attachment':
+            $emailController = new EmailController();
+            $emailController->viewEmail($email_id);
+            break;
+
     case '/api/email-account/create':
         $controller = new EmailAccountController();
         $controller->createEmailAccount();

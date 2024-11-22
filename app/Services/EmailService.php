@@ -322,14 +322,12 @@ class EmailService {
     
             $thread = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-            // Array para armazenar todos os anexos da thread
             $allAttachments = [];
     
-            // Iterar sobre cada e-mail na thread para buscar os anexos
             foreach ($thread as &$email) {
                 $email_id = $email['id'];
                 $query = "
-                    SELECT id, email_id, filename, mime_type, `size`
+                    SELECT id, mime_type, filename
                     FROM mail.email_attachments
                     WHERE email_id = :email_id
                 ";
@@ -340,12 +338,10 @@ class EmailService {
                 $attachments = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
                 if (!empty($attachments)) {
-                    // Adicionar os anexos ao array geral de anexos, somente se houverem anexos válidos
                     $allAttachments = array_merge($allAttachments, $attachments);
                 }
             }
     
-            // Retornar a thread junto com todos os anexos
             return [
                 'emails' => $thread,
                 'attachments' => $allAttachments,
@@ -353,6 +349,31 @@ class EmailService {
         } catch (Exception $e) {
             $this->errorLogController->logError("Erro ao visualizar a thread: " . $e->getMessage(), __FILE__, __LINE__, null);
             throw new Exception("Erro ao visualizar a thread: " . $e->getMessage());
+        }
+    }
+
+
+    public function getAttachmentById($attachment_id) {
+        try {
+            $query = "
+                SELECT id, mime_type, filename, content
+                FROM mail.email_attachments
+                WHERE id = :attachment_id
+            ";
+            $stmt = $this->db->prepare($query);
+            $stmt->bindParam(':attachment_id', $attachment_id, PDO::PARAM_INT);
+            $stmt->execute();
+
+            $attachment = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$attachment) {
+                throw new Exception("Anexo não encontrado.");
+            }
+
+            return $attachment;
+        } catch (Exception $e) {
+            $this->errorLogController->logError("Erro ao buscar o anexo: " . $e->getMessage(), __FILE__, __LINE__, null);
+            throw new Exception("Erro ao buscar o anexo: " . $e->getMessage());
         }
     }
     

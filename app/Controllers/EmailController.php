@@ -397,10 +397,40 @@ class EmailController {
             ]);
         }
     }
+
+    public function getAttachmentById($attachment_id) {
+        header('Content-Type: application/json');
+
+        try {
+            $attachment = $this->emailService->getAttachmentById($attachment_id);
+            if ($attachment) {
+                http_response_code(200);
+                echo json_encode([
+                    'Status' => 'Success',
+                    'Message' => 'Anexo recuperado com sucesso.',
+                    'Data' => $attachment
+                ]);
+            } else {
+                http_response_code(404);
+                echo json_encode([
+                    'Status' => 'Error',
+                    'Message' => 'Anexo não encontrado.',
+                    'Data' => null
+                ]);
+            }
+        } catch (Exception $e) {
+            $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
+            http_response_code(500);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Erro ao buscar o anexo: ' . $e->getMessage(),
+                'Data' => null
+            ]);
+        }
+    }
     
     
-    
-    
+
 
     public function viewEmail($email_id) {
         header('Content-Type: application/json');
