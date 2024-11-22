@@ -293,6 +293,7 @@ class EmailService {
 
     public function viewEmailThread($email_id) {
         try {
+            // Primeiro, obtemos o email e verificamos sua existência
             $query = "
                 SELECT id AS email_id, 
                        conversation_id, 
@@ -318,7 +319,9 @@ class EmailService {
                 throw new Exception("E-mail não encontrado.");
             }
     
+            // Caso o email não pertença a uma conversa, retornamos somente ele
             if (empty($email['conversation_id'])) {
+                // Buscar anexos relacionados a este email
                 $query = "
                     SELECT 
                         email_id, 
@@ -337,11 +340,12 @@ class EmailService {
                 $attachments = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
                 return [
-                    'emails' => [$email], 
+                    'emails' => [$email], // Apenas o email em um array
                     'attachments' => $attachments
                 ];
             }
     
+            // Caso pertença a uma conversa, buscamos todos os emails dessa conversa
             $conversation_id = $email['conversation_id'];
     
             $query = "
@@ -366,6 +370,7 @@ class EmailService {
     
             $emails = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
+            // Buscar anexos relacionados a todos os emails da conversa
             $query = "
                 SELECT 
                     email_id, 
@@ -396,6 +401,7 @@ class EmailService {
             throw new Exception("Erro ao visualizar a thread: " . $e->getMessage());
         }
     }
+    
     
     
     
