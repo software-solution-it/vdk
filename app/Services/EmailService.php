@@ -329,7 +329,7 @@ class EmailService {
             foreach ($thread as &$email) {
                 $email_id = $email['id'];
                 $query = "
-                    SELECT id, email_id, filename, mime_type, `size`, content
+                    SELECT id, email_id, filename, mime_type, `size`
                     FROM mail.email_attachments
                     WHERE email_id = :email_id
                 ";
@@ -338,9 +338,11 @@ class EmailService {
                 $stmt->execute();
     
                 $attachments = $stmt->fetchAll(PDO::FETCH_ASSOC);
-                
-                // Adicionar os anexos ao array geral de anexos
-                $allAttachments = array_merge($allAttachments, $attachments);
+    
+                if (!empty($attachments)) {
+                    // Adicionar os anexos ao array geral de anexos, somente se houverem anexos válidos
+                    $allAttachments = array_merge($allAttachments, $attachments);
+                }
             }
     
             // Retornar a thread junto com todos os anexos
