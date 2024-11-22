@@ -311,26 +311,10 @@ class EmailService {
             $conversation_id = $result['conversation_id'];
     
             $query = "
-                SELECT 
-                    e.id AS email_id, 
-                    e.subject, 
-                    e.sender, 
-                    e.recipient, 
-                    e.body, 
-                    e.date_received, 
-                    e.in_reply_to, 
-                    e.`references`, 
-                    e.folder_id, 
-                    e.conversation_step,
-                    a.id AS attachment_id,
-                    a.filename AS attachment_filename,
-                    a.mime_type AS attachment_mime_type,
-                    a.`size` AS attachment_size,
-                    a.content AS attachment_content
-                FROM mail.emails e
-                LEFT JOIN mail.email_attachments a ON e.id = a.email_id
-                WHERE e.conversation_id = :conversation_id
-                ORDER BY e.conversation_step ASC
+                SELECT id, email_id, subject, sender, recipient, body, date_received, in_reply_to, `references`, folder_id, conversation_step
+                FROM mail.emails
+                WHERE conversation_id = :conversation_id
+                ORDER BY conversation_step ASC
             ";
             $stmt = $this->db->prepare($query);
             $stmt->bindParam(':conversation_id', $conversation_id, PDO::PARAM_STR);
@@ -344,10 +328,6 @@ class EmailService {
             throw new Exception("Erro ao visualizar a thread: " . $e->getMessage());
         }
     }
-    
-    
-    
-    
     
     
 
