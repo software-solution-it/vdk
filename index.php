@@ -236,7 +236,8 @@ switch ($request_uri[0]) {
 
         case '/api/email/attachment':
             $emailController = new EmailController();
-            $emailController->viewEmail($email_id);
+            $email_id = $_GET['attachment_id'] ?? null;
+            $emailController->getAttachmentById($attachment_id);
             break;
 
     case '/api/email-account/create':
