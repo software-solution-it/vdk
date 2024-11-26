@@ -278,7 +278,23 @@ class Email {
         }
     }
 
-    // Método para atualizar a pasta de um e-mail
+
+    public function updateEmailOrder($messageId, $email_account_id, $order)
+    {
+        try {
+            $sql = "UPDATE emails SET `order` = :order WHERE message_id = :message_id AND email_account_id = :email_account_id";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->bindParam(':order', $order, PDO::PARAM_INT);
+            $stmt->bindParam(':message_id', $messageId, PDO::PARAM_STR);
+            $stmt->bindParam(':email_account_id', $email_account_id, PDO::PARAM_INT);
+            $stmt->execute();
+            error_log("Ordem atualizada para o e-mail com Message-ID $messageId: ordem = $order");
+        } catch (Exception $e) {
+            error_log("Erro ao atualizar a ordem do e-mail: " . $e->getMessage());
+            throw $e;
+        }
+    }
+
     public function updateFolder($messageId, $folderName) {
         try {
             $query = "UPDATE " . $this->table . " SET folder = :folder_name WHERE email_id = :conversation_Id";
@@ -359,19 +375,18 @@ class Email {
         }
     }
     
-    public function emailExistsByMessageId($messageId, $user_id) {
+    public function emailExistsByMessageId($messageId, $email_account_id) {
         try {
-            $query = "SELECT COUNT(*) as count FROM " . $this->table . " WHERE email_id = :conversation_Id AND user_id = :user_id";
+            $query = "SELECT COUNT(*) as count FROM " . $this->table . " WHERE email_id = :conversation_Id AND email_account_id = :email_account_id";
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':conversation_Id', $messageId);
-            $stmt->bindParam(':user_id', $user_id);
+            $stmt->bindParam(':email_account_id', $email_account_id);
             $stmt->execute();
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
     
             return $result['count'] > 0;
     
         } catch (Exception $e) {
-            $this->errorLogController->logError('Erro ao verificar existência de e-mail por Message-ID: ' . $e->getMessage(), __FILE__, __LINE__, $user_id);
             throw new Exception('Erro ao verificar existência de e-mail por Message-ID: ' . $e->getMessage());
         }
     }
