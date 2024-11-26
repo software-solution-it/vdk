@@ -60,6 +60,7 @@ class Email {
 
     public function saveEmail(
         $user_id, 
+        $email_account_id,
         $email_id, 
         $subject, 
         $sender, 
@@ -74,7 +75,7 @@ class Email {
         $cc,
         $uid,
         $conversation_id,
-        $conversation_step,  // Novo campo
+        $conversation_step,
         $from
     ) {
         if (is_null($email_id) || is_null($sender)) {
@@ -86,13 +87,14 @@ class Email {
         $body_text = $body_text ?? 'Sem Conteúdo';
     
         $query = "INSERT INTO " . $this->table . " 
-                  (user_id, email_id, subject, sender, recipient, body_html, body_text, date_received, `references`, in_reply_to, is_read, folder_id, cc, uid, conversation_id, conversation_step, `from`) 
+                  (user_id, email_account_id, email_id, subject, sender, recipient, body_html, body_text, date_received, `references`, in_reply_to, is_read, folder_id, cc, uid, conversation_id, conversation_step, `from`) 
                   VALUES 
-                  (:user_id, :email_id, :subject, :sender, :recipient, :body_html, :body_text, :date_received, :references, :in_reply_to, :is_read, :folder_id, :cc, :uid, :conversation_id, :conversation_step, :from)";
+                  (:user_id, :email_account_id, :email_id, :subject, :sender, :recipient, :body_html, :body_text, :date_received, :references, :in_reply_to, :is_read, :folder_id, :cc, :uid, :conversation_id, :conversation_step, :from)";
         
         $stmt = $this->conn->prepare($query);
         
         $stmt->bindParam(':user_id', $user_id);
+        $stmt->bindParam(':email_account_id', $email_account_id); // Novo campo
         $stmt->bindParam(':email_id', $email_id);
         $stmt->bindParam(':subject', $subject);
         $stmt->bindParam(':sender', $sender);
@@ -107,7 +109,7 @@ class Email {
         $stmt->bindParam(':cc', $cc);
         $stmt->bindParam(':uid', $uid); 
         $stmt->bindParam(':conversation_id', $conversation_id); 
-        $stmt->bindParam(':conversation_step', $conversation_step); // Novo campo
+        $stmt->bindParam(':conversation_step', $conversation_step);
         $stmt->bindParam(':from', $from);
     
         if ($stmt->execute()) {
@@ -116,6 +118,7 @@ class Email {
             return false; 
         }
     }
+    
     
     
     

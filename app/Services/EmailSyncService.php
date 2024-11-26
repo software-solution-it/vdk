@@ -235,8 +235,6 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
             }
             $folders = $this->emailFolderModel->syncFolders($email_account_id, $folderNames); 
     
-            $storedFolders = $this->emailFolderModel->getFoldersByEmailAccountId($email_account_id);
-    
             foreach ($mailboxes as $mailbox) {
                 if ($mailbox->getAttributes() & \LATT_NOSELECT) {
                     error_log("Ignorando a pasta de sistema: " . $mailbox->getName());
@@ -307,6 +305,7 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
     
                         $emailId = $this->emailModel->saveEmail(
                             $user_id,
+                            $email_account_id,
                             $messageId,
                             $subject,
                             $fromAddress,
@@ -326,7 +325,6 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                              
                         );
     
-                        // Processamento de imagens inline
                         if ($body_html) {
                             preg_match_all('/<img[^>]+src="data:image\/([^;]+);base64,([^"]+)"/', $body_html, $matches, PREG_SET_ORDER);
     
