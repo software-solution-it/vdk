@@ -131,10 +131,16 @@ class AuthService  {
     }
 
     public function preRegister($name, $email, $password, $role_id) {
-        $hashedPassword = EncryptionHelper::encrypt($password);
-        
-        $verificationCode = rand(100000, 999999);
+        $existingUser = $this->user->findByEmail($email);
+        if ($existingUser) {
+            return [
+                'success' => false,
+                'message' => 'O e-mail já está registrado. Tente usar um e-mail diferente.'
+            ];
+        }
     
+        $hashedPassword = EncryptionHelper::encrypt($password);
+        $verificationCode = rand(100000, 999999);
         $expirationTime = time() + (5 * 60);
         $expirationDateTime = date('Y-m-d H:i:s', $expirationTime);
     
@@ -146,17 +152,18 @@ class AuthService  {
             if ($emailSent) {
                 return [
                     'success' => true,
-                    'message' => 'User registered successfully. Please check your email for the verification code.',
+                    'message' => 'Usuário registrado com sucesso. Verifique seu e-mail para o código de verificação.',
                     'verificationCode' => $verificationCode,
                     'expiration' => $expirationDateTime
                 ];
             } else {
-                return ['success' => false, 'message' => 'Failed to send verification email.'];
+                return ['success' => false, 'message' => 'Falha ao enviar o e-mail de verificação.'];
             }
         }
     
-        return ['success' => false, 'message' => 'Failed to register user.'];
+        return ['success' => false, 'message' => 'Falha ao registrar o usuário.'];
     }
+    
 
 
     public function forgotPassword($email) {
