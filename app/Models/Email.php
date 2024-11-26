@@ -279,23 +279,23 @@ class Email {
     }
 
 
-    public function updateEmailOrder($emailId, $email_account_id, $order)
+    public function updateEmailOrder($messageId, $user_id, $order)
     {
         try {
-            $sql = "UPDATE emails SET `uid` = :order WHERE email_id = :email_id AND email_account_id = :email_account_id";
+            $sql = "UPDATE emails SET `order` = :order WHERE message_id = :message_id AND user_id = :user_id";
             $stmt = $this->conn->prepare($sql);
             $stmt->bindParam(':order', $order, PDO::PARAM_INT);
-            $stmt->bindParam(':email_id', $emailId, PDO::PARAM_STR);
-            $stmt->bindParam(':email_account_id', $email_account_id, PDO::PARAM_INT);
+            $stmt->bindParam(':message_id', $messageId, PDO::PARAM_STR);
+            $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
             $stmt->execute();
-            error_log("Ordem atualizada para o e-mail com Email-ID $emailId: ordem = $order");
+            error_log("Ordem atualizada para o e-mail com Message-ID $messageId: ordem = $order");
         } catch (Exception $e) {
             error_log("Erro ao atualizar a ordem do e-mail: " . $e->getMessage());
             throw $e;
         }
     }
-    
 
+    // Método para atualizar a pasta de um e-mail
     public function updateFolder($messageId, $folderName) {
         try {
             $query = "UPDATE " . $this->table . " SET folder = :folder_name WHERE email_id = :conversation_Id";
@@ -327,22 +327,20 @@ class Email {
     }
     
 
-    public function deleteEmailByMessageId($emailId, $user_id) {
+    public function deleteEmailByMessageId($messageId, $user_id) {
         try {
-            $query = "DELETE FROM emails WHERE email_id = :email_id AND user_id = :user_id";
+            $query = "DELETE FROM " . $this->table . " WHERE email_id = :message_id AND user_id = :user_id";
             $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(':email_id', $emailId);
+            $stmt->bindParam(':message_id', $messageId);
             $stmt->bindParam(':user_id', $user_id);
-    
+            
             return $stmt->execute();
         } catch (Exception $e) {
-            $this->errorLogController->logError('Erro ao deletar e-mail por Email-ID: ' . $e->getMessage(), __FILE__, __LINE__);
-            throw new Exception('Erro ao deletar e-mail por Email-ID: ' . $e->getMessage());
+            $this->errorLogController->logError('Erro ao deletar e-mail por Message-ID: ' . $e->getMessage(), __FILE__, __LINE__);
+            throw new Exception('Erro ao deletar e-mail por Message-ID: ' . $e->getMessage());
         }
     }
-    
 
-    // Método para deletar um e-mail
     public function deleteEmail($messageId) {
         try {
             $query = "DELETE FROM " . $this->table . " WHERE email_id = :conversation_Id";
@@ -377,21 +375,21 @@ class Email {
         }
     }
     
-    public function emailExistsByMessageId($emailId, $email_account_id) {
+    public function emailExistsByMessageId($messageId, $email_account_id) {
         try {
-            $query = "SELECT COUNT(*) as count FROM emails WHERE email_id = :email_id AND email_account_id = :email_account_id";
+            $query = "SELECT COUNT(*) as count FROM " . $this->table . " WHERE email_id = :conversation_Id AND email_account_id = :email_account_id";
             $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(':email_id', $emailId);
+            $stmt->bindParam(':conversation_Id', $messageId);
             $stmt->bindParam(':email_account_id', $email_account_id);
             $stmt->execute();
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
     
             return $result['count'] > 0;
+    
         } catch (Exception $e) {
-            throw new Exception('Erro ao verificar existência de e-mail por Email-ID: ' . $e->getMessage());
+            throw new Exception('Erro ao verificar existência de e-mail por Message-ID: ' . $e->getMessage());
         }
     }
-    
     
 
     private function getEmailsByIds($emailIds) {
