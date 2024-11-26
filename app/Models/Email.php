@@ -38,11 +38,22 @@ class Email {
                 return $result;
             }
     
-            return null; // Retorna null se não encontrar uma conversa
+            return null;
         } catch (Exception $e) {
             $this->errorLogController->logError("Erro ao buscar conversa por in_reply_to: " . $e->getMessage(), __FILE__, __LINE__, null);
             throw new Exception("Erro ao buscar conversa por in_reply_to: " . $e->getMessage());
         }
+    }
+
+
+    public function getFolderNameById($folder_id) {
+        $query = "SELECT name FROM folders WHERE id = :folder_id";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':folder_id', $folder_id, PDO::PARAM_INT);
+        $stmt->execute();
+    
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $result ? $result['name'] : null;
     }
     
     

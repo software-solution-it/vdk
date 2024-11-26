@@ -100,6 +100,100 @@ class EmailService {
         ];
     }
 
+
+    public function moveEmail($email_id, $new_folder_id) {
+        try {
+
+            $emailDetails = $this->emailModel->getEmailById($email_id);
+            if (!$emailDetails) {
+                throw new Exception("E-mail não encontrado no banco de dados.");
+            }
+    
+            $accountDetails = $this->emailAccountModel->getById($emailDetails['email_account_id']);
+            if (!$accountDetails) {
+                throw new Exception("Conta de e-mail associada não encontrada.");
+            }
+    
+            $accountDetails['password'] = EncryptionHelper::decrypt($accountDetails['password']);
+            
+            $destinationFolder = $this->emailModel->getFolderNameById($new_folder_id);
+            if (!$destinationFolder) {
+                throw new Exception("Pasta de destino não encontrada.");
+            }  
+    
+            $imap = imap_open(
+                "{" . $accountDetails['imap_host'] . ":" . $accountDetails['imap_port'] . "/imap/ssl}INBOX",
+                $accountDetails['email'],
+                $accountDetails['password']
+            );
+    
+            if (!$imap) {
+                throw new Exception("Falha ao conectar ao servidor IMAP: " . imap_last_error());
+            }
+    
+            $moveResult = imap_mail_move($imap, $emailDetails['uid'], $destinationFolder);
+            if (!$moveResult) {
+                throw new Exception("Erro ao mover o e-mail no provedor: " . imap_last_error());
+            }
+    
+            imap_expunge($imap);
+            imap_close($imap);
+    
+            $this->emailModel->updateFolder($emailDetails['email_id'], $destinationFolder);
+    
+            return true;
+        } catch (Exception $e) {
+            $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
+            throw new Exception("Erro ao mover o e-mail: " . $e->getMessage());
+        }
+    }
+
+
+    public function deleteEmail($email_id) {
+        try {
+
+            $emailDetails = $this->emailModel->getEmailById($email_id);
+            if (!$emailDetails) {
+                throw new Exception("E-mail não encontrado no banco de dados.");
+            }
+    
+            $accountDetails = $this->emailAccountModel->getById($emailDetails['email_account_id']);
+            if (!$accountDetails) {
+                throw new Exception("Conta de e-mail associada não encontrada.");
+            }
+    
+            $accountDetails['password'] = EncryptionHelper::decrypt($accountDetails['password']);
+    
+            $imap = imap_open(
+                "{" . $accountDetails['imap_host'] . ":" . $accountDetails['imap_port'] . "/imap/ssl}INBOX",
+                $accountDetails['email'],
+                $accountDetails['password']
+            );
+    
+            if (!$imap) {
+                throw new Exception("Falha ao conectar ao servidor IMAP: " . imap_last_error());
+            }
+    
+            $deleteResult = imap_delete($imap, $emailDetails['uid']);
+            if (!$deleteResult) {
+                throw new Exception("Erro ao excluir o e-mail no provedor: " . imap_last_error());
+            }
+    
+            imap_expunge($imap);
+            imap_close($imap);
+    
+            $this->emailModel->deleteEmail($emailDetails['email_id']);
+    
+            return true;
+        } catch (Exception $e) {
+            $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
+            throw new Exception("Erro ao excluir o e-mail: " . $e->getMessage());
+        }
+    }
+    
+    
+    
+
     public function processEmailSending($message) {
         $user_id = $message['user_id'];
         $email_account_id = $message['email_account_id']; 
@@ -273,12 +367,6 @@ class EmailService {
         
         return $emails;
     }
-    
-    
-    
-    
-    
-
     public function checkEmailRecords($domain) {
         $dkim = $this->emailModel->checkDkim($domain);
         $dmarc = $this->emailModel->checkDmarc($domain);

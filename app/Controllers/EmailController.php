@@ -428,8 +428,91 @@ class EmailController {
             ]);
         }
     }
+
+    public function deleteEmail() {
+        header('Content-Type: application/json');
+    
+        try {
+            $data = json_decode(file_get_contents('php://input'), true);
+    
+            $requiredParams = ['email_id'];
+            if (!$this->validateParams($requiredParams, $data)) {
+                return;
+            }
+    
+            $email_id = $data['email_id'];
+    
+            $result = $this->emailService->deleteEmail($email_id);
+    
+            if ($result) {
+                http_response_code(200);
+                echo json_encode([
+                    'Status' => 'Success',
+                    'Message' => 'E-mail excluído com sucesso.',
+                    'Data' => null
+                ]);
+            } else {
+                http_response_code(400);
+                echo json_encode([
+                    'Status' => 'Error',
+                    'Message' => 'Falha ao excluir o e-mail. Talvez ele já tenha sido removido.',
+                    'Data' => null
+                ]);
+            }
+        } catch (Exception $e) {
+            $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
+            http_response_code(500);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Erro ao excluir o e-mail: ' . $e->getMessage(),
+                'Data' => null
+            ]);
+        }
+    }
     
     
+    
+    public function moveEmail() {
+        header('Content-Type: application/json');
+    
+        try {
+            $data = json_decode(file_get_contents('php://input'), true);
+    
+            $requiredParams = ['email_id', 'folder_id'];
+            if (!$this->validateParams($requiredParams, $data)) {
+                return;
+            }
+    
+            $email_id = $data['email_id'];
+            $folder_id = $data['folder_id'];
+    
+            $result = $this->emailService->moveEmail($email_id, $folder_id);
+    
+            if ($result) {
+                http_response_code(200);
+                echo json_encode([
+                    'Status' => 'Success',
+                    'Message' => 'E-mail movido com sucesso.',
+                    'Data' => null
+                ]);
+            } else {
+                http_response_code(400);
+                echo json_encode([
+                    'Status' => 'Error',
+                    'Message' => 'Falha ao mover o e-mail.',
+                    'Data' => null
+                ]);
+            }
+        } catch (Exception $e) {
+            $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
+            http_response_code(500);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Erro ao mover o e-mail: ' . $e->getMessage(),
+                'Data' => null
+            ]);
+        }
+    }
 
 
     public function viewEmail($email_id) {

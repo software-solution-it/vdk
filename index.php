@@ -95,6 +95,17 @@ switch ($request_uri[0]) {
         $controller->getAccessToken();
         break;
 
+    case '/api/email/move':
+         $controller = new EmailController();
+         $controller->moveEmail();
+         break;
+
+    case '/api/email/delete':
+         $controller = new EmailController();
+         $controller->deleteEmail();
+         break;
+        
+
     case '/api/gmail/oauth/refresh':
         $controller = new GmailOauth2Controller();
         $controller->refreshAccessToken();
@@ -210,7 +221,6 @@ switch ($request_uri[0]) {
         $emailController->sendMultipleEmails();
         break;
 
-
     case '/api/imap/test':
         $imapController = new IMAPController();
         $imapController->testConnection();
@@ -233,12 +243,11 @@ switch ($request_uri[0]) {
         $emailController->viewEmail($email_id);
         break;
 
-
-        case '/api/email/attachment':
-            $emailController = new EmailController();
-            $attachment_id = $_GET['attachment_id'] ?? null;
-            $emailController->getAttachmentById($attachment_id);
-            break;
+    case '/api/email/attachment':
+        $emailController = new EmailController();
+        $attachment_id = $_GET['attachment_id'] ?? null;
+        $emailController->getAttachmentById($attachment_id);
+        break;
 
     case '/api/email-account/create':
         $controller = new EmailAccountController();
