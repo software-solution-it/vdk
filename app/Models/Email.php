@@ -282,7 +282,7 @@ class Email {
     public function updateEmailOrder($messageId, $email_account_id, $order)
     {
         try {
-            $sql = "UPDATE emails SET `order` = :order WHERE message_id = :message_id AND email_account_id = :email_account_id";
+            $sql = "UPDATE emails SET `order` = :order WHERE email_id = :message_id AND email_account_id = :email_account_id";
             $stmt = $this->conn->prepare($sql);
             $stmt->bindParam(':order', $order, PDO::PARAM_INT);
             $stmt->bindParam(':message_id', $messageId, PDO::PARAM_STR);
