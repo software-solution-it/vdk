@@ -47,14 +47,15 @@ class Email {
 
 
     public function getFolderNameById($folder_id) {
-        $query = "SELECT name FROM folders WHERE id = :folder_id";
+        $query = "SELECT folder_name FROM email_folders WHERE id = :folder_id";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':folder_id', $folder_id, PDO::PARAM_INT);
         $stmt->execute();
     
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
-        return $result ? $result['name'] : null;
+        return $result ? $result['folder_name'] : null;
     }
+    
     
     
 
