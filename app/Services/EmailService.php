@@ -139,7 +139,7 @@ class EmailService {
             imap_expunge($imap);
             imap_close($imap);
     
-            $this->emailModel->updateFolder($emailDetails['email_id'], $destinationFolder);
+            $this->emailModel->deleteEmail($emailDetails['email_id']);
     
             return true;
         } catch (Exception $e) {
