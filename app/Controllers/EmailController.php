@@ -484,7 +484,7 @@ class EmailController {
             }
     
             $email_id = $data['email_id'];
-            $folder_id = $data['folder_id'];
+            $folder_id = $data['folder_id']; 
     
             $result = $this->emailService->moveEmail($email_id, $folder_id);
     

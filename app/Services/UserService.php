@@ -4,6 +4,7 @@ namespace App\Services;
 use App\Models\User;
 use App\Config\Database;
 use PDO;
+use Exception;
 
 class UserService {
     private $userModel;
@@ -29,8 +30,20 @@ class UserService {
     }
 
     public function deleteUser($id) {
-        return $this->userModel->delete($id);
+        try {
+            $result = $this->userModel->delete($id);
+            if ($result === true) {
+                return ['status' => true];
+            } else {
+                error_log("Failed to delete user in userModel->delete for ID: $id");
+                return ['status' => false];
+            }
+        } catch (Exception $e) { 
+            error_log("Error in userService->deleteUser: " . $e->getMessage());
+            return ['status' => false];
+        }
     }
+    
 
     public function getUserById($id) {
         return $this->userModel->getUserById($id);

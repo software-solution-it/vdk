@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Config\Database;
 use App\Services\UserService;
 use App\Controllers\ErrorLogController;
+use Exception;
 
 class UserController {
     private $userService;
@@ -122,10 +123,26 @@ class UserController {
     public function deleteUser() {
         header('Content-Type: application/json');
         $id = $_GET['id'] ?? null;
-
-        if ($id) {
+    
+        error_log("DeleteUser invoked. ID: " . ($id ?? 'null'));
+    
+        if (!$id) {
+            error_log("User ID not provided");
+            http_response_code(400);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'User ID is required',
+                'Data' => null
+            ]);
+            return;
+        }
+    
+        try {
             $user = $this->userService->getUserById($id);
+            error_log("getUserById result: " . json_encode($user));
+    
             if (!$user) {
+                error_log("User not found for ID: $id");
                 http_response_code(404);
                 echo json_encode([
                     'Status' => 'Error',
@@ -134,24 +151,39 @@ class UserController {
                 ]);
                 return;
             }
-
+    
             $delete = $this->userService->deleteUser($id);
-
-            http_response_code($delete['status'] ? 200 : 500);
+            error_log("deleteUser result: " . json_encode($delete));
+    
+            if (!isset($delete['status']) || !$delete['status']) {
+                error_log("Failed to delete user for ID: $id");
+                http_response_code(500);
+                echo json_encode([
+                    'Status' => 'Error',
+                    'Message' => 'Failed to delete user',
+                    'Data' => null
+                ]);
+                return;
+            }
+    
+            error_log("User deleted successfully: $id");
+            http_response_code(200);
             echo json_encode([
-                'Status' => $delete['status'] ? 'Success' : 'Error',
-                'Message' => $delete['status'] ? 'User deleted successfully' : 'Failed to delete user',
+                'Status' => 'Success',
+                'Message' => 'User deleted successfully',
                 'Data' => null
             ]);
-        } else {
-            http_response_code(400);
+        } catch (Exception $e) {
+            error_log("Unexpected error in deleteUser: " . $e->getMessage());
+            http_response_code(500);
             echo json_encode([
                 'Status' => 'Error',
-                'Message' => 'User ID is required',
+                'Message' => 'An error occurred while deleting the user',
                 'Data' => null
             ]);
         }
     }
+    
 
     public function checkUserAccess() {
         header('Content-Type: application/json');

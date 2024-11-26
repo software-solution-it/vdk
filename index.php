@@ -302,6 +302,11 @@ switch ($request_uri[0]) {
         $controller->createProvider();
         break;
 
+        case '/api/provider':
+            $controller = new ProviderController();
+            $controller->getAllProviders();
+            break;
+
     case '/api/provider/update':
         $controller = new ProviderController();
         $id = $_GET['id'] ?? null;
