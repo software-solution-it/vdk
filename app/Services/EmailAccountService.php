@@ -58,37 +58,46 @@ class EmailAccountService {
     
 
     public function updateEmailAccount($id, $data) {
-        $requiredFields = ['email', 'provider_id', 'password', 'oauth_token', 'refresh_token', 'client_id', 'client_secret', 'is_basic'];
-        $missingFields = $this->validateFields($data, $requiredFields);
+        $existingEmailAccount = $this->emailAccountModel->getById($id);
+        if (!$existingEmailAccount) {
+            return ['status' => false, 'message' => 'Email account not found'];
+        }
+    
+        $requiredFields = ['email', 'provider_id', 'oauth_token', 'refresh_token', 'client_id', 'client_secret', 'is_basic'];
+        $missingFields = array_filter($requiredFields, function ($field) use ($data) {
+            return !isset($data[$field]) || $data[$field] === '';
+        });
     
         if (!empty($missingFields)) {
             return ['status' => false, 'message' => 'Missing fields: ' . implode(', ', $missingFields)];
         }
     
-        $encryptedPassword = EncryptionHelper::encrypt($data['password']);
+        $encryptedPassword = isset($data['password']) && $data['password'] !== '' 
+            ? EncryptionHelper::encrypt($data['password']) 
+            : $existingEmailAccount['password'];
     
-        $is_basic = $data['is_basic'] ?? null;
+        $is_basic = $data['is_basic'] ?? $existingEmailAccount['is_basic'];
     
-        $updated = $this->emailAccountModel->update( 
+        $updated = $this->emailAccountModel->update(
             $id,
-            $data['email'],
-            $data['provider_id'],
-            $encryptedPassword ?? null,
-            $data['oauth_token'] ?? null,
-            $data['refresh_token'] ?? null,
-            $data['client_id'] ?? null,
-            $data['client_secret'] ?? null,
-            $is_basic ?? true
+            $data['email'] ?? $existingEmailAccount['email'],
+            $data['provider_id'] ?? $existingEmailAccount['provider_id'],
+            $encryptedPassword,
+            $data['oauth_token'] ?? $existingEmailAccount['oauth_token'],
+            $data['refresh_token'] ?? $existingEmailAccount['refresh_token'],
+            $data['client_id'] ?? $existingEmailAccount['client_id'],
+            $data['client_secret'] ?? $existingEmailAccount['client_secret'],
+            $is_basic
         );
     
         if ($updated) {
-            $updatedEmailAccount = $this->emailAccountModel->getById($id);
-            
-            return $updatedEmailAccount;
+            return $this->emailAccountModel->getById($id);
         }
     
         return ['status' => false, 'message' => 'Failed to update email account'];
     }
+    
+    
     
 
     public function deleteEmailAccount($id) {

@@ -131,6 +131,7 @@ class AuthService  {
     }
 
     public function preRegister($name, $email, $password, $role_id) {
+        // Verifica se o e-mail já está registrado
         $existingUser = $this->user->findByEmail($email);
         if ($existingUser) {
             return [
@@ -143,7 +144,7 @@ class AuthService  {
         $verificationCode = rand(100000, 999999);
         $expirationTime = time() + (5 * 60);
         $expirationDateTime = date('Y-m-d H:i:s', $expirationTime);
-    
+
         $user_id = $this->user->create($name, $email, $hashedPassword, $verificationCode, $expirationDateTime, $role_id);
     
         if ($user_id) {
