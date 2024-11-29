@@ -377,12 +377,14 @@ class Email {
     
     public function emailExistsByMessageId($messageId, $email_account_id) {
         try {
-            $query = "SELECT COUNT(*) as count FROM " . $this->table . " WHERE email_id = :conversation_Id AND email_account_id = :email_account_id";
+            $query = "SELECT COUNT(*) as count FROM " . $this->table . " WHERE email_id = :messageId AND email_account_id = :email_account_id";
             $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(':conversation_Id', $messageId);
+            $stmt->bindParam(':messageId', $messageId);
             $stmt->bindParam(':email_account_id', $email_account_id);
             $stmt->execute();
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            $this->errorLogController->logError('LOG Email Exists: ' . $messageId. " " . ($result['count'] > 0), __FILE__, line: __LINE__);
     
             return $result['count'] > 0;
     
