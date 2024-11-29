@@ -277,7 +277,7 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                             continue;
                         }
     
-                        $existingEmail = $this->emailModel->emailExistsByMessageId($messageId, $user_id);
+                        $existingEmail = $this->emailModel->emailExistsByMessageId($messageId, $email_account_id);
                         if ($existingEmail) {
                             error_log("E-mail com Message-ID $messageId já foi processado. Ignorando...");
                             continue;
