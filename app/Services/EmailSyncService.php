@@ -237,8 +237,9 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
             $mailboxes = $connection->getMailboxes(); 
             $folderNames = [];
             foreach ($mailboxes as $mailbox) {
-                if (!($mailbox->getAttributes() & \LATT_NOSELECT)) {
-                    $folderNames[] = $mailbox->getName(); 
+                $folderName = $mailbox->getName();
+                if (in_array($folderName, ['INBOX_PROCESSED', 'SPAM_PROCESSED', 'TRASH_PROCESSED'])) {
+                    $folderNames[] = $folderName;
                 }
             }
             $folders = $this->emailFolderModel->syncFolders($email_account_id, $folderNames); 
