@@ -398,15 +398,30 @@ class Email {
 
     public function emailExistsInFolder($messageId, $email_account_id, $folderName) {
         try {
-            $query = "SELECT COUNT(*) as count FROM " . $this->table . " WHERE email_id = :messageId AND email_account_id = :email_account_id AND folder_name = :folderName";
+            $query = "
+                SELECT COUNT(*) as count 
+                FROM emails e
+                INNER JOIN email_folders ef ON e.folder_id = ef.id
+                WHERE e.email_id = :messageId 
+                AND e.email_account_id = :email_account_id 
+                AND ef.folder_name = :folderName
+            ";
+            
             $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(':messageId', $messageId);
-            $stmt->bindParam(':email_account_id', $email_account_id);
-            $stmt->bindParam(':folderName', $folderName);
+            $stmt->bindParam(':messageId', $messageId, PDO::PARAM_STR);
+            $stmt->bindParam(':email_account_id', $email_account_id, PDO::PARAM_INT);
+            $stmt->bindParam(':folderName', $folderName, PDO::PARAM_STR);
             $stmt->execute();
+            
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
     
-            $this->errorLogController->logError('LOG Email Exists in Folder: ' . $messageId . " in folder " . $folderName . " " . ($result['count'] > 0), __FILE__, line: __LINE__);
+            $this->errorLogController->logError(
+                'LOG Email Exists in Folder: ' . $messageId . 
+                " in folder " . $folderName . 
+                " result: " . ($result['count'] > 0 ? 'true' : 'false'),
+                __FILE__,
+                __LINE__
+            );
     
             return $result['count'] > 0;
     
@@ -414,6 +429,7 @@ class Email {
             throw new Exception('Erro ao verificar existência de e-mail na pasta: ' . $e->getMessage());
         }
     }
+    
     
     
 
