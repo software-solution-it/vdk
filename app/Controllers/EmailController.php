@@ -338,27 +338,11 @@ class EmailController {
         header('Content-Type: application/json');
         
         $folder_id = isset($_GET['folder_id']) ? $_GET['folder_id'] : null;
+        $folder_name = isset($_GET['folder_name']) ? $_GET['folder_name'] : null;
         $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 20; 
         $page = isset($_GET['page']) ? (int)$_GET['page'] : 1; 
     
         $offset = ($page - 1) * $limit;
-    
-        $requiredParams = ['folder_id'];
-    
-        $params = [
-            'folder_id' => $folder_id,
-            'limit' => $limit,
-            'page' => $page
-        ];
-    
-        if (!$this->validateParams($requiredParams, $params)) {
-            http_response_code(400);
-            echo json_encode([
-                'Status' => 'Error',
-                'Message' => 'O parâmetro "folder_id" é obrigatório.'
-            ]);
-            return;
-        }
     
         if ($limit <= 0) {
             http_response_code(400);
@@ -378,8 +362,17 @@ class EmailController {
             return;
         }
     
+        if (is_null($folder_id) && is_null($folder_name)) {
+            http_response_code(400);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'É necessário informar "folder_id" ou "folder_name".'
+            ]);
+            return;
+        }
+    
         try {
-            $emails = $this->emailService->listEmails($folder_id, $limit, $offset);
+            $emails = $this->emailService->listEmails($folder_id, $folder_name, $limit, $offset);
             
             http_response_code(200);
             echo json_encode([
@@ -397,6 +390,7 @@ class EmailController {
             ]);
         }
     }
+    
 
     public function getAttachmentById($attachment_id) {
         header('Content-Type: application/json');

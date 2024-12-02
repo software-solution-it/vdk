@@ -335,56 +335,93 @@ class EmailService {
         }
     }
     
-    public function listEmails($folder_id, $limit, $offset) {
-        $query = "
-            SELECT 
-                e.id,
-                e.body_text,
-                e.from,
-                e.subject,
-                e.date_received,
-                COUNT(a.id) AS attachment_count
-            FROM 
-                emails e
-            LEFT JOIN 
-                email_attachments a
-            ON 
-                e.id = a.email_id
-            WHERE 
-                e.folder_id = :folder_id
-            GROUP BY 
-                e.id, e.body_text, e.from, e.date_received
-            LIMIT 
-                :limit OFFSET :offset";
-    
-        $stmt = $this->db->prepare($query);
-        
-        $stmt->bindParam(':folder_id', $folder_id, PDO::PARAM_INT);
-        $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
-        $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
-    
-        $stmt->execute();
-        $emails = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-        $countQuery = "
-            SELECT 
-                COUNT(*) as total
-            FROM 
-                emails
-            WHERE 
-                folder_id = :folder_id";
-    
-        $countStmt = $this->db->prepare($countQuery);
-        $countStmt->bindParam(':folder_id', $folder_id, PDO::PARAM_INT);
-        $countStmt->execute();
-        $totalResult = $countStmt->fetch(PDO::FETCH_ASSOC);
-        $total = $totalResult['total'];
-    
-        return [
-            'total' => $total,
-            'emails' => $emails
-        ];
+    public function listEmails($folder_id = null, $folder_name = null, $limit, $offset)
+{
+    // Base query para os emails
+    $baseQuery = "
+        SELECT 
+            e.id,
+            e.body_text,
+            e.from,
+            e.subject,
+            e.date_received,
+            COUNT(a.id) AS attachment_count
+        FROM 
+            emails e
+        LEFT JOIN 
+            email_attachments a
+        ON 
+            e.id = a.email_id
+    ";
+
+    // Filtro para folder_id ou folder_name
+    $filterQuery = "";
+    $params = [
+        ':limit' => $limit,
+        ':offset' => $offset,
+    ];
+
+    if (!is_null($folder_id)) {
+        $filterQuery = "WHERE e.folder_id = :folder_id";
+        $params[':folder_id'] = $folder_id;
+    } else if (!is_null($folder_name)) {
+        $baseQuery .= "INNER JOIN email_folders ef ON e.folder_id = ef.id ";
+        $filterQuery = "WHERE UPPER(ef.folder_name) = UPPER(:folder_name)";
+        $params[':folder_name'] = $folder_name;
     }
+
+    // Finalizando a query principal
+    $query = $baseQuery . $filterQuery . "
+        GROUP BY 
+            e.id, e.body_text, e.from, e.subject, e.date_received
+        LIMIT 
+            :limit OFFSET :offset";
+
+    // Preparar e executar a query principal
+    $stmt = $this->db->prepare($query);
+
+    foreach ($params as $param => $value) {
+        $stmt->bindValue($param, $value);
+    }
+
+    $stmt->execute();
+    $emails = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Query para contagem total
+    $countQuery = "
+        SELECT 
+            COUNT(*) as total
+        FROM 
+            emails e
+    ";
+
+    if (!is_null($folder_id)) {
+        $countQuery .= " WHERE e.folder_id = :folder_id";
+    } else if (!is_null($folder_name)) {
+        $countQuery .= " INNER JOIN email_folders ef ON e.folder_id = ef.id WHERE UPPER(ef.folder_name) = UPPER(:folder_name)";
+    }
+
+    // Preparar e executar a query de contagem
+    $countStmt = $this->db->prepare($countQuery);
+
+    foreach ($params as $param => $value) {
+        if ($param !== ':limit' && $param !== ':offset') { // `:limit` e `:offset` não são usados na contagem
+            $countStmt->bindValue($param, $value);
+        }
+    }
+
+    $countStmt->execute();
+    $totalResult = $countStmt->fetch(PDO::FETCH_ASSOC);
+    $total = $totalResult['total'];
+
+    // Retornar os resultados
+    return [
+        'total' => $total,
+        'emails' => $emails
+    ];
+}
+
+    
     
     public function checkEmailRecords($domain) {
         $dkim = $this->emailModel->checkDkim($domain);
