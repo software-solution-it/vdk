@@ -392,37 +392,11 @@ class EmailService {
     $stmt->execute();
     $emails = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Query para contagem total
-    $countQuery = "
-        SELECT 
-            COUNT(*) as total
-        FROM 
-            emails e
-    ";
-
-    if (!is_null($folder_id)) {
-        $countQuery .= " WHERE e.folder_id = :folder_id";
-    } else if (!is_null($folder_name)) {
-        $countQuery .= " INNER JOIN email_folders ef ON e.folder_id = ef.id WHERE UPPER(ef.folder_name) LIKE UPPER(:folder_name)";
-        $params[':folder_name'] = '%' . $folder_name . '%';
-    }
-
-    // Preparar e executar a query de contagem
-    $countStmt = $this->db->prepare($countQuery);
-
-    foreach ($params as $param => $value) {
-        if ($param !== ':limit' && $param !== ':offset') { // `:limit` e `:offset` não são usados na contagem
-            $countStmt->bindValue($param, $value);
-        }
-    }
-
-    $countStmt->execute();
-    $totalResult = $countStmt->fetch(PDO::FETCH_ASSOC);
-    $total = $totalResult['total'];
+    $countStmt = count($emails);
 
     // Retornar os resultados
     return [
-        'total' => $total,
+        'total' => $countStmt,
         'emails' => $emails
     ];
 }
