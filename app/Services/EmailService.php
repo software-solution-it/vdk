@@ -366,9 +366,10 @@ class EmailService {
         $params[':folder_id'] = $folder_id;
     } else if (!is_null($folder_name)) {
         $baseQuery .= "INNER JOIN email_folders ef ON e.folder_id = ef.id ";
-        $filterQuery = "WHERE UPPER(ef.folder_name) = UPPER(:folder_name)";
-        $params[':folder_name'] = $folder_name;
+        $filterQuery = "WHERE UPPER(ef.folder_name) LIKE UPPER(:folder_name)";
+        $params[':folder_name'] = '%' . $folder_name . '%'; // Adiciona curingas para busca parcial
     }
+    
 
     // Finalizando a query principal
     $query = $baseQuery . $filterQuery . "
