@@ -403,7 +403,8 @@ class EmailService {
     if (!is_null($folder_id)) {
         $countQuery .= " WHERE e.folder_id = :folder_id";
     } else if (!is_null($folder_name)) {
-        $countQuery .= " INNER JOIN email_folders ef ON e.folder_id = ef.id WHERE UPPER(ef.folder_name) = UPPER(:folder_name)";
+        $countQuery .= " INNER JOIN email_folders ef ON e.folder_id = ef.id WHERE UPPER(ef.folder_name) LIKE UPPER(:folder_name)";
+        $params[':folder_name'] = '%' . $folder_name . '%';
     }
 
     // Preparar e executar a query de contagem
