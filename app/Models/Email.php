@@ -375,7 +375,10 @@ class Email {
         }
     }
     
+
+
     public function emailExistsByMessageId($messageId, $email_account_id) {
+    
         try {
             $query = "SELECT COUNT(*) as count FROM " . $this->table . " WHERE email_id = :messageId AND email_account_id = :email_account_id";
             $stmt = $this->conn->prepare($query);
@@ -392,6 +395,26 @@ class Email {
             throw new Exception('Erro ao verificar existência de e-mail por Message-ID: ' . $e->getMessage());
         }
     }
+
+    public function emailExistsInFolder($messageId, $email_account_id, $folderName) {
+        try {
+            $query = "SELECT COUNT(*) as count FROM " . $this->table . " WHERE email_id = :messageId AND email_account_id = :email_account_id AND folder_name = :folderName";
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':messageId', $messageId);
+            $stmt->bindParam(':email_account_id', $email_account_id);
+            $stmt->bindParam(':folderName', $folderName);
+            $stmt->execute();
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+            $this->errorLogController->logError('LOG Email Exists in Folder: ' . $messageId . " in folder " . $folderName . " " . ($result['count'] > 0), __FILE__, line: __LINE__);
+    
+            return $result['count'] > 0;
+    
+        } catch (Exception $e) {
+            throw new Exception('Erro ao verificar existência de e-mail na pasta: ' . $e->getMessage());
+        }
+    }
+    
     
 
     private function getEmailsByIds($emailIds) {

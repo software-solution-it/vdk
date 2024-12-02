@@ -225,6 +225,14 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
         try {
             $server = new Server($imap_host, $imap_port);
             $connection = $server->authenticate($email, $password);
+
+            $processedFolders = ['INBOX_PROCESSED', 'SPAM_PROCESSED', 'TRASH_PROCESSED'];
+            foreach ($processedFolders as $processedFolder) {
+                if (!$connection->hasMailbox($processedFolder)) {
+                    $connection->createMailbox($processedFolder);
+                }
+            }
+    
     
             $mailboxes = $connection->getMailboxes(); 
             $folderNames = [];
@@ -276,6 +284,19 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                             error_log("E-mail com Message-ID ou From nulo. Ignorando...");
                             continue;
                         }
+
+                        $existsInInboxProcessed = $this->emailModel->emailExistsInFolder($messageId, $email_account_id, 'INBOX_PROCESSED');
+                        $existsInSpamProcessed = $this->emailModel->emailExistsInFolder($messageId, $email_account_id, 'SPAM_PROCESSED');
+                        $existsInTrashProcessed = $this->emailModel->emailExistsInFolder($messageId, $email_account_id, 'TRASH_PROCESSED');
+                        if ($existsInInboxProcessed || $existsInSpamProcessed) {
+                            error_log("E-mail com Message-ID $messageId já foi processado e movido para uma pasta de processados. Ignorando...");
+                            continue;
+                        }
+
+                        if ($existsInInboxProcessed || $existsInSpamProcessed || $existsInTrashProcessed) {
+                            error_log("E-mail com Message-ID $messageId já foi processado e movido para uma pasta de processados. Ignorando...");
+                            continue;
+                        }
     
                         $existingEmail = $this->emailModel->emailExistsByMessageId($messageId, $email_account_id);
                         if ($existingEmail) {
@@ -324,6 +345,9 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                             $fromName
                              
                         );
+
+                        $processedMailbox = $connection->getMailbox('INBOX_PROCESSED');
+                        $message->move($processedMailbox);
     
                         if ($body_html) {
                             preg_match_all('/<img[^>]+src="data:image\/([^;]+);base64,([^"]+)"/', $body_html, $matches, PREG_SET_ORDER);
@@ -352,7 +376,6 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                             }
                         }
     
-                        // Processamento de anexos
                         if ($message->hasAttachments()) {
                             $attachments = $message->getAttachments();
                             foreach ($attachments as $attachment) {

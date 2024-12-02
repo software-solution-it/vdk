@@ -334,12 +334,14 @@ class EmailService {
             return false;
         }
     }
+    
     public function listEmails($folder_id, $limit, $offset) {
         $query = "
             SELECT 
                 e.id,
                 e.body_text,
                 e.from,
+                e.subject,
                 e.date_received,
                 COUNT(a.id) AS attachment_count
             FROM 
@@ -351,10 +353,10 @@ class EmailService {
             WHERE 
                 e.folder_id = :folder_id
             GROUP BY 
-                e.email_id, e.body_text, e.from, e.date_received
+                e.id, e.body_text, e.from, e.date_received
             LIMIT 
                 :limit OFFSET :offset";
-        
+    
         $stmt = $this->db->prepare($query);
         
         $stmt->bindParam(':folder_id', $folder_id, PDO::PARAM_INT);
@@ -362,11 +364,28 @@ class EmailService {
         $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
     
         $stmt->execute();
-        
         $emails = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        return $emails;
+    
+        $countQuery = "
+            SELECT 
+                COUNT(*) as total
+            FROM 
+                emails
+            WHERE 
+                folder_id = :folder_id";
+    
+        $countStmt = $this->db->prepare($countQuery);
+        $countStmt->bindParam(':folder_id', $folder_id, PDO::PARAM_INT);
+        $countStmt->execute();
+        $totalResult = $countStmt->fetch(PDO::FETCH_ASSOC);
+        $total = $totalResult['total'];
+    
+        return [
+            'total' => $total,
+            'emails' => $emails
+        ];
     }
+    
     public function checkEmailRecords($domain) {
         $dkim = $this->emailModel->checkDkim($domain);
         $dmarc = $this->emailModel->checkDmarc($domain);
