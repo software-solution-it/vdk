@@ -381,7 +381,11 @@ class EmailService {
     $stmt = $this->db->prepare($query);
 
     foreach ($params as $param => $value) {
-        $stmt->bindValue($param, $value);
+        if ($param === ':limit' || $param === ':offset') {
+            $stmt->bindValue($param, (int)$value, PDO::PARAM_INT); // Converte para inteiro
+        } else {
+            $stmt->bindValue($param, $value);
+        }
     }
 
     $stmt->execute();
