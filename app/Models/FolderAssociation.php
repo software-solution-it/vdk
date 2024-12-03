@@ -122,7 +122,21 @@ class FolderAssociation {
             $stmt->bindParam(':email_account_id', $emailAccountId);
             $stmt->execute();
     
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+            if (!empty($data)) {
+                return [
+                    'Status' => 'Success',
+                    'Message' => 'Associations retrieved successfully.',
+                    'Data' => $data
+                ];
+            } else {
+                return [
+                    'Status' => 'Failure',
+                    'Message' => 'No associations found for the given email account ID.',
+                    'Data' => []
+                ];
+            }
         } catch (\Exception $e) {
             // Loga qualquer exceção que ocorra durante a execução
             $this->errorLogController->logError(
@@ -135,8 +149,13 @@ class FolderAssociation {
                 ]
             );
     
-            return null; // Retorna null em caso de erro
+            return [
+                'Status' => 'Error',
+                'Message' => 'An error occurred while fetching associations.',
+                'Data' => []
+            ];
         }
     }
+    
     
 }
