@@ -337,6 +337,11 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                             error_log("Erro ao mover e-mail {$message->getId()} da pasta $originalFolderName para $associatedFolderName: " . $e->getMessage());
                         }
                     }
+                    // Obtém o recurso de stream nativo do IMAP
+$imapStream = $connection->getResource()->getStream();
+
+// Expurga a pasta usando o recurso nativo do PHP-IMAP
+imap_expunge($imapStream);
                 } else {
                     // Nenhuma associação encontrada para este tipo de pasta
                     $this->errorLogController->logError(
