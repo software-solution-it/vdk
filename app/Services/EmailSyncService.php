@@ -229,26 +229,40 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
             $server = new Server($imap_host, $imap_port);
             $connection = $server->authenticate($email, $password);
 
-            $associations = $this->folderAssociationModel->getAssociationsByEmailAccount($email_account_id);
+            $associationsResponse = $this->folderAssociationModel->getAssociationsByEmailAccount($email_account_id);
 
+            if ($associationsResponse['Status'] === 'Success') {
+                $associations = $associationsResponse['Data'];
+            } else {
+                // Trata o erro se a resposta não for bem-sucedida
+                $this->errorLogController->logError(
+                    "Falha ao recuperar associações: " . $associationsResponse['Message'],
+                    __FILE__,
+                    __LINE__,
+                    $user_id
+                );
+                $associations = []; // Define como um array vazio para evitar erros posteriores
+            }
+            
             $processedFolders = ['INBOX_PROCESSED', 'SPAM_PROCESSED', 'TRASH_PROCESSED'];
             
-
             foreach ($processedFolders as $processedFolder) {
                 if (!$connection->hasMailbox($processedFolder)) {
                     $connection->createMailbox($processedFolder);
                 }
             }
             
-            
             foreach (['INBOX', 'SPAM', 'TRASH'] as $folderType) {
-                $association = array_filter($associations, fn($assoc) => $assoc['folder_type'] === $folderType);
+                // Filtra as associações pelo tipo de pasta
+                $filteredAssociations = array_filter($associations, function($assoc) use ($folderType) {
+                    return $assoc['folder_type'] === $folderType;
+                });
             
-                if (!empty($association)) {
-                    $association = current($association);
+                if (!empty($filteredAssociations)) {
+                    $association = current($filteredAssociations);
             
-                    $originalFolderName = $association['folder_name']; 
-                    $associatedFolderName = $association['associated_folder_name']; 
+                    $originalFolderName = $association['folder_name'];
+                    $associatedFolderName = $association['associated_folder_name'];
             
                     $originalMailbox = $connection->getMailbox($originalFolderName);
                     $associatedMailbox = $connection->getMailbox($associatedFolderName);
@@ -257,18 +271,12 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
             
                     foreach ($messages as $message) {
                         try {
-                                $message->move($associatedMailbox);
-
-                              //  $this->emailModel->deleteEmailByMessageId($message->getId(), $user_id);
-                              $this->errorLogController->logError(
-                                "mover e-mail {$message->getId()} para pasta associada $associatedFolderName: " . $e->getMessage(),
-                                __FILE__,
-                                __LINE__,
-                                $user_id
-                            );
-                                error_log("E-mail {$message->getId()} movido da pasta $originalFolderName para $associatedFolderName.");
-                            
+                            $message->move($associatedMailbox);
+            
+                            // Log de sucesso
+                            error_log("E-mail {$message->getId()} movido da pasta $originalFolderName para $associatedFolderName.");
                         } catch (Exception $e) {
+                            // Log de erro
                             error_log("Erro ao mover e-mail {$message->getId()} da pasta $originalFolderName para $associatedFolderName: " . $e->getMessage());
                             $this->errorLogController->logError(
                                 "Erro ao mover e-mail {$message->getId()} para pasta associada $associatedFolderName: " . $e->getMessage(),
@@ -279,15 +287,15 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                         }
                     }
                 } else {
+                    // Nenhuma associação encontrada para este tipo de pasta
                     $this->errorLogController->logError(
-                        "Nenhuma associação encontrada para " . $folderType . $e->getMessage(),
+                        "Nenhuma associação encontrada para " . $folderType,
                         __FILE__,
                         __LINE__,
                         $user_id
                     );
                 }
             }
-            
             
     
             $mailboxes = $connection->getMailboxes(); 
