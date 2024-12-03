@@ -230,7 +230,7 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
             $connection = $server->authenticate($email, $password);
 
             $this->errorLogController->logError(
-                "Iniciando associações: ",
+                "Iniciando associações: " . "Para email" . $email_account_id,
                 __FILE__,
                 __LINE__,
                 $user_id
