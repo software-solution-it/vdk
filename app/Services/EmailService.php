@@ -435,7 +435,7 @@ class EmailService {
             $conversation_id = $result['conversation_id'];
     
             $query = "
-                SELECT id, email_id, subject, sender, recipient, body, date_received, in_reply_to, `references`, folder_id, conversation_step
+                SELECT id, email_id, subject, sender, recipient, body_html, body_text, date_received, in_reply_to, `references`, folder_id, conversation_step
                 FROM mail.emails
                 WHERE conversation_id = :conversation_id
                 ORDER BY conversation_step ASC

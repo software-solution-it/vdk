@@ -39,6 +39,7 @@ use App\Controllers\EmailSyncController;
 use App\Controllers\WebhookController;
 use App\Controllers\EmailFolderController;
 use App\Controllers\OutlookOAuth2Controller;
+use App\Controllers\FolderAssociationController;
 
 //AuthMiddleware::verifyBearerToken();
 
@@ -236,6 +237,25 @@ switch ($request_uri[0]) {
         $email_id = isset($_GET['email_id']) ? $_GET['email_id'] : null;
         $emailController->listEmails();
         break;
+
+        case '/api/folders/associate':
+            $folderController = new FolderAssociationController();
+            $folderController->associateFolder();
+            break;
+        
+        case '/api/folders/associations':
+            $email_account_id = $_GET['email_account_id'] ?? null;
+            if ($email_account_id) {
+                $folderController = new FolderAssociationController();
+                $folderController->getAssociationsByEmailAccount($email_account_id);
+            } else {
+                http_response_code(400);
+                echo json_encode([
+                    'Status' => 'Error',
+                    'Message' => 'Missing email_account_id parameter.',
+                ]);
+            }
+            break;
 
     case '/api/email/view':
         $emailController = new EmailController();

@@ -414,15 +414,6 @@ class Email {
             $stmt->execute();
             
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
-    
-            $this->errorLogController->logError(
-                'LOG Email Exists in Folder: ' . $messageId . 
-                " in folder " . $folderName . 
-                " result: " . ($result['count'] > 0 ? 'true' : 'false'),
-                __FILE__,
-                __LINE__
-            );
-    
             return $result['count'] > 0;
     
         } catch (Exception $e) {

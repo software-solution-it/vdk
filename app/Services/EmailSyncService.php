@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\FolderAssociation;
 use Ddeboer\Imap\Server;
 use Ddeboer\Imap\Search\Date\Since;
 use Ddeboer\Imap\Message\EmailAddress;
@@ -22,7 +23,8 @@ class EmailSyncService
     private $errorLogController; 
     private $db;
     
-
+    private $folderAssociationModel;
+        
     private $outlookOAuth2Service;
 
     private $gmailOauth2Service;
@@ -42,6 +44,7 @@ class EmailSyncService
         $this->outlookOAuth2Service  = new OutlookOAuth2Service();
         $this->gmailOauth2Service = new GmailOAuth2Service();
         $this->emailFolderModel = new EmailFolder($db);
+        $this->folderAssociationModel = new FolderAssociation($db);
     }
 
     
@@ -226,12 +229,54 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
             $server = new Server($imap_host, $imap_port);
             $connection = $server->authenticate($email, $password);
 
+            $associations = $this->folderAssociationModel->getAssociationsByEmailAccount($email_account_id);
+
             $processedFolders = ['INBOX_PROCESSED', 'SPAM_PROCESSED', 'TRASH_PROCESSED'];
+            
+
             foreach ($processedFolders as $processedFolder) {
                 if (!$connection->hasMailbox($processedFolder)) {
                     $connection->createMailbox($processedFolder);
                 }
             }
+            
+            foreach (['INBOX', 'SPAM', 'TRASH'] as $folderType) {
+                $association = array_filter($associations, fn($assoc) => $assoc['folder_type'] === $folderType);
+            
+                if (!empty($association)) {
+                    $association = current($association);
+            
+                    $originalFolderName = $association['folder_name'];
+                    $associatedFolderName = $association['associated_folder_name'];
+            
+                    $originalMailbox = $connection->getMailbox($originalFolderName);
+                    $associatedMailbox = $connection->getMailbox($associatedFolderName);
+            
+                    $messages = $originalMailbox->getMessages();
+            
+                    foreach ($messages as $message) {
+                        try {
+                            if (in_array($message->getId(), $this->emailModel->getEmailIdsByFolderId($user_id, $association['folder_id']))) {
+                                $message->move($associatedMailbox);
+            
+                                error_log("E-mail {$message->getId()} movido da pasta $originalFolderName para $associatedFolderName");
+                            }
+                        } catch (Exception $e) {
+                            error_log("Erro ao mover e-mail {$message->getId()}: " . $e->getMessage());
+                            $this->errorLogController->logError(
+                                "Erro ao mover e-mail {$message->getId()} para pasta associada $associatedFolderName: " . $e->getMessage(),
+                                __FILE__,
+                                __LINE__,
+                                $user_id
+                            );
+                        }
+                    }
+                } else {
+                    error_log("Nenhuma associação encontrada para $folderType.");
+                }
+            }
+
+            
     
             $mailboxes = $connection->getMailboxes(); 
             $folderNames = [];
