@@ -332,9 +332,6 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                     );
                     foreach ($messages as $key => $message) {
                         try {
-                            if (!$message->isValid() || !$message->hasValidHeaders()) {
-                                continue; 
-                            }
 
                             $message->move($associatedMailbox);
             
