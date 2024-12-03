@@ -19,9 +19,9 @@ class EmailSyncService
     private $emailAccountModel;
     private $rabbitMQService;
     private $webhookService;
-    private $errorLogController;
+    private $errorLogController; 
     private $db;
-
+    
 
     private $outlookOAuth2Service;
 
@@ -29,7 +29,7 @@ class EmailSyncService
 
     private $emailFolderModel;
 
-    private $isGeneratingToken = false;
+    private $isGeneratingToken = false; 
 
     public function __construct($db)
     {
@@ -39,47 +39,46 @@ class EmailSyncService
         $this->rabbitMQService = new RabbitMQService($db);
         $this->webhookService = new WebhookService();
         $this->errorLogController = new ErrorLogController();
-        $this->outlookOAuth2Service = new OutlookOAuth2Service();
+        $this->outlookOAuth2Service  = new OutlookOAuth2Service();
         $this->gmailOauth2Service = new GmailOAuth2Service();
         $this->emailFolderModel = new EmailFolder($db);
     }
 
-
+    
 
     public function startConsumer($user_id, $email_id)
     {
-        try {
-            $this->syncEmailsByUserIdAndProviderId($user_id, $email_id);
-        } catch (Exception $e) {
-            $this->errorLogController->logError("Erro no startConsumer: " . $e->getMessage(), __FILE__, __LINE__, $user_id);
-            throw $e; // Relance a exceção se quiser que seja capturada pelo catch externo
-        }
+        try{
+        $this->syncEmailsByUserIdAndProviderId($user_id, $email_id);
+    } catch (Exception $e) {
+        $this->errorLogController->logError("Erro no startConsumer: " . $e->getMessage(), __FILE__, __LINE__, $user_id);
+        throw $e; // Relance a exceção se quiser que seja capturada pelo catch externo
+    }
     }
 
-    public function reconnectRabbitMQ()
-    {
+    public function reconnectRabbitMQ() {
         if (!$this->db || !$this->db->isConnected()) {
             $this->rabbitMQService->connect();
         }
     }
 
     public function updateTokens($emailAccountId, $access_token, $refresh_token = null)
-    {
-        try {
-            $this->emailAccountModel->updateTokens(
-                $emailAccountId,
-                $access_token,
-                $refresh_token
-            );
+{
+    try {
+        $this->emailAccountModel->updateTokens( 
+            $emailAccountId,
+            $access_token,
+            $refresh_token
+        );
 
-            error_log("Access token e refresh token atualizados com sucesso para a conta de e-mail ID: $emailAccountId");
+        error_log("Access token e refresh token atualizados com sucesso para a conta de e-mail ID: $emailAccountId");
 
-        } catch (Exception $e) {
-            error_log("Erro ao atualizar os tokens: " . $e->getMessage());
-            $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__, $emailAccountId);
-            throw $e;
-        }
+    } catch (Exception $e) {
+        error_log("Erro ao atualizar os tokens: " . $e->getMessage());
+        $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__, $emailAccountId);
+        throw $e;
     }
+}
 
     public function consumeEmailSyncQueue($user_id, $provider_id, $queue_name)
     {
@@ -97,23 +96,23 @@ class EmailSyncService
 
             try {
 
-                if ($task['is_basic']) {
+                if($task['is_basic']){
 
-                    $this->syncEmails(
-                        $task['user_id'],
-                        $task['email_account_id'],
-                        $task['provider_id'],
-                        $task['email'],
-                        $task['imap_host'],
-                        $task['imap_port'],
-                        $task['password']
-                    );
-                } else if ($task['provider_id'] == 3) {
-                    $this->outlookOAuth2Service->syncEmailsOutlook($task['user_id'], $task['email_account_id'], $task['provider_id']);
+                $this->syncEmails(
+                    $task['user_id'],
+                    $task['email_account_id'],
+                    $task['provider_id'],
+                    $task['email'],
+                    $task['imap_host'],
+                    $task['imap_port'],
+                    $task['password']
+                );
+            }   else if($task['provider_id'] == 3){ 
+                $this->outlookOAuth2Service->syncEmailsOutlook($task['user_id'],$task['email_account_id'], $task['provider_id']);
 
-                } else if ($task['provider_id'] == 1) {
-                    $this->gmailOauth2Service->syncEmailsGmail($task['user_id'], $task['email_account_id'], $task['provider_id']);
-                }
+            }   else if ($task['provider_id'] == 1){
+                $this->gmailOauth2Service->syncEmailsGmail($task['user_id'],$task['email_account_id'], $task['provider_id']);
+            }
 
                 $msg->ack();
                 error_log("Sincronização concluída para a mensagem na fila.");
@@ -160,58 +159,58 @@ class EmailSyncService
             throw $e;
         }
     }
+    
 
+public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
+{
+    try {
+    set_time_limit(0);
 
-    public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
-    {
-        try {
-            set_time_limit(0);
+    $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $email_id);
 
-            $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $email_id);
-
-            if (!$emailAccount) {
-                error_log("Conta de e-mail não encontrada para user_id={$user_id} e email_id={$email_id}");
-                $this->errorLogController->logError("Conta de e-mail não encontrada para user_id={$user_id} e email_id={$email_id}", __FILE__, __LINE__, $user_id);
-
-                return json_encode(['status' => false, 'message' => 'Conta de e-mail não encontrada.']);
-            }
-
-            $queue_name = $this->generateQueueName($user_id, $emailAccount['provider_id']);
-
-            error_log("Conta de e-mail encontrada: " . $emailAccount['email']);
-            error_log("Senha Descriptografada: " . EncryptionHelper::decrypt($emailAccount['password']));
-
-
-            $message = [
-                'user_id' => $user_id,
-                'provider_id' => $emailAccount['provider_id'],
-                'email_account_id' => $emailAccount['id'],
-                'email' => $emailAccount['email'],
-                'password' => EncryptionHelper::decrypt($emailAccount['password']),
-                'oauth2_token' => $emailAccount['oauth_token'] ?? null,
-                'refresh_token' => $emailAccount['refresh_token'] ?? null,
-                'client_id' => $emailAccount['client_id'] ?? null,
-                'client_secret' => $emailAccount['client_secret'] ?? null,
-                'tenant_id' => $emailAccount['tenant_id'] ?? null,
-                'auth_code' => $emailAccount['auth_code'] ?? null,
-                'is_basic' => $emailAccount['is_basic'] ?? 0,
-                'imap_host' => $emailAccount['imap_host'],
-                'imap_port' => $emailAccount['imap_port'],
-                'created_at' => date('Y-m-d H:i:s'),
-                'updated_at' => date('Y-m-d H:i:s'),
-            ];
-            $this->rabbitMQService->publishMessage($queue_name, $message, $user_id);
-
-            $this->consumeEmailSyncQueue($user_id, $emailAccount['provider_id'], $queue_name);
-
-            return json_encode(['status' => true, 'message' => 'Sincronização de e-mails iniciada com sucesso.']);
-        } catch (Exception $e) {
-            error_log("Erro ao adicionar tarefa de sincronização no RabbitMQ: " . $e->getMessage());
-            $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__, $user_id);
-
-            return json_encode(['status' => false, 'message' => 'Erro ao iniciar a sincronização de e-mails.']);
-        }
+    if (!$emailAccount) {
+        error_log("Conta de e-mail não encontrada para user_id={$user_id} e email_id={$email_id}");
+        $this->errorLogController->logError("Conta de e-mail não encontrada para user_id={$user_id} e email_id={$email_id}", __FILE__, __LINE__, $user_id);
+        
+        return json_encode(['status' => false, 'message' => 'Conta de e-mail não encontrada.']);
     }
+
+    $queue_name = $this->generateQueueName($user_id, $emailAccount['provider_id']);
+
+    error_log("Conta de e-mail encontrada: " . $emailAccount['email']);
+    error_log("Senha Descriptografada: " . EncryptionHelper::decrypt($emailAccount['password']));
+
+
+        $message = [
+            'user_id' => $user_id,
+            'provider_id' => $emailAccount['provider_id'],
+            'email_account_id' => $emailAccount['id'],
+            'email' => $emailAccount['email'],
+            'password' => EncryptionHelper::decrypt($emailAccount['password']),
+            'oauth2_token' => $emailAccount['oauth_token'] ?? null,
+            'refresh_token' => $emailAccount['refresh_token'] ?? null,
+            'client_id' => $emailAccount['client_id'] ?? null,
+            'client_secret' => $emailAccount['client_secret'] ?? null,
+            'tenant_id' => $emailAccount['tenant_id'] ?? null,
+            'auth_code' => $emailAccount['auth_code'] ?? null,
+            'is_basic' => $emailAccount['is_basic'] ?? 0,
+            'imap_host' => $emailAccount['imap_host'],
+            'imap_port' => $emailAccount['imap_port'],
+            'created_at' => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s'),
+        ];
+        $this->rabbitMQService->publishMessage($queue_name, $message, $user_id);
+
+        $this->consumeEmailSyncQueue($user_id, $emailAccount['provider_id'], $queue_name);
+
+        return json_encode(['status' => true, 'message' => 'Sincronização de e-mails iniciada com sucesso.']);
+    } catch (Exception $e) {
+        error_log("Erro ao adicionar tarefa de sincronização no RabbitMQ: " . $e->getMessage());
+        $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__, $user_id);
+        
+        return json_encode(['status' => false, 'message' => 'Erro ao iniciar a sincronização de e-mails.']);
+    }
+}
 
 
     private function generateQueueName($user_id, $provider_id)
@@ -222,47 +221,46 @@ class EmailSyncService
     private function syncEmails($user_id, $email_account_id, $provider_id, $email, $imap_host, $imap_port, $password)
     {
         error_log("Sincronizando e-mails para o usuário $user_id e provedor $provider_id");
-
+    
         try {
             $server = new Server($imap_host, $imap_port);
             $connection = $server->authenticate($email, $password);
 
-            $processedFolders = ['INBOX_PROCESSED', 'SPAM_PROCESSED'];
+            $processedFolders = ['INBOX_PROCESSED', 'SPAM_PROCESSED', 'TRASH_PROCESSED'];
             foreach ($processedFolders as $processedFolder) {
                 if (!$connection->hasMailbox($processedFolder)) {
                     $connection->createMailbox($processedFolder);
                 }
             }
-
-
-            $mailboxes = $connection->getMailboxes();
+    
+            $mailboxes = $connection->getMailboxes(); 
             $folderNames = [];
             foreach ($mailboxes as $mailbox) {
                 if (!($mailbox->getAttributes() & \LATT_NOSELECT)) {
-                    $folderNames[] = $mailbox->getName();
+                    $folderNames[] = $mailbox->getName(); 
                 }
             }
-            $folders = $this->emailFolderModel->syncFolders($email_account_id, $folderNames);
-
+            $folders = $this->emailFolderModel->syncFolders($email_account_id, $folderNames); 
+    
             foreach ($mailboxes as $mailbox) {
                 if ($mailbox->getAttributes() & \LATT_NOSELECT) {
                     error_log("Ignorando a pasta de sistema: " . $mailbox->getName());
                     continue;
                 }
-
+    
                 $folderName = $mailbox->getName();
-
+    
                 if (!isset($folders[$folderName])) {
                     error_log("Pasta " . $folderName . " não está sincronizada no banco de dados. Ignorando...");
                     continue;
                 }
-
+    
                 $folderId = $folders[$folderName];
                 $messages = $mailbox->getMessages();
-
+    
                 $storedMessageIds = $this->emailModel->getEmailIdsByFolderId($user_id, $folderId);
-                $processedMessageIds = [];
-
+                $processedMessageIds = []; 
+    
                 foreach ($messages as $message) {
                     try {
                         $messageId = $message->getId();
@@ -274,44 +272,44 @@ class EmailSyncService
                         $isRead = $message->isSeen() ? 1 : 0;
                         $body_html = $message->getBodyHtml();
                         $body_text = $message->getBodyText();
-
+    
                         $bcc = $message->getBcc();
                         if ($bcc && count($bcc) > 0) {
                             error_log("E-mail contém CCO (BCC). Ignorando o processamento.");
                             continue;
                         }
-
+    
                         if (!$messageId || !$fromAddress) {
                             error_log("E-mail com Message-ID ou From nulo. Ignorando...");
                             continue;
                         }
-
+    
                         $existingEmail = $this->emailModel->emailExistsByMessageId($messageId, $email_account_id);
                         if ($existingEmail) {
                             error_log("E-mail com Message-ID $messageId já foi processado. Ignorando...");
                             continue;
                         }
-
+    
                         $inReplyTo = $message->getInReplyTo();
                         if (is_array($inReplyTo)) {
                             $inReplyTo = implode(', ', $inReplyTo);
                         }
                         $references = implode(', ', $message->getReferences());
-
+    
                         $ccAddresses = $message->getCc();
                         $cc = $ccAddresses ? implode(', ', array_map(fn(EmailAddress $addr) => $addr->getAddress(), $ccAddresses)) : null;
-
+    
                         $conversation_id = null;
-                        $conversation_step = 1;
+                        $conversation_step = 1; 
 
                         if (!empty($references)) {
                             $referenceCount = count(explode(', ', $references));
                             $conversation_step = $referenceCount + 1;
                         }
-
+                
                         $conversation_id = $references ? explode(', ', $references)[0] : $messageId;
-
-
+                
+    
                         $emailId = $this->emailModel->saveEmail(
                             $user_id,
                             $email_account_id,
@@ -319,34 +317,34 @@ class EmailSyncService
                             $subject,
                             $fromAddress,
                             implode(', ', array_map(fn(EmailAddress $addr) => $addr->getAddress(), iterator_to_array($message->getTo()))),
-                            $body_html,
+                            $body_html, 
                             $body_text,
                             $date_received,
                             $references,
                             $inReplyTo,
                             $isRead,
-                            $folderId,
+                            $folderId, 
                             $cc,
                             $uidCounter,
                             $conversation_id,
                             $conversation_step,
                             $fromName
-
+                             
                         );
-
+    
                         if ($body_html) {
                             preg_match_all('/<img[^>]+src="data:image\/([^;]+);base64,([^"]+)"/', $body_html, $matches, PREG_SET_ORDER);
-
+    
                             foreach ($matches as $match) {
                                 try {
                                     $imageType = $match[1];
                                     $base64Data = $match[2];
                                     $decodedContent = base64_decode($base64Data);
-
+    
                                     if ($decodedContent !== false) {
                                         $filename = uniqid("inline_img_") . '.' . $imageType;
                                         $fullMimeType = 'image/' . $imageType;
-
+    
                                         $this->emailModel->saveAttachment(
                                             $emailId,
                                             $filename,
@@ -360,7 +358,8 @@ class EmailSyncService
                                 }
                             }
                         }
-
+    
+                        // Processamento de anexos
                         if ($message->hasAttachments()) {
                             $attachments = $message->getAttachments();
                             foreach ($attachments as $attachment) {
@@ -390,7 +389,7 @@ class EmailSyncService
                                 }
                             }
                         }
-
+    
                         $event = [
                             'Status' => 'Success',
                             'Message' => 'Email received successfully',
@@ -413,13 +412,13 @@ class EmailSyncService
                         $this->errorLogController->logError("Erro ao processar e-mail: " . $e->getMessage(), __FILE__, __LINE__, $user_id);
                     }
                 }
-
+    
                 $deletedMessageIds = array_diff($storedMessageIds, $processedMessageIds);
                 foreach ($deletedMessageIds as $deletedMessageId) {
                     $this->emailModel->deleteEmailByMessageId($deletedMessageId, $user_id);
                     error_log("E-mail com Message-ID $deletedMessageId foi deletado no servidor e removido do banco de dados.");
                 }
-
+    
                 error_log("Sincronização de e-mails concluída para a pasta " . $folderName);
             }
         } catch (Exception $e) {
@@ -440,8 +439,8 @@ class EmailSyncService
         }
         error_log("Sincronização de e-mails concluída para o usuário $user_id e provedor $provider_id");
     }
-
-
-
-
+    
+    
+    
+    
 }
