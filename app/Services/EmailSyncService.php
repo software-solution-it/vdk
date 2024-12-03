@@ -279,7 +279,12 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                         }
                     }
                 } else {
-                    error_log("Nenhuma associação encontrada para $folderType.");
+                    $this->errorLogController->logError(
+                        "Nenhuma associação encontrada para " . $folderType . $e->getMessage(),
+                        __FILE__,
+                        __LINE__,
+                        $user_id
+                    );
                 }
             }
             
