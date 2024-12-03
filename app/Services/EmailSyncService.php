@@ -317,9 +317,36 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
             
                     foreach ($messages as $message) {
                         try {
+
+                            $existingEmail = $this->emailModel->emailExistsInFolder($message->getId(), $email_account_id, $associatedFolderName);
+
+                            if ($existingEmail) {
+                                $this->errorLogController->logError(
+                                    "E-mail {$message->getId()} já existe na pasta associada $associatedFolderName. Ignorando.",
+                                    __FILE__,
+                                    __LINE__,
+                                    $user_id
+                                );
+                                continue;
+                            }
                     
                             $message->move($associatedMailbox);
+
+                            $this->errorLogController->logError(
+                                "E-mail já processado detectado. Informações detalhadas:
+                                - Message ID: {$message->getId()}
+                                - Pasta associada: {$associatedFolderName}
+                                - Associated Folder ID: {$association['Data']->associated_folder_id}
+                                - User ID: {$user_id}
+                                ",
+                                __FILE__,
+                                __LINE__,
+                                $user_id
+                            );
+
+                            $this->emailModel->updateFolder($message->getId(), $association['Data']->associated_folder_id);
                      
+
                             $this->errorLogController->logError(
                                 "E-mail {$message->getId()} movido para a pasta associada $associatedFolderName.",
                                 __FILE__,

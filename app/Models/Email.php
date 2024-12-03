@@ -295,13 +295,12 @@ class Email {
         }
     }
 
-    // Método para atualizar a pasta de um e-mail
-    public function updateFolder($messageId, $folderName) {
+    public function updateFolder($messageId, $folderId) {
         try {
-            $query = "UPDATE " . $this->table . " SET folder = :folder_name WHERE email_id = :conversation_Id";
+            $query = "UPDATE " . $this->table . " SET folder_id = :folder_id WHERE email_id = :email_id";
             $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(':folder_name', $folderName);
-            $stmt->bindParam(':conversation_Id', $messageId);
+            $stmt->bindParam(':folder_id', $folderId);
+            $stmt->bindParam(':email_id', $messageId);
     
             return $stmt->execute();
     
