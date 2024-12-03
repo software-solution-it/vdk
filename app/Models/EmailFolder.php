@@ -18,54 +18,48 @@ class EmailFolder {
     }
 
     public function syncFolders($email_id, $folders)
-{
-    try {
-        // Buscar pastas existentes no banco para o email_id
-        $querySelect = "SELECT folder_name, id FROM " . $this->table . " WHERE email_id = :email_id";
-        $stmtSelect = $this->conn->prepare($querySelect);
-        $stmtSelect->bindParam(':email_id', $email_id, PDO::PARAM_INT);
-        $stmtSelect->execute();
-        $existingFolders = $stmtSelect->fetchAll(PDO::FETCH_KEY_PAIR); // ['Trash' => id]
-
-        $folderIds = [];
-
-        foreach ($folders as $folderName) {
-            // Filtra apenas as pastas permitidas
-            if (!in_array($folderName, ['INBOX_PROCESSED', 'SPAM_PROCESSED', 'TRASH_PROCESSED'])) {
-                continue;
-            }
-
-            // Verifica se já existe uma pasta similar
-            $existingId = null;
-            foreach ($existingFolders as $existingFolderName => $id) {
-                if (strcasecmp($folderName, $existingFolderName) === 0) { // Ignora maiúsculas/minúsculas
-                    $existingId = $id;
-                    break;
+    {
+        try {
+            // Buscar pastas existentes no banco para o email_id
+            $querySelect = "SELECT folder_name, id FROM " . $this->table . " WHERE email_id = :email_id";
+            $stmtSelect = $this->conn->prepare($querySelect);
+            $stmtSelect->bindParam(':email_id', $email_id, PDO::PARAM_INT);
+            $stmtSelect->execute();
+            $existingFolders = $stmtSelect->fetchAll(PDO::FETCH_KEY_PAIR); // ['Trash' => id]
+    
+            $folderIds = [];
+    
+            foreach ($folders as $folderName) {
+                // Verifica se já existe uma pasta similar
+                $existingId = null;
+                foreach ($existingFolders as $existingFolderName => $id) {
+                    if (strcasecmp($folderName, $existingFolderName) === 0) { // Ignora maiúsculas/minúsculas
+                        $existingId = $id;
+                        break;
+                    }
+                }
+    
+                if ($existingId !== null) {
+                    // Se já existir, reutilizar o ID
+                    $folderIds[$folderName] = $existingId;
+                } else {
+                    // Inserir nova pasta
+                    $queryInsert = "INSERT INTO " . $this->table . " (email_id, folder_name) VALUES (:email_id, :folder_name)";
+                    $stmtInsert = $this->conn->prepare($queryInsert);
+                    $stmtInsert->bindParam(':email_id', $email_id, PDO::PARAM_INT);
+                    $stmtInsert->bindParam(':folder_name', $folderName, PDO::PARAM_STR);
+                    $stmtInsert->execute();
+    
+                    $folderIds[$folderName] = $this->conn->lastInsertId();
                 }
             }
-
-            if ($existingId !== null) {
-                // Se já existir, reutilizar o ID
-                $folderIds[$folderName] = $existingId;
-            } else {
-                // Inserir nova pasta
-                $queryInsert = "INSERT INTO " . $this->table . " (email_id, folder_name) VALUES (:email_id, :folder_name)";
-                $stmtInsert = $this->conn->prepare($queryInsert);
-                $stmtInsert->bindParam(':email_id', $email_id, PDO::PARAM_INT);
-                $stmtInsert->bindParam(':folder_name', $folderName, PDO::PARAM_STR);
-                $stmtInsert->execute();
-
-                $folderIds[$folderName] = $this->conn->lastInsertId();
-            }
+    
+            return $folderIds;
+        } catch (Exception $e) {
+            $this->errorLogController->logError('Erro ao sincronizar pastas: ' . $e->getMessage(), __FILE__, __LINE__, null);
+            throw new Exception('Erro ao sincronizar pastas: ' . $e->getMessage());
         }
-
-        return $folderIds;
-    } catch (Exception $e) {
-        $this->errorLogController->logError('Erro ao sincronizar pastas: ' . $e->getMessage(), __FILE__, __LINE__, null);
-        throw new Exception('Erro ao sincronizar pastas: ' . $e->getMessage());
     }
-}
-
     
     public function getFoldersByEmailAccountId($email_id) {
         try {
