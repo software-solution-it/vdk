@@ -240,12 +240,6 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                 }
             }
             
-            foreach ($processedFolders as $processedFolder) {
-                if (!$connection->hasMailbox($processedFolder)) {
-                    $connection->createMailbox($processedFolder);
-                    error_log("Pasta $processedFolder criada no IMAP.");
-                }
-            }
             
             foreach (['INBOX', 'SPAM', 'TRASH'] as $folderType) {
                 $association = array_filter($associations, fn($assoc) => $assoc['folder_type'] === $folderType);
@@ -265,7 +259,7 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                         try {
                                 $message->move($associatedMailbox);
 
-                                $this->emailModel->deleteEmailByMessageId($message->getId(), $user_id);
+                              //  $this->emailModel->deleteEmailByMessageId($message->getId(), $user_id);
             
                                 error_log("E-mail {$message->getId()} movido da pasta $originalFolderName para $associatedFolderName.");
                             
