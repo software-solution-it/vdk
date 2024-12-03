@@ -229,6 +229,13 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
             $server = new Server($imap_host, $imap_port);
             $connection = $server->authenticate($email, $password);
 
+            $this->errorLogController->logError(
+                "Iniciando associações: ",
+                __FILE__,
+                __LINE__,
+                $user_id
+            );
+
             $associationsResponse = $this->folderAssociationModel->getAssociationsByEmailAccount($email_account_id);
 
             $this->errorLogController->logError(
