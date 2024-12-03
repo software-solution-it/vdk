@@ -285,29 +285,35 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                     $association = current($filteredAssociations);
             
                     $originalFolderName = $association['folder_name'];
-
-                    $this->errorLogController->logError(
-                        "Folder original: " . json_encode($originalFolderName, JSON_PRETTY_PRINT),
-                        __FILE__,
-                        __LINE__,
-                        $user_id
-                    );
-                    
-
                     $associatedFolderName = $association['associated_folder_name'];
+                
+                    $originalMailbox = $connection->getMailbox($originalFolderName);
 
                     $this->errorLogController->logError(
-                        "folder de associação: " . json_encode($associatedFolderName, JSON_PRETTY_PRINT),
+                        "originalMailbox: " . json_encode($originalMailbox, JSON_PRETTY_PRINT),
                         __FILE__,
                         __LINE__,
                         $user_id
                     );
-                    
-            
-                    $originalMailbox = $connection->getMailbox($originalFolderName);
+
                     $associatedMailbox = $connection->getMailbox($associatedFolderName);
+
+
+                    $this->errorLogController->logError(
+                        "associatedMailbox: " . json_encode($associatedMailbox, JSON_PRETTY_PRINT),
+                        __FILE__,
+                        __LINE__,
+                        $user_id
+                    );
             
                     $messages = $originalMailbox->getMessages();
+
+                    $this->errorLogController->logError(
+                        "messages: " . json_encode($messages, JSON_PRETTY_PRINT),
+                        __FILE__,
+                        __LINE__,
+                        $user_id
+                    );
             
                     foreach ($messages as $message) {
                         try {
