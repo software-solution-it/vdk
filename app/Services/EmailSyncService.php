@@ -304,6 +304,14 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                     );
             
                     $messages = $originalMailbox->getMessages();
+
+                    
+                    $this->errorLogController->logError(
+                        "Mensagens: " . json_encode($messages, JSON_PRETTY_PRINT),
+                        __FILE__,
+                        __LINE__,
+                        $user_id
+                    );
             
                     // Remove mensagens duplicadas
                     $uniqueMessages = [];
@@ -314,6 +322,7 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                         }
                     }
                     $messages = array_values($uniqueMessages);
+
             
                     $this->errorLogController->logError(
                         "Mensagens únicas: " . json_encode($messages, JSON_PRETTY_PRINT),
