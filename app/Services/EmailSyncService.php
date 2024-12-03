@@ -324,7 +324,10 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
             
                     foreach ($messages as $key => $message) {
                         try {
-                            // Move a mensagem para a pasta associada
+                            if (!$message->isValid() || !$message->hasValidHeaders()) {
+                                continue; 
+                            }
+
                             $message->move($associatedMailbox);
             
                             $this->errorLogController->logError(
@@ -334,7 +337,6 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                                 $user_id
                             );
             
-                            // Remove mensagem processada
                             unset($messages[$key]);
             
                             error_log("E-mail {$message->getId()} movido da pasta $originalFolderName para $associatedFolderName.");
@@ -349,7 +351,6 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                         }
                     }
             
-                    // Após o loop, expurga a pasta usando o recurso nativo do PHP-IMAP
                     $imapStream = $connection->getResource()->getStream();
                     imap_expunge($imapStream);
                 } else {
