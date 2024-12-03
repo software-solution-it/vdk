@@ -260,7 +260,12 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                                 $message->move($associatedMailbox);
 
                               //  $this->emailModel->deleteEmailByMessageId($message->getId(), $user_id);
-            
+                              $this->errorLogController->logError(
+                                "mover e-mail {$message->getId()} para pasta associada $associatedFolderName: " . $e->getMessage(),
+                                __FILE__,
+                                __LINE__,
+                                $user_id
+                            );
                                 error_log("E-mail {$message->getId()} movido da pasta $originalFolderName para $associatedFolderName.");
                             
                         } catch (Exception $e) {
