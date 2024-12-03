@@ -238,22 +238,22 @@ switch ($request_uri[0]) {
         $emailController->listEmails();
         break;
 
-        case '/api/folders/associate':
-            $folderController = new FolderAssociationController();
-            $folderController->associateFolder();
-            break;
+    case '/api/folders/associate':
+        $folderController = new FolderAssociationController();
+        $folderController->associateFolder();
+        break;
         
-        case '/api/folders/associations':
-            $email_account_id = $_GET['email_account_id'] ?? null;
-            if ($email_account_id) {
-                $folderController = new FolderAssociationController();
-                $folderController->getAssociationsByEmailAccount($email_account_id);
-            } else {
-                http_response_code(400);
-                echo json_encode([
-                    'Status' => 'Error',
-                    'Message' => 'Missing email_account_id parameter.',
-                ]);
+    case '/api/folders/associations':
+        $email_account_id = $_GET['email_account_id'] ?? null;
+        if ($email_account_id) {
+            $folderController = new FolderAssociationController();
+            $folderController->getAssociationsByEmailAccount($email_account_id);
+        } else {
+            http_response_code(400);
+            echo json_encode([
+                'Status' => 'Error',
+                 'Message' => 'Missing email_account_id parameter.',
+            ]);
             }
             break;
 

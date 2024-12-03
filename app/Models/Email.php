@@ -387,8 +387,6 @@ class Email {
             $stmt->execute();
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            $this->errorLogController->logError('LOG Email Exists: ' . $messageId. " " . ($result['count'] > 0), __FILE__, line: __LINE__);
-    
             return $result['count'] > 0;
     
         } catch (Exception $e) {
