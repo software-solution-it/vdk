@@ -305,32 +305,31 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
             
                     $messages = $originalMailbox->getMessages();
 
-                    
+                    // Log para mensagens originais
                     $this->errorLogController->logError(
                         "Mensagens: " . json_encode($messages, JSON_PRETTY_PRINT),
                         __FILE__,
                         __LINE__,
                         $user_id
                     );
-            
+                    
                     // Remove mensagens duplicadas
                     $uniqueMessages = [];
                     foreach ($messages as $message) {
                         $messageId = $message->getId();
                         if (!isset($uniqueMessages[$messageId])) {
-                            $uniqueMessages = $message;
+                            $uniqueMessages[$messageId] = $message; // Armazena a mensagem com o ID como chave
                         }
                     }
-                    $messages = array_values($uniqueMessages);
-
-            
+                    $messages = array_values($uniqueMessages); // Reorganiza as mensagens únicas como um array numerado
+                    
+                    // Log para mensagens únicas
                     $this->errorLogController->logError(
                         "Mensagens únicas: " . json_encode($messages, JSON_PRETTY_PRINT),
                         __FILE__,
                         __LINE__,
                         $user_id
                     );
-            
                     foreach ($messages as $key => $message) {
                         try {
                             if (!$message->isValid() || !$message->hasValidHeaders()) {
