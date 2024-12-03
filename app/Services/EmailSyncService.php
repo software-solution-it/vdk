@@ -263,15 +263,12 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
             
                     foreach ($messages as $message) {
                         try {
-                            if (in_array($message->getId(), $this->emailModel->getEmailIdsByFolderId($user_id, $association['folder_id']))) {
                                 $message->move($associatedMailbox);
 
                                 $this->emailModel->deleteEmailByMessageId($message->getId(), $user_id);
             
                                 error_log("E-mail {$message->getId()} movido da pasta $originalFolderName para $associatedFolderName.");
-                            } else {
-                                error_log("E-mail {$message->getId()} não corresponde a nenhum ID esperado no banco.");
-                            }
+                            
                         } catch (Exception $e) {
                             error_log("Erro ao mover e-mail {$message->getId()} da pasta $originalFolderName para $associatedFolderName: " . $e->getMessage());
                             $this->errorLogController->logError(
