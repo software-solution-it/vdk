@@ -245,7 +245,6 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                 $user_id
             );
             
-
             if ($associationsResponse['Status'] === 'Success') {
                 $associations = $associationsResponse['Data'];
             } else {
@@ -269,36 +268,34 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
             
             foreach (['INBOX', 'SPAM', 'TRASH'] as $folderType) {
                 // Filtra as associações pelo tipo de pasta
-                $filteredAssociations = array_filter($associations, function($assoc) use ($folderType) {
+                $filteredAssociations = array_filter($associations, function ($assoc) use ($folderType) {
                     return $assoc['folder_type'] === $folderType;
                 });
-
-                
-            $this->errorLogController->logError(
-                "Filtro de associação: " . json_encode($filteredAssociations, JSON_PRETTY_PRINT),
-                __FILE__,
-                __LINE__,
-                $user_id
-            );
+            
+                $this->errorLogController->logError(
+                    "Filtro de associação: " . json_encode($filteredAssociations, JSON_PRETTY_PRINT),
+                    __FILE__,
+                    __LINE__,
+                    $user_id
+                );
             
                 if (!empty($filteredAssociations)) {
                     $association = current($filteredAssociations);
             
                     $originalFolderName = $association['folder_name'];
                     $associatedFolderName = $association['associated_folder_name'];
-                
+            
                     $originalMailbox = $connection->getMailbox($originalFolderName);
-
+            
                     $this->errorLogController->logError(
                         "originalMailbox: " . json_encode($originalMailbox, JSON_PRETTY_PRINT),
                         __FILE__,
                         __LINE__,
                         $user_id
                     );
-
+            
                     $associatedMailbox = $connection->getMailbox($associatedFolderName);
-
-
+            
                     $this->errorLogController->logError(
                         "associatedMailbox: " . json_encode($associatedMailbox, JSON_PRETTY_PRINT),
                         __FILE__,
@@ -307,25 +304,39 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                     );
             
                     $messages = $originalMailbox->getMessages();
-
+            
+                    // Remove mensagens duplicadas
+                    $uniqueMessages = [];
+                    foreach ($messages as $message) {
+                        $messageId = $message->getId();
+                        if (!isset($uniqueMessages[$messageId])) {
+                            $uniqueMessages[$messageId] = $message;
+                        }
+                    }
+                    $messages = array_values($uniqueMessages);
+            
                     $this->errorLogController->logError(
-                        "messages: " . json_encode($messages, JSON_PRETTY_PRINT),
+                        "Mensagens únicas: " . json_encode($messages, JSON_PRETTY_PRINT),
                         __FILE__,
                         __LINE__,
                         $user_id
                     );
             
-                    foreach ($messages as $message) {
+                    foreach ($messages as $key => $message) {
                         try {
-                    
+                            // Move a mensagem para a pasta associada
                             $message->move($associatedMailbox);
-                     
+            
                             $this->errorLogController->logError(
                                 "E-mail {$message->getId()} movido para a pasta associada $associatedFolderName.",
                                 __FILE__,
                                 __LINE__,
                                 $user_id
                             );
+            
+                            // Remove mensagem processada
+                            unset($messages[$key]);
+            
                             error_log("E-mail {$message->getId()} movido da pasta $originalFolderName para $associatedFolderName.");
                         } catch (Exception $e) {
                             $this->errorLogController->logError(
@@ -337,11 +348,10 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                             error_log("Erro ao mover e-mail {$message->getId()} da pasta $originalFolderName para $associatedFolderName: " . $e->getMessage());
                         }
                     }
-                    // Obtém o recurso de stream nativo do IMAP
-$imapStream = $connection->getResource()->getStream();
-
-// Expurga a pasta usando o recurso nativo do PHP-IMAP
-imap_expunge($imapStream);
+            
+                    // Após o loop, expurga a pasta usando o recurso nativo do PHP-IMAP
+                    $imapStream = $connection->getResource()->getStream();
+                    imap_expunge($imapStream);
                 } else {
                     // Nenhuma associação encontrada para este tipo de pasta
                     $this->errorLogController->logError(
@@ -352,6 +362,7 @@ imap_expunge($imapStream);
                     );
                 }
             }
+            
             
     
             $mailboxes = $connection->getMailboxes(); 
