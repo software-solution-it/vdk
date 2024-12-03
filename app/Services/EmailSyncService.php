@@ -239,11 +239,12 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
             $associationsResponse = $this->folderAssociationModel->getAssociationsByEmailAccount($email_account_id);
 
             $this->errorLogController->logError(
-                "associações: " . $associationsResponse['Data'],
+                "Associações: " . json_encode($associationsResponse['Data'], JSON_PRETTY_PRINT),
                 __FILE__,
                 __LINE__,
                 $user_id
             );
+            
 
             if ($associationsResponse['Status'] === 'Success') {
                 $associations = $associationsResponse['Data'];
