@@ -272,12 +272,37 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                 $filteredAssociations = array_filter($associations, function($assoc) use ($folderType) {
                     return $assoc['folder_type'] === $folderType;
                 });
+
+                
+            $this->errorLogController->logError(
+                "Filtro de associação: " . json_encode($filteredAssociations, JSON_PRETTY_PRINT),
+                __FILE__,
+                __LINE__,
+                $user_id
+            );
             
                 if (!empty($filteredAssociations)) {
                     $association = current($filteredAssociations);
             
                     $originalFolderName = $association['folder_name'];
+
+                    $this->errorLogController->logError(
+                        "Folder original: " . json_encode($originalFolderName, JSON_PRETTY_PRINT),
+                        __FILE__,
+                        __LINE__,
+                        $user_id
+                    );
+                    
+
                     $associatedFolderName = $association['associated_folder_name'];
+
+                    $this->errorLogController->logError(
+                        "folder de associação: " . json_encode($associatedFolderName, JSON_PRETTY_PRINT),
+                        __FILE__,
+                        __LINE__,
+                        $user_id
+                    );
+                    
             
                     $originalMailbox = $connection->getMailbox($originalFolderName);
                     $associatedMailbox = $connection->getMailbox($associatedFolderName);
