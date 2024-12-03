@@ -553,6 +553,7 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
     
                 error_log("Sincronização de e-mails concluída para a pasta " . $folderName);
             }
+            
         } catch (Exception $e) {
             $event = [
                 'Code' => 500,
@@ -569,7 +570,7 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
             $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__, $user_id);
             throw $e;
         }
-        error_log("Sincronização de e-mails concluída para o usuário $user_id e provedor $provider_id");
+        return;
     }
     
     
