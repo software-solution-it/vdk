@@ -247,8 +247,8 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                 if (!empty($association)) {
                     $association = current($association);
             
-                    $originalFolderName = $association['associated_folder_name']; 
-                    $associatedFolderName = $association['folder_name']; 
+                    $originalFolderName = $association['folder_name']; 
+                    $associatedFolderName = $association['associated_folder_name']; 
             
                     $originalMailbox = $connection->getMailbox($originalFolderName);
                     $associatedMailbox = $connection->getMailbox($associatedFolderName);
