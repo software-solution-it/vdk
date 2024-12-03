@@ -318,7 +318,7 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                     foreach ($messages as $message) {
                         $messageId = $message->getId();
                         if (!isset($uniqueMessages[$messageId])) {
-                            $uniqueMessages[$messageId] = $message;
+                            $uniqueMessages = $message;
                         }
                     }
                     $messages = array_values($uniqueMessages);
