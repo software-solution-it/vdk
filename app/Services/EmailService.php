@@ -144,19 +144,15 @@ class EmailService {
             }
 
             // Obter o Message-ID do e-mail
-            $message_id = $emailDetails['date_received'];  
+            $message_id = $emailDetails['order'];  
             
-            $condition = new Text($message_id); 
-            
-            $messages = $originalMailbox->getMessages($condition);
+            $messages = $originalMailbox->getMessage($message_id);
 
-            if (count($messages) == 0) {
+            if (!$messages) {
                 throw new Exception("Mensagem com ID '$message_id' não encontrada no servidor IMAP.");
             }
 
-
-            $message = $messages->current(); 
-            $message->move($new_folder_name);
+            $messages->move($new_folder_name);
 
             // Expurgar a pasta de origem
             $connection->expunge();

@@ -499,25 +499,32 @@ class Email {
 
     public function getEmailById($id) {
         try {
+            // Consulta SQL para obter o e-mail e adicionar a ordem pela data de recebimento
             $query = "
-                SELECT e.*, ef.folder_name
+                SELECT e.*, ef.folder_name,
+                       (@rownum := @rownum + 1) AS `order`
                 FROM " . $this->table . " e
                 INNER JOIN email_folders ef ON e.folder_id = ef.id
                 WHERE e.id = :id
+                ORDER BY e.date_received ASC
             ";
-            
+    
+            // Inicia a variável para rastrear a ordem
+            $this->conn->exec("SET @rownum := 0");
+    
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':id', $id);
             $stmt->execute();
     
             return $stmt->fetch(PDO::FETCH_ASSOC);
-    
+        
         } catch (Exception $e) {
             // Log de erro
             $this->errorLogController->logError('Erro ao buscar e-mail por ID: ' . $e->getMessage(), __FILE__, __LINE__);
             throw new Exception('Erro ao buscar e-mail por ID: ' . $e->getMessage());
         }
     }
+    
     
 
 
