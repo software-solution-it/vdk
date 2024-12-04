@@ -233,7 +233,8 @@ class EmailService {
             $mail->SMTPSecure = $smtpConfig['encryption'];
             $mail->Port       = $smtpConfig['smtp_port'];
     
-            $mail->setFrom($smtpConfig['email'], $smtpConfig['name']);
+            $mail->setFrom($smtpConfig['email']);
+            $mail->addCustomHeader('Content-Type', 'text/html; charset=UTF-8');
     
             foreach ($recipientEmails as $recipientEmail) {
                 $mail->addAddress($recipientEmail);
