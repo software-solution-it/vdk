@@ -505,18 +505,20 @@ class EmailController {
                 return;
             }
     
-            // Se o folder_id não foi fornecido mas o folder_name foi, busca o folder_id
             if (!$folder_id && $folder_name) {
                 $folderDetails = $this->emailFolderModel->getByFolderName($folder_name); 
-                if (!$folderDetails || count($folderDetails) != 1) { // Certifica-se de que há um único resultado
+                
+                // Verifica se não foi encontrado nenhum resultado ou se o resultado está vazio
+                if (!$folderDetails) {
                     http_response_code(400);
                     echo json_encode([
                         'Status' => 'Error',
-                        'Message' => 'Pasta não encontrada ou múltiplos resultados encontrados com o nome informado.' . count($folderDetails),
+                        'Message' => 'Pasta não encontrada com o nome informado.',
                         'Data' => null
                     ]);
                     return;
                 }
+            
                 $folder_id = $folderDetails['id'];  // Atribui o folder_id encontrado
                 $folder_name = $folderDetails['folder_name']; // Atribui o folder_name correto
             }
