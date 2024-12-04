@@ -16,6 +16,9 @@ use App\Services\WebhookService;
 use Ddeboer\Imap\Search\Text\Text;
 use Ddeboer\Imap\Message;
 use App\Controllers\ErrorLogController;
+use App\Models\EmailAttachment;  
+    
+           
 use PDO;
 
 class EmailService {
@@ -23,6 +26,7 @@ class EmailService {
     private $userService;
     private $userModel;
     private $emailModel;
+    private $emailAttachmentModel; 
     private $db;
     private $webhookService;
     private $rabbitMQService;
@@ -38,6 +42,7 @@ class EmailService {
         $this->webhookService = new WebhookService();
         $this->rabbitMQService = new RabbitMQService($this->db);
         $this->masterHostModel = new MasterHost($this->db);
+        $this->emailAttachmentModel = new EmailAttachment($db);
         $this->errorLogController = new ErrorLogController();
     }
 
@@ -196,7 +201,6 @@ class EmailService {
 
     public function deleteEmail($email_id) {
         try {
-
             $emailDetails = $this->emailModel->getEmailById($email_id);
             if (!$emailDetails) {
                 throw new Exception("E-mail não encontrado no banco de dados.");
@@ -207,7 +211,7 @@ class EmailService {
                 throw new Exception("Conta de e-mail associada não encontrada.");
             }
     
-            $accountDetails['password'] = EncryptionHelper::decrypt($accountDetails['password']);
+                   $accountDetails['password'] = EncryptionHelper::decrypt($accountDetails['password']);
     
             $imap = imap_open(
                 "{" . $accountDetails['imap_host'] . ":" . $accountDetails['imap_port'] . "/imap/ssl}INBOX",
@@ -224,10 +228,18 @@ class EmailService {
                 throw new Exception("Erro ao excluir o e-mail no provedor: " . imap_last_error());
             }
     
+            $attachments = $this->emailAttachmentModel->getAttachmentsByEmailId($email_id);
+            foreach ($attachments as $attachment) {
+                if (file_exists($attachment['file_path'])) {
+                    unlink($attachment['file_path']); 
+                }
+
+                $this->emailAttachmentModel->deleteAttachmentsByEmailId($email_id);
+            }
+     
             imap_expunge($imap);
             imap_close($imap);
-    
-            $this->emailModel->deleteEmail($emailDetails['email_id']);
+            $this->emailModel->deleteEmail($email_id);
     
             return true;
         } catch (Exception $e) {
@@ -235,6 +247,7 @@ class EmailService {
             throw new Exception("Erro ao excluir o e-mail: " . $e->getMessage());
         }
     }
+    
     
     
     

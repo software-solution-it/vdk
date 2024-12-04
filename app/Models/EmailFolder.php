@@ -105,6 +105,29 @@ class EmailFolder {
         }
     }
 
+    public function deleteFoldersByEmailAccountId($email_id) {
+        try {
+            // Deletando todas as pastas associadas ao email_account_id
+            $query = "DELETE FROM " . $this->table . " WHERE email_id = :email_id";
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':email_id', $email_id, PDO::PARAM_INT);
+            
+            // Executando a query
+            if ($stmt->execute()) {
+                return ['status' => true, 'message' => 'Folders deleted successfully'];
+            } else {
+                return ['status' => false, 'message' => 'Failed to delete folders'];
+            }
+        } catch (Exception $e) {
+            // Logando o erro
+            $this->errorLogController->logError('Error deleting folders by Email Account ID: ' . $e->getMessage(), __FILE__, __LINE__, null);
+            return ['status' => false, 'message' => 'Error deleting folders: ' . $e->getMessage()];
+        }
+    }
+    
+
+    
+
     public function getByFolderName($folder_name) {
         try {
             $query = "SELECT id, folder_name, email_id FROM " . $this->table . " WHERE folder_name = :folder_name";

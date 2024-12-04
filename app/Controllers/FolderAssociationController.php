@@ -72,7 +72,7 @@ class FolderAssociationController {
         }
 
         try {
-            $associations = $this->folderAssociationService->getAssociationsByEmailAccount($emailAccountId);
+            $associations = $this->folderAssociationService->getAssociationsByEmailAccountList($emailAccountId);
 
             http_response_code(200);
             echo json_encode([

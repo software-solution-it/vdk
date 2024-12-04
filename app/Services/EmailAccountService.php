@@ -3,14 +3,22 @@ namespace App\Services;
 
 use App\Models\EmailAccount;
 use App\Helpers\EncryptionHelper;
+use App\Models\EmailFolder;
+use App\Models\Email;
+use App\Models\EmailAttachment;  
 
 class EmailAccountService {
     private $emailAccountModel;
-
+    private $emailModel;
+    private $emailFolderModel;
+    private $emailAttachmentModel; 
+    
     public function __construct($db) {
         $this->emailAccountModel = new EmailAccount($db);
+        $this->emailModel = new Email($db);
+        $this->emailFolderModel = new EmailFolder($db);
+        $this->emailAttachmentModel = new EmailAttachment($db);
     }
-
 
     public function validateFields($data, $requiredFields) {
         $missingFields = [];
@@ -102,19 +110,31 @@ class EmailAccountService {
 
     public function deleteEmailAccount($id) {
         $emailAccount = $this->emailAccountModel->getById($id);
-    
+        
         if (!$emailAccount) {
             return ['status' => false, 'message' => 'Email account not found'];
         }
     
+        $emails = $this->emailModel->getEmailsByUserId($id);
+        foreach ($emails as $email) {
+            
+            $this->emailAttachmentModel->deleteAttachmentsByEmailId($email['id']);
+
+            $this->emailModel->deleteEmail($email['email_id']);
+            
+        }
+
+        $this->emailFolderModel->deleteFoldersByEmailAccountId($id);
+    
         $deleted = $this->emailAccountModel->delete($id);
     
         if ($deleted) {
-            return ['status' => true, 'message' => 'Email account deleted successfully'];
+            return ['status' => true, 'message' => 'Email account and all associated data deleted successfully'];
         }
-    
-        return ['status' => false, 'message' => 'Failed to delete email account'];
+        
+        return ['status' => false, 'message' => 'Failed to delete email account and associated data'];
     }
+    
 
     public function getEmailAccountByUserId($id) {
         $result = $this->emailAccountModel->getEmailAccountByUserId($id);

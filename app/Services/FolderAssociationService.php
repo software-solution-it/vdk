@@ -23,4 +23,8 @@ class FolderAssociationService {
         return $this->folderAssociationModel->getAssociationsByEmailAccount($emailAccountId);
     }
 
+    public function getAssociationsByEmailAccountList($emailAccountId) {
+        return $this->folderAssociationModel->getAssociationsByEmailAccountList($emailAccountId);
+    }
+
 }

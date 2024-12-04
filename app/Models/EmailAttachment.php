@@ -34,4 +34,14 @@ class EmailAttachment {
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+
+    public function deleteAttachmentsByEmailId($email_id) {
+        $query = "DELETE FROM " . $this->table . " WHERE email_id = :email_id";
+    
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':email_id', $email_id);
+    
+        return $stmt->execute();
+    }
+
 }

@@ -4,6 +4,8 @@ namespace App\Models;
 use PDO;
 use Exception;
 use App\Controllers\ErrorLogController;
+use App\Models\EmailAttachment;  
+
 
 class Email {
     private $conn;
@@ -11,8 +13,12 @@ class Email {
     private $attachmentsTable = "email_attachments";
     private $errorLogController;
 
+    private $emailAttachmentModel; 
+
+
     public function __construct($db) {
         $this->conn = $db;
+        $this->emailAttachmentModel = new EmailAttachment($db);
         $this->errorLogController = new ErrorLogController();
     }
 
@@ -353,7 +359,8 @@ class Email {
             throw new Exception('Erro ao deletar e-mail: ' . $e->getMessage());
         }
     }
-
+    
+    
 
     public function getEmailsByConversationId($user_id, $conversation_id)
     {
@@ -583,4 +590,14 @@ class Email {
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+
+    public function getEmailsByEmailAccountId($email_account_id) {
+        $query = "SELECT * FROM " . $this->table . " WHERE email_account_id = :email_account_id";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':email_account_id', $email_account_id);
+        $stmt->execute();
+    
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+    
 }

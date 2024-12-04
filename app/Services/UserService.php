@@ -2,12 +2,16 @@
 namespace App\Services;
 
 use App\Models\User;
+use App\Models\EmailAccount;
 use App\Config\Database;
 use PDO;
 use Exception;
 
 class UserService {
     private $userModel;
+
+    private $emailAccountModel;
+
     private $db;
 
     public function __construct(User $userModel) {
@@ -15,6 +19,8 @@ class UserService {
 
         $database = new Database();
         $this->db = $database->getConnection();
+
+        $this->emailAccountModel = new EmailAccount($this->db);
     }
     public function createUser($name, $email, $password, $role_id) {
         $verificationCode = rand(100000, 999999);
@@ -31,16 +37,25 @@ class UserService {
 
     public function deleteUser($id) {
         try {
+            $emailAccounts = $this->emailAccountModel->getEmailAccountByUserId($id);
+    
+            if (!empty($emailAccounts)) {
+                return [
+                    'status' => false,
+                    'message' => 'Cannot delete user. Email accounts are associated with this user.'
+                ];
+            }
+    
             $result = $this->userModel->delete($id);
             if ($result === true) {
                 return ['status' => true];
             } else {
                 error_log("Failed to delete user in userModel->delete for ID: $id");
-                return ['status' => false];
+                return ['status' => false, 'message' => 'Failed to delete user.'];
             }
         } catch (Exception $e) { 
             error_log("Error in userService->deleteUser: " . $e->getMessage());
-            return ['status' => false];
+            return ['status' => false, 'message' => 'An error occurred while deleting the user.'];
         }
     }
     

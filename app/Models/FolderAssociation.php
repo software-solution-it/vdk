@@ -156,6 +156,50 @@ class FolderAssociation {
             ];
         }
     }
+
+    public function getAssociationsByEmailAccountList($emailAccountId) {
+        try {
+            $query = "
+                SELECT 
+                    fa.id,
+                    fa.email_account_id,
+                    fa.folder_id,
+                    fa.associated_folder_id,
+                    fa.folder_type,
+                    ef1.folder_name AS folder_name,
+                    ef2.folder_name AS associated_folder_name
+                FROM 
+                    FolderAssociations fa
+                INNER JOIN 
+                    email_folders ef1 ON fa.folder_id = ef1.id
+                INNER JOIN 
+                    email_folders ef2 ON fa.associated_folder_id = ef2.id
+                WHERE 
+                    fa.email_account_id = :email_account_id
+            ";
+    
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':email_account_id', $emailAccountId);
+            $stmt->execute();
+    
+            $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+            return $data;
+        } catch (\Exception $e) {
+            $this->errorLogController->logError(
+                $e->getMessage(),
+                __FILE__,
+                __LINE__,
+                null, 
+                [
+                    'emailAccountId' => $emailAccountId
+                ]
+            );
+    
+            return []; 
+        }
+    }
+    
     
     
 }
