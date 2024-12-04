@@ -157,7 +157,7 @@ class EmailService {
             $emailToMove = null;
             $counter = 1;
             foreach ($emailsInFolder as $message) {
-                if ($counter === $order) {
+                if ($message->getId() === $emailDetails['email_id']) {
                     $emailToMove = $message;
                     break;
                 }
