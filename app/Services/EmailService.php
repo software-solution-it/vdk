@@ -144,7 +144,7 @@ class EmailService {
             }
 
             // Obter o Message-ID do e-mail
-            $message_id = $emailDetails['message_id'];  
+            $message_id = $emailDetails['email_id'];  
             
             $condition = new Text($message_id); 
             
