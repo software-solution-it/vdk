@@ -479,7 +479,7 @@ class EmailController {
             $data = json_decode(file_get_contents('php://input'), true);
     
             // Verifica se o parâmetro obrigatório email_id está presente
-            $requiredParams = ['email_id']; // Agora requer o email_account_id também
+            $requiredParams = ['email_id'];
             if (!$this->validateParams($requiredParams, $data)) {
                 http_response_code(400);
                 echo json_encode([
@@ -507,19 +507,18 @@ class EmailController {
     
             // Se o folder_id não foi fornecido mas o folder_name foi, busca o folder_id
             if (!$folder_id && $folder_name) {
-                // Agora passamos o email_account_id na busca também
-                $folderDetails = $this->emailFolderModel->getFoldersNameByEmailAccountId($email_id); 
+                $folderDetails = $this->emailFolderModel->getByFolderName($folder_name); 
                 if (!$folderDetails || count($folderDetails) != 1) { // Certifica-se de que há um único resultado
                     http_response_code(400);
-                    echo json_encode([ 
+                    echo json_encode([
                         'Status' => 'Error',
                         'Message' => 'Pasta não encontrada ou múltiplos resultados encontrados com o nome informado.',
                         'Data' => null
                     ]);
                     return;
                 }
-                $folder_id = $folderDetails[0]['id'];  // Atribui o folder_id encontrado
-                $folder_name = $folderDetails[0]['folder_name']; // Atribui o folder_name correto
+                $folder_id = $folderDetails['id'];  // Atribui o folder_id encontrado
+                $folder_name = $folderDetails['folder_name']; // Atribui o folder_name correto
             }
     
             // Se o folder_id foi fornecido, busca o folder_name correspondente
@@ -569,7 +568,6 @@ class EmailController {
             ]);
         }
     }
-    
     
     
     
