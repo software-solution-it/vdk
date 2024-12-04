@@ -9,7 +9,7 @@ class Database {
     private $db_name = "mail";   
     private $username = "admin";  
     private $password = "admin";   
-    private $charset = "utf8mb4";
+    private $charset = "utf8";
     private $pdo;    
     private $error;      
 
