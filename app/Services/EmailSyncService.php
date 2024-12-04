@@ -341,6 +341,8 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                                 __LINE__,
                                 $user_id
                             );
+
+                            $this->emailModel->deleteEmail($message->getId());
             
                             unset($messages[$key]);
             
