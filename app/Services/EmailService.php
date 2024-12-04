@@ -263,8 +263,9 @@ class EmailService {
     
             $mail->isHTML(true);
             $mail->Subject = $subject;
-            $mail->Body    = $htmlBody;
-            $mail->AltBody = $plainBody ?: strip_tags($htmlBody);
+            $mail->Body    = mb_convert_encoding($htmlBody, 'UTF-8', 'auto');
+            $mail->AltBody = mb_convert_encoding($plainBody, 'UTF-8', 'auto') ?: mb_convert_encoding(strip_tags($htmlBody), 'UTF-8', 'auto');
+            
             $mail->addCustomHeader('Content-Type', 'text/html; charset=UTF-8');
     
             if ($mail->send()) {
@@ -572,7 +573,6 @@ class EmailService {
             $mail->Subject = $subject;
             $mail->Body    = $htmlBody;
             $mail->AltBody = $plainBody ?: strip_tags($htmlBody);
-            $mail->addCustomHeader('Content-Type', 'text/html; charset=UTF-8');
 
             if ($mail->send()) {
                 return [
