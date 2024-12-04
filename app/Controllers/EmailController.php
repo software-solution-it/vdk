@@ -475,18 +475,38 @@ class EmailController {
         header('Content-Type: application/json');
     
         try {
+            // Recebe os dados da requisição
             $data = json_decode(file_get_contents('php://input'), true);
     
-            $requiredParams = ['email_id', 'folder_id'];
+            // Verifica se os parâmetros obrigatórios estão presentes
+            $requiredParams = ['email_id'];
             if (!$this->validateParams($requiredParams, $data)) {
+                http_response_code(400);
+                echo json_encode([
+                    'Status' => 'Error',
+                    'Message' => 'Parâmetros obrigatórios ausentes.',
+                    'Data' => null
+                ]);
                 return;
             }
     
             $email_id = $data['email_id'];
-            $folder_id = $data['folder_id']; 
+            $folder_id = isset($data['folder_id']) ? $data['folder_id'] : null;
             $folder_name = isset($data['folder_name']) ? $data['folder_name'] : null;
     
-            if (!$folder_name) {
+            // Verifica se ao menos um dos parâmetros (folder_id ou folder_name) foi fornecido
+            if (!$folder_id && !$folder_name) {
+                http_response_code(400);
+                echo json_encode([
+                    'Status' => 'Error',
+                    'Message' => 'É obrigatório informar folder_id ou folder_name.',
+                    'Data' => null
+                ]);
+                return;
+            }
+    
+            // Se apenas o folder_id for fornecido, busca o folder_name
+            if ($folder_id && !$folder_name) {
                 $folderDetails = $this->emailFolderModel->getFolderById($folder_id);
                 if (!$folderDetails) {
                     http_response_code(400);
@@ -500,6 +520,7 @@ class EmailController {
                 $folder_name = $folderDetails['folder_name'];
             }
     
+            // Chama o serviço para mover o e-mail
             $result = $this->emailService->moveEmail($email_id, $folder_name);
     
             if ($result) {
@@ -518,6 +539,7 @@ class EmailController {
                 ]);
             }
         } catch (Exception $e) {
+            // Log de erro
             $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
             http_response_code(500);
             echo json_encode([
@@ -527,6 +549,7 @@ class EmailController {
             ]);
         }
     }
+    
     
 
     public function viewEmail($email_id) {
