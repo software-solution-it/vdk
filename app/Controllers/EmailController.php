@@ -542,7 +542,7 @@ class EmailController {
             $this->errorLogController->logError('Tentando mover o e-mail. ID do E-mail: ' . $email_id . ' para a pasta: ' . $folder_name, __FILE__, __LINE__);
     
             // Chama o serviço para mover o e-mail
-            $result = $this->emailService->moveEmail($email_id, $folder_name);
+            $result = $this->emailService->moveEmail($email_id, $folderDetails['folder_name']);
     
             if ($result) {
                 http_response_code(200);
