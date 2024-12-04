@@ -517,10 +517,9 @@ class EmailController {
                     ]);
                     return;
                 }
-                $folder_id = $folderDetails['id'];  // Atribui o folder_id encontrado
+                $folder_id = $folderDetails['folder_name'];
             }
     
-            // Se o folder_id foi fornecido e o folder_name não, busca o folder_name correspondente
             if ($folder_id && !$folder_name) {
                 $folderDetails = $this->emailFolderModel->getFolderById($folder_id);
                 if (!$folderDetails) {
