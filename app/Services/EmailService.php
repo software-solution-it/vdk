@@ -13,6 +13,8 @@ use App\Services\RabbitMQService;
 use App\Services\UserService;
 use Ddeboer\Imap\Server;
 use App\Services\WebhookService;
+use Ddeboer\Imap\Search\Text\Text;
+use Ddeboer\Imap\Message;
 use App\Controllers\ErrorLogController;
 use PDO;
 
@@ -104,62 +106,71 @@ class EmailService {
 
     public function moveEmail($email_id, $new_folder_name) {
         try {
+            // Obter os detalhes do e-mail
             $emailDetails = $this->emailModel->getEmailById($email_id);
             if (!$emailDetails) {
                 throw new Exception("E-mail não encontrado no banco de dados.");
             }
-    
+
+            // Obter os detalhes da conta de e-mail
             $accountDetails = $this->emailAccountModel->getById($emailDetails['email_account_id']);
             if (!$accountDetails) {
                 throw new Exception("Conta de e-mail associada não encontrada.");
             }
-    
+
+            // Descriptografar a senha da conta de e-mail
             $accountDetails['password'] = EncryptionHelper::decrypt($accountDetails['password']);
             
-
+            // Obter o IMAP Host e Porta da conta
             $imap_host = $accountDetails['imap_host'];
             $imap_port = $accountDetails['imap_port'];
-    
+
+            // Conectar ao servidor IMAP
             $server = new Server($imap_host, $imap_port);
-    
+            
+            // Autenticar no servidor IMAP com o e-mail e senha
             $connection = $server->authenticate($accountDetails['email'], $accountDetails['password']);
             if (!$connection) {
                 throw new Exception("Falha na autenticação no servidor IMAP.");
             }
-    
-            $originalFolderName = $emailDetails['folder_name']; 
-    
+
+            // Buscar o nome da pasta original
+            $originalFolderName = $emailDetails['folder_name']; // Assumindo que a pasta original é armazenada em 'folder_name'
+
+            // Obter a caixa de entrada original
             $originalMailbox = $connection->getMailbox($originalFolderName);
             if (!$originalMailbox) {
                 throw new Exception("Pasta original '$originalFolderName' não encontrada.");
             }
 
-            $newMailbox = $connection->getMailbox($new_folder_name);
-            if (!$newMailbox) {
-                    throw new Exception("Não foi possível acessar a pasta '$new_folder_name'.");
-        
-            }
-    
+            // Obter o Message-ID do e-mail
+            $message_id = $emailDetails['message_id'];  
+            
+            $condition = new Text($message_id); 
+            
+            $messages = $originalMailbox->getMessages($condition);
 
-            $message_id = $emailDetails['email_id'];  
-    
-
-            $message = $originalMailbox->getMessage($message_id);
-            if (!$message) {
-                throw new Exception("Mensagem com ID '$message_id' não encontrada.");
+            if (count($messages) == 0) {
+                throw new Exception("Mensagem com ID '$message_id' não encontrada no servidor IMAP.");
             }
-    
+
+
+            $message = $messages->current(); 
             $message->move($new_folder_name);
-    
+
+            // Expurgar a pasta de origem
             $connection->expunge();
-    
+
+            // Deletar o e-mail da base de dados após mover
             $this->emailModel->deleteEmail($emailDetails['email_id']);
-    
-            $connection->close(); 
-    
+
+            // Fechar a conexão
+            $connection->close();
+
             return true;
-    
+
         } catch (Exception $e) {
+            // Log de erro
             $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
             throw new Exception("Erro ao mover o e-mail: " . $e->getMessage());
         }
