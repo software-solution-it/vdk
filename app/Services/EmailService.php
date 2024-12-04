@@ -139,6 +139,7 @@ class EmailService {
 
             // Obter a caixa de entrada original
             $originalMailbox = $connection->getMailbox($originalFolderName);
+            $newMailbox = $connection->getMailbox($new_folder_name);
             if (!$originalMailbox) {
                 throw new Exception("Pasta original '$originalFolderName' não encontrada.");
             }
@@ -152,7 +153,7 @@ class EmailService {
                 throw new Exception("Mensagem com ID '$message_id' não encontrada no servidor IMAP.");
             }
 
-            $messages->move($new_folder_name);
+            $messages->move($newMailbox);
 
             // Expurgar a pasta de origem
             $connection->expunge();
