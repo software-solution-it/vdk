@@ -478,7 +478,7 @@ class EmailController {
             // Recebe os dados da requisição
             $data = json_decode(file_get_contents('php://input'), true);
     
-            // Verifica se os parâmetros obrigatórios estão presentes
+            // Verifica se o parâmetro obrigatório email_id está presente
             $requiredParams = ['email_id'];
             if (!$this->validateParams($requiredParams, $data)) {
                 http_response_code(400);
@@ -505,19 +505,34 @@ class EmailController {
                 return;
             }
     
-            // Se apenas o folder_id for fornecido, busca o folder_name
+            // Se o folder_id não foi fornecido mas o folder_name foi, busca o folder_id
+            if (!$folder_id && $folder_name) {
+                $folderDetails = $this->emailFolderModel->getByFolderName($folder_name); // Chama o método para buscar pelo folder_name
+                if (!$folderDetails) {
+                    http_response_code(400);
+                    echo json_encode([
+                        'Status' => 'Error',
+                        'Message' => 'Pasta não encontrada com o nome informado.',
+                        'Data' => null
+                    ]);
+                    return;
+                }
+                $folder_id = $folderDetails['id'];  // Atribui o folder_id encontrado
+            }
+    
+            // Se o folder_id foi fornecido e o folder_name não, busca o folder_name correspondente
             if ($folder_id && !$folder_name) {
                 $folderDetails = $this->emailFolderModel->getFolderById($folder_id);
                 if (!$folderDetails) {
                     http_response_code(400);
                     echo json_encode([
                         'Status' => 'Error',
-                        'Message' => 'Pasta não encontrada.',
+                        'Message' => 'Pasta não encontrada com o folder_id informado.',
                         'Data' => null
                     ]);
                     return;
                 }
-                $folder_name = $folderDetails['folder_name'];
+                $folder_name = $folderDetails['folder_name'];  // Atribui o folder_name encontrado
             }
     
             // Chama o serviço para mover o e-mail
@@ -549,6 +564,7 @@ class EmailController {
             ]);
         }
     }
+    
     
     
 

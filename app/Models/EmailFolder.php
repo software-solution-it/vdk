@@ -104,6 +104,21 @@ class EmailFolder {
             throw new Exception('Erro ao obter pastas por Email Account ID: ' . $e->getMessage());
         }
     }
+
+    public function getByFolderName($folder_name) {
+        try {
+            $query = "SELECT id, folder_name, email_id FROM " . $this->table . " WHERE folder_name = :folder_name";
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':folder_name', $folder_name, PDO::PARAM_STR);
+            $stmt->execute();
+        
+            return $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            $this->errorLogController->logError('Erro ao obter pasta por nome de pasta: ' . $e->getMessage(), __FILE__, __LINE__, null);
+            throw new Exception('Erro ao obter pasta por nome de pasta: ' . $e->getMessage());
+        }
+    }
+    
     
     
 }
