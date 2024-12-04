@@ -499,7 +499,13 @@ class Email {
 
     public function getEmailById($id) {
         try {
-            $query = "SELECT * FROM " . $this->table . " WHERE id = :id";
+            $query = "
+                SELECT e.*, ef.folder_name
+                FROM " . $this->table . " e
+                INNER JOIN email_folders ef ON e.folder_id = ef.id
+                WHERE e.id = :id
+            ";
+            
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':id', $id);
             $stmt->execute();
@@ -507,10 +513,12 @@ class Email {
             return $stmt->fetch(PDO::FETCH_ASSOC);
     
         } catch (Exception $e) {
+            // Log de erro
             $this->errorLogController->logError('Erro ao buscar e-mail por ID: ' . $e->getMessage(), __FILE__, __LINE__);
             throw new Exception('Erro ao buscar e-mail por ID: ' . $e->getMessage());
         }
     }
+    
 
 
     public function getDnsRecords($domain) {
