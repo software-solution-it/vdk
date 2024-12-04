@@ -6,16 +6,21 @@ use App\Services\EmailService;
 use App\Config\Database;
 use App\Controllers\ErrorLogController;
 use Exception;
+use App\Models\EmailFolder;
 
 class EmailController {
     private $emailService;
     private $errorLogController;
+
+    private $emailFolderModel;
+
 
     public function __construct() {
         $database = new Database();
         $db = $database->getConnection();
         $this->emailService = new EmailService($db);
         $this->errorLogController = new ErrorLogController();
+        $this->emailFolderModel = new EmailFolder($db);
     }
 
     private function validateParams($requiredParams, $data) {
@@ -479,8 +484,23 @@ class EmailController {
     
             $email_id = $data['email_id'];
             $folder_id = $data['folder_id']; 
+            $folder_name = isset($data['folder_name']) ? $data['folder_name'] : null;
     
-            $result = $this->emailService->moveEmail($email_id, $folder_id);
+            if (!$folder_name) {
+                $folderDetails = $this->emailFolderModel->getFolderById($folder_id);
+                if (!$folderDetails) {
+                    http_response_code(400);
+                    echo json_encode([
+                        'Status' => 'Error',
+                        'Message' => 'Pasta não encontrada.',
+                        'Data' => null
+                    ]);
+                    return;
+                }
+                $folder_name = $folderDetails['folder_name'];
+            }
+    
+            $result = $this->emailService->moveEmail($email_id, $folder_name);
     
             if ($result) {
                 http_response_code(200);
@@ -507,7 +527,7 @@ class EmailController {
             ]);
         }
     }
-
+    
 
     public function viewEmail($email_id) {
         header('Content-Type: application/json');

@@ -17,6 +17,26 @@ class EmailFolder {
         $this->errorLogController = new ErrorLogController();
     }
 
+    public function getFolderById($folder_id) {
+        try {
+            $query = "SELECT id, folder_name FROM " . $this->table . " WHERE id = :folder_id LIMIT 1";
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':folder_id', $folder_id, PDO::PARAM_INT);
+            $stmt->execute();
+
+            $folder = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if ($folder) {
+                return $folder; 
+            } else {
+                return null;
+            }
+        } catch (Exception $e) {
+            $this->errorLogController->logError('Erro ao obter pasta pelo ID: ' . $e->getMessage(), __FILE__, __LINE__, null);
+            throw new Exception('Erro ao obter pasta pelo ID: ' . $e->getMessage());
+        }
+    }
+
     public function syncFolders($email_id, $folders)
     {
         try {
