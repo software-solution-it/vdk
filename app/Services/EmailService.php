@@ -111,20 +111,20 @@ class EmailService {
             if (!$emailDetails) {
                 throw new Exception("E-mail não encontrado no banco de dados.");
             }
-
+    
             // Obter os detalhes da conta de e-mail
             $accountDetails = $this->emailAccountModel->getById($emailDetails['email_account_id']);
             if (!$accountDetails) {
                 throw new Exception("Conta de e-mail associada não encontrada.");
             }
-
+    
             // Descriptografar a senha da conta de e-mail
             $accountDetails['password'] = EncryptionHelper::decrypt($accountDetails['password']);
             
             // Obter o IMAP Host e Porta da conta
             $imap_host = $accountDetails['imap_host'];
             $imap_port = $accountDetails['imap_port'];
-
+    
             // Conectar ao servidor IMAP
             $server = new Server($imap_host, $imap_port);
             
@@ -133,45 +133,58 @@ class EmailService {
             if (!$connection) {
                 throw new Exception("Falha na autenticação no servidor IMAP.");
             }
-
+    
             // Buscar o nome da pasta original
             $originalFolderName = $emailDetails['folder_name']; // Assumindo que a pasta original é armazenada em 'folder_name'
-
+    
             // Obter a caixa de entrada original
             $originalMailbox = $connection->getMailbox($originalFolderName);
             $newMailbox = $connection->getMailbox($new_folder_name);
             if (!$originalMailbox) {
                 throw new Exception("Pasta original '$originalFolderName' não encontrada.");
             }
-
-            // Obter o Message-ID do e-mail
-            $message_id = $emailDetails['order'];  
-            
-            $messages = $originalMailbox->getMessage($message_id);
-
-            if (!$messages) {
-                throw new Exception("Mensagem com ID '$message_id' não encontrada no servidor IMAP.");
+    
+            // Obter a ordem do e-mail
+            $order = $emailDetails['order'];  // 'order' define a posição do e-mail pela data de recebimento
+    
+            // Buscar todos os e-mails da pasta, ordenados pela data de recebimento
+            $emailsInFolder = $originalMailbox->getMessages(
+            ); 
+    
+            // Ordenar os e-mails pela data de recebimento
+            usort($emailsInFolder, function($a, $b) {
+                return $a->getDate() <=> $b->getDate(); // Ordena pela data de recebimento (ascendente)
+            });
+    
+            // Verificar se o índice do e-mail existe
+            if ($order <= 0 || $order > count($emailsInFolder)) {
+                throw new Exception("Ordem '$order' fora do alcance dos e-mails na pasta '$originalFolderName'.");
             }
-
-            $messages->move($newMailbox);
-
+    
+            // Identificar o e-mail pela sua posição na lista (ordem)
+            $message = $emailsInFolder[$order - 1]; // A ordem é baseada em 1, por isso a subtração de 1
+    
+            // Mover a mensagem para a nova pasta
+            $message->move($newMailbox);
+    
             // Expurgar a pasta de origem
             $connection->expunge();
-
+    
             // Deletar o e-mail da base de dados após mover
             $this->emailModel->deleteEmail($emailDetails['email_id']);
-
+    
             // Fechar a conexão
             $connection->close();
-
+    
             return true;
-
+    
         } catch (Exception $e) {
             // Log de erro
             $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
             throw new Exception("Erro ao mover o e-mail: " . $e->getMessage());
         }
     }
+    
     
     
 
