@@ -141,7 +141,7 @@ class EmailService {
             }
     
 
-            $message_id = $emailDetails['message_id'];  
+            $message_id = $emailDetails['email_id'];  
     
 
             $message = $originalMailbox->getMessage($message_id);
