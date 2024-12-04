@@ -137,35 +137,39 @@ class EmailService {
             // Buscar o nome da pasta original
             $originalFolderName = $emailDetails['folder_name']; // Assumindo que a pasta original é armazenada em 'folder_name'
     
-            // Obter a caixa de entrada original
+            // Obter as caixas de entrada original e nova
             $originalMailbox = $connection->getMailbox($originalFolderName);
             $newMailbox = $connection->getMailbox($new_folder_name);
             if (!$originalMailbox) {
                 throw new Exception("Pasta original '$originalFolderName' não encontrada.");
             }
+            if (!$newMailbox) {
+                throw new Exception("Pasta de destino '$new_folder_name' não encontrada.");
+            }
     
             // Obter a ordem do e-mail
             $order = $emailDetails['order'];  // 'order' define a posição do e-mail pela data de recebimento
-    
+            
             // Buscar todos os e-mails da pasta, ordenados pela data de recebimento
-            $emailsInFolder = $originalMailbox->getMessages(
-            ); 
+            $emailsInFolder = $originalMailbox->getMessages();
     
-            // Ordenar os e-mails pela data de recebimento
-            usort($emailsInFolder, function($a, $b) {
-                return $a->getDate() <=> $b->getDate(); // Ordena pela data de recebimento (ascendente)
-            });
-    
-            // Verificar se o índice do e-mail existe
-            if ($order <= 0 || $order > count($emailsInFolder)) {
-                throw new Exception("Ordem '$order' fora do alcance dos e-mails na pasta '$originalFolderName'.");
+            // Encontrar o e-mail correspondente à ordem
+            $emailToMove = null;
+            $counter = 1;
+            foreach ($emailsInFolder as $message) {
+                if ($counter === $order) {
+                    $emailToMove = $message;
+                    break;
+                }
+                $counter++;
             }
     
-            // Identificar o e-mail pela sua posição na lista (ordem)
-            $message = $emailsInFolder[$order - 1]; // A ordem é baseada em 1, por isso a subtração de 1
+            if (!$emailToMove) {
+                throw new Exception("E-mail de ordem '$order' não encontrado na pasta '$originalFolderName'.");
+            }
     
             // Mover a mensagem para a nova pasta
-            $message->move($newMailbox);
+            $emailToMove->move($newMailbox);
     
             // Expurgar a pasta de origem
             $connection->expunge();
@@ -184,6 +188,7 @@ class EmailService {
             throw new Exception("Erro ao mover o e-mail: " . $e->getMessage());
         }
     }
+    
     
     
     
