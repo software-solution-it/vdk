@@ -548,7 +548,7 @@ class EmailController {
                 http_response_code(200);
                 echo json_encode([
                     'Status' => 'Success',
-                    'Message' => 'E-mail movido com sucesso.',
+                    'Message' => 'E-mail movido com sucesso.' . $folderDetails['id'] . $folderDetails['folder_name'],
                     'Data' => null
                 ]);
             } else {
