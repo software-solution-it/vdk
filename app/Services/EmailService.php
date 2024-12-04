@@ -143,9 +143,12 @@ class EmailService {
                 throw new Exception("Pasta original '$originalFolderName' não encontrada.");
             }
 
-            $message_id = $emailDetails['email_id'];  
+            // Obter o Message-ID do e-mail
+            $message_id = $emailDetails['date_received'];  
             
-            $messages = $originalMailbox->getMessages($message_id);
+            $condition = new Text($message_id); 
+            
+            $messages = $originalMailbox->getMessages($condition);
 
             if (count($messages) == 0) {
                 throw new Exception("Mensagem com ID '$message_id' não encontrada no servidor IMAP.");
