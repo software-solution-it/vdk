@@ -505,9 +505,8 @@ class EmailController {
                 return;
             }
     
-            // Se o folder_id não foi fornecido mas o folder_name foi, busca o folder_id
             if (!$folder_id && $folder_name) {
-                $folderDetails = $this->emailFolderModel->getByFolderName($folder_name); // Chama o método para buscar pelo folder_name
+                $folderDetails = $this->emailFolderModel->getByFolderName($folder_name); 
                 if (!$folderDetails) {
                     http_response_code(400);
                     echo json_encode([
@@ -517,10 +516,10 @@ class EmailController {
                     ]);
                     return;
                 }
-                $folder_id = $folderDetails['folder_name'];
+                $folder_id = $folderDetails['id']; 
             }
     
-            if ($folder_id && !$folder_name) {
+            if ($folder_id) {
                 $folderDetails = $this->emailFolderModel->getFolderById($folder_id);
                 if (!$folderDetails) {
                     http_response_code(400);
@@ -532,6 +531,14 @@ class EmailController {
                     return;
                 }
                 $folder_name = $folderDetails['folder_name'];  // Atribui o folder_name encontrado
+            }else{
+                http_response_code(400);
+                echo json_encode([
+                    'Status' => 'Error',
+                    'Message' => 'Pasta não encontrada com o folder_id informado.',
+                    'Data' => null
+                ]);
+                return;
             }
     
             // Chama o serviço para mover o e-mail
