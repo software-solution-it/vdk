@@ -512,7 +512,7 @@ class EmailController {
                     http_response_code(400);
                     echo json_encode([
                         'Status' => 'Error',
-                        'Message' => 'Pasta não encontrada ou múltiplos resultados encontrados com o nome informado.',
+                        'Message' => 'Pasta não encontrada ou múltiplos resultados encontrados com o nome informado.' . count($folderDetails),
                         'Data' => null
                     ]);
                     return;
