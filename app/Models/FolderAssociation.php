@@ -24,7 +24,7 @@ class FolderAssociation {
             if ($stmt->fetchColumn() == 0) {
                 return [
                     'success' => false,
-                    'message' => "Folder ID $folderId does not exist in email_folders.",
+                    'message' => "Folder does not exist in email_folders.",
                     'data' => null
                 ];
             }
@@ -85,7 +85,7 @@ class FolderAssociation {
                 return [
                     'success' => true,
                     'message' => 'Folder association updated successfully.',
-                    'data' => ['id' => $existing['id']]
+                    'data' => $existing
                 ];
             } else {
                 // Cria nova associação
