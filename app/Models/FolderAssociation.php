@@ -16,7 +16,7 @@ class FolderAssociation {
     public function createOrUpdateAssociation($emailAccountId, $folderId, $folderType) {
         try {
             $likePattern = strtoupper($folderType) . "_PROCESSED";
-
+    
             // Busca pasta processada associada ao tipo
             $query = "SELECT id FROM email_folders 
                       WHERE folder_name LIKE :like_pattern AND email_account_id = :email_account_id";
@@ -24,26 +24,29 @@ class FolderAssociation {
             $stmt->bindParam(':like_pattern', $likePattern);
             $stmt->bindParam(':email_account_id', $emailAccountId);
             $stmt->execute();
-
+    
             $associatedFolder = $stmt->fetch(PDO::FETCH_ASSOC);
-
+    
             if (!$associatedFolder) {
-                // Loga o erro em vez de lançar uma exceção
                 $this->errorLogController->logError(
                     "Processed folder for type '$folderType' not found.",
                     __FILE__,
                     __LINE__,
-                    null, // Se disponível, passe o ID do usuário ou outro contexto relevante
+                    null,
                     [
                         'emailAccountId' => $emailAccountId,
                         'folderType' => $folderType
                     ]
                 );
-                return false; // Retorna false se a pasta processada não for encontrada
+                return [
+                    'success' => false,
+                    'message' => "Processed folder for type '$folderType' not found.",
+                    'data' => null
+                ];
             }
-
+    
             $associatedFolderId = $associatedFolder['id'];
-
+    
             // Verifica se já existe associação para o tipo de pasta
             $query = "SELECT id FROM FolderAssociations 
                       WHERE email_account_id = :email_account_id AND folder_type = :folder_type";
@@ -51,9 +54,9 @@ class FolderAssociation {
             $stmt->bindParam(':email_account_id', $emailAccountId);
             $stmt->bindParam(':folder_type', $folderType);
             $stmt->execute();
-
+    
             $existing = $stmt->fetch(PDO::FETCH_ASSOC);
-
+    
             if ($existing) {
                 // Atualiza associação existente
                 $updateQuery = "UPDATE FolderAssociations 
@@ -64,8 +67,12 @@ class FolderAssociation {
                 $updateStmt->bindParam(':associated_folder_id', $associatedFolderId);
                 $updateStmt->bindParam(':id', $existing['id']);
                 $updateStmt->execute();
-
-                return true;
+    
+                return [
+                    'success' => true,
+                    'message' => 'Folder association updated successfully.',
+                    'data' => ['id' => $existing['id']]
+                ];
             } else {
                 // Cria nova associação
                 $insertQuery = "INSERT INTO FolderAssociations (email_account_id, folder_id, associated_folder_id, folder_type) 
@@ -76,27 +83,34 @@ class FolderAssociation {
                 $insertStmt->bindParam(':associated_folder_id', $associatedFolderId);
                 $insertStmt->bindParam(':folder_type', $folderType);
                 $insertStmt->execute();
-
-                return true;
+    
+                return [
+                    'success' => true,
+                    'message' => 'Folder association created successfully.',
+                    'data' => ['id' => $this->conn->lastInsertId()]
+                ];
             }
         } catch (\Exception $e) {
-            // Loga qualquer exceção que ocorra
             $this->errorLogController->logError(
                 $e->getMessage(),
                 __FILE__,
                 __LINE__,
-                null, // Se disponível, passe o ID do usuário ou outro contexto relevante
+                null,
                 [
                     'emailAccountId' => $emailAccountId,
                     'folderId' => $folderId,
                     'folderType' => $folderType,
                 ]
             );
-
-            return false; // Retorna false em caso de erro
+    
+            return [
+                'success' => false,
+                'message' => 'Error during folder association: ' . $e->getMessage(),
+                'data' => null
+            ];
         }
     }
-
+    
     public function getAssociationsByEmailAccount($emailAccountId) {
         try {
             $query = "

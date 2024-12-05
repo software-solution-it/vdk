@@ -23,7 +23,6 @@ class FolderAssociationController {
         $folderId = $data['folder_id'] ?? null;
         $folderType = $data['folder_type'] ?? null; // INBOX, SPAM, TRASH
     
-        // Validação dos parâmetros
         if (empty($emailAccountId) || empty($folderId) || empty($folderType)) {
             http_response_code(400);
             echo json_encode([
@@ -34,28 +33,29 @@ class FolderAssociationController {
             return;
         }
     
-        try {
-            $result = $this->folderAssociationService->createOrUpdateAssociation(
-                $emailAccountId,
-                $folderId,
-                $folderType
-            );
+        $result = $this->folderAssociationService->createOrUpdateAssociation(
+            $emailAccountId,
+            $folderId,
+            $folderType
+        );
     
+        if ($result['success']) {
             http_response_code(200);
             echo json_encode([
                 'Status' => 'Success',
-                'Message' => 'Folder association created or updated successfully.',
-                'Data' => $result
+                'Message' => $result['message'],
+                'Data' => $result['data']
             ]);
-        } catch (\Exception $e) {
+        } else {
             http_response_code(500);
             echo json_encode([
                 'Status' => 'Error',
-                'Message' => 'Error creating or updating folder association: ' . $e->getMessage(),
+                'Message' => $result['message'],
                 'Data' => null
             ]);
         }
     }
+    
     
 
     public function getAssociationsByEmailAccount($emailAccountId) {
