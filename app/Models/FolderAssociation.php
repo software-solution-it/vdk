@@ -15,6 +15,20 @@ class FolderAssociation {
 
     public function createOrUpdateAssociation($emailAccountId, $folderId, $folderType) {
         try {
+
+            $query = "SELECT COUNT(*) FROM email_folders WHERE id = :folder_id";
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':folder_id', $folderId, PDO::PARAM_INT);
+            $stmt->execute();
+    
+            if ($stmt->fetchColumn() == 0) {
+                return [
+                    'success' => false,
+                    'message' => "Folder ID $folderId does not exist in email_folders.",
+                    'data' => null
+                ];
+            }
+
             $likePattern = strtoupper($folderType) . "_PROCESSED";
     
             // Busca pasta processada associada ao tipo
