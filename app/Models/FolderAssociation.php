@@ -19,7 +19,7 @@ class FolderAssociation {
     
             // Busca pasta processada associada ao tipo
             $query = "SELECT id FROM email_folders 
-                      WHERE folder_name LIKE :like_pattern AND email_account_id = :email_account_id";
+                      WHERE folder_name LIKE :like_pattern AND email_id = :email_account_id";
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':like_pattern', $likePattern);
             $stmt->bindParam(':email_account_id', $emailAccountId);
