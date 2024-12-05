@@ -15,7 +15,7 @@ class FolderAssociation {
 
     public function createOrUpdateAssociation($emailAccountId, $folderId, $folderType) {
         try {
-
+            // Verifica se o folder_id existe
             $query = "SELECT COUNT(*) FROM email_folders WHERE id = :folder_id";
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':folder_id', $folderId, PDO::PARAM_INT);
@@ -28,7 +28,7 @@ class FolderAssociation {
                     'data' => null
                 ];
             }
-
+    
             $likePattern = strtoupper($folderType) . "_PROCESSED";
     
             // Busca pasta processada associada ao tipo
@@ -82,10 +82,18 @@ class FolderAssociation {
                 $updateStmt->bindParam(':id', $existing['id']);
                 $updateStmt->execute();
     
+                // Busca os dados atualizados
+                $selectQuery = "SELECT * FROM FolderAssociations WHERE id = :id";
+                $selectStmt = $this->conn->prepare($selectQuery);
+                $selectStmt->bindParam(':id', $existing['id'], PDO::PARAM_INT);
+                $selectStmt->execute();
+    
+                $updatedData = $selectStmt->fetch(PDO::FETCH_ASSOC);
+    
                 return [
                     'success' => true,
                     'message' => 'Folder association updated successfully.',
-                    'data' => $existing
+                    'data' => $updatedData
                 ];
             } else {
                 // Cria nova associação
@@ -98,10 +106,20 @@ class FolderAssociation {
                 $insertStmt->bindParam(':folder_type', $folderType);
                 $insertStmt->execute();
     
+                $lastInsertId = $this->conn->lastInsertId();
+    
+                // Busca os dados inseridos
+                $selectQuery = "SELECT * FROM FolderAssociations WHERE id = :id";
+                $selectStmt = $this->conn->prepare($selectQuery);
+                $selectStmt->bindParam(':id', $lastInsertId, PDO::PARAM_INT);
+                $selectStmt->execute();
+    
+                $insertedData = $selectStmt->fetch(PDO::FETCH_ASSOC);
+    
                 return [
                     'success' => true,
                     'message' => 'Folder association created successfully.',
-                    'data' => ['id' => $this->conn->lastInsertId()]
+                    'data' => $insertedData
                 ];
             }
         } catch (\Exception $e) {
@@ -124,6 +142,7 @@ class FolderAssociation {
             ];
         }
     }
+    
     
     public function getAssociationsByEmailAccount($emailAccountId) {
         try {
