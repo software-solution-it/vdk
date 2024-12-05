@@ -4,7 +4,7 @@ namespace App\Models;
 use PDO;
 use Exception;
 use App\Controllers\ErrorLogController;
-use App\Models\EmailAttachment;  
+
 
 
 class Email {
@@ -13,12 +13,12 @@ class Email {
     private $attachmentsTable = "email_attachments";
     private $errorLogController;
 
-    private $emailAttachmentModel; 
+
 
 
     public function __construct($db) {
         $this->conn = $db;
-        $this->emailAttachmentModel = new EmailAttachment($db);
+
         $this->errorLogController = new ErrorLogController();
     }
 
