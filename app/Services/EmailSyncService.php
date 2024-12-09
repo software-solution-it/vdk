@@ -419,31 +419,38 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                             $attachmentMap = [];
                         
                             foreach ($attachments as $attachment) {
-                                $parameters = $attachment->getParameters();
+                                // Obtemos os cabeçalhos do anexo
+                                $structure = $attachment->getStructure();
+                                $contentId = isset($structure->id) ? trim($structure->id, '<>') : null;
                         
-                                $contentId = $parameters->get('id');
                                 if ($contentId) {
-                                    $contentId = trim($contentId, '<>');
                                     $attachmentMap[$contentId] = $attachment;
                                 }
                             }
                         
+                            // Procura referências a "cid:" no HTML
                             preg_match_all('/<img[^>]+src="cid:([^"]+)"/', $body_html, $cidMatches, PREG_SET_ORDER);
+                        
                             foreach ($cidMatches as $match) {
                                 try {
-                                    $cid = $match[1]; 
+                                    $cid = $match[1]; // Pega o ID de Content-ID da imagem referenciada
+                        
                                     if (isset($attachmentMap[$cid])) {
                                         $attachment = $attachmentMap[$cid];
-                         
+                        
+                                        // Decodifica o conteúdo do anexo
                                         $contentBytes = $attachment->getDecodedContent();
                                         if ($contentBytes === false) {
                                             continue;
                                         }
                         
+                                        // Obtém o MIME type do anexo
                                         $mimeType = $attachment->getType() . '/' . $attachment->getSubtype();
                         
+                                        // Codifica em Base64
                                         $base64Data = base64_encode($contentBytes);
                         
+                                        // Substitui a referência "cid:" pelo Base64 embutido no HTML
                                         $base64Image = "data:$mimeType;base64,$base64Data";
                                         $body_html = str_replace("cid:$cid", $base64Image, $body_html);
                                     }
