@@ -9,6 +9,8 @@ use GuzzleHttp\Exception\RequestException;
 use App\Models\Email;
 use App\Models\EmailAccount;
 use App\Config\Database;
+use App\Models\EmailFolder;
+
 use App\Models\FolderAssociation;
 
 use Exception;
@@ -19,6 +21,8 @@ class OutlookOAuth2Service {
     private $emailAccountModel;
     private $httpClient;
     private $clientId;
+
+    private $emailFolderModel;
 
     private $folderAssociationModel;
     private $webhookService;
@@ -43,6 +47,7 @@ class OutlookOAuth2Service {
         $this->errorLogController = new ErrorLogController();
         $this->webhookService = new WebhookService();
         $this->emailModel = new Email($db);
+        $this->emailFolderModel = new EmailFolder($db); 
         $this->folderAssociationModel = new FolderAssociation($db);
         $this->emailAccountModel = new EmailAccount($db);
     }
@@ -58,14 +63,23 @@ class OutlookOAuth2Service {
 
     public function getAuthorizationUrl($user_id, $email_id) {
         try {
+            // Obter a conta de e-mail
             $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $email_id);
             if (!$emailAccount) {
                 throw new Exception("Email account not found for user ID: $user_id and provider ID: $email_id");
             }
-
+    
+            // Inicializar parâmetros OAuth
             $this->initializeOAuthParameters($emailAccount, $user_id, $email_id);
-      
-
+    
+            // Criar um state seguro contendo informações úteis
+            $state = base64_encode(json_encode([
+                'user_id' => $user_id,
+                'email_id' => $email_id,
+                'timestamp' => time()
+            ]));
+    
+            // Construir a URL de autorização
             $authorizationUrl = 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize?'
                 . http_build_query([
                     'client_id' => $this->clientId,
@@ -73,14 +87,14 @@ class OutlookOAuth2Service {
                     'redirect_uri' => $this->redirectUri,
                     'scope' => implode(' ', $this->scopes),
                     'response_mode' => 'query',
-                    'state' => base64_encode(random_bytes(10))
+                    'state' => $state
                 ]);
-
+    
             return [
                 'status' => true,
                 'authorization_url' => $authorizationUrl
             ];
-
+    
         } catch (Exception $e) {
             $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__, $user_id);
             throw new Exception('Error generating authorization URL: ' . $e->getMessage());
@@ -468,8 +482,7 @@ class OutlookOAuth2Service {
                                     $folderDbId,
                                     $ccRecipients,
                                     $conversationId,
-                                    $conversation_step,
-                                    $fromName
+  
                                 );
                             }
                             continue;
@@ -491,37 +504,71 @@ class OutlookOAuth2Service {
                                 $folderDbId,
                                 $ccRecipients,
                                 $conversationId,
+                                $conversationId,
                                 $conversation_step,
                                 $fromName
                             );
     
                             // Processar imagens embutidas no conteúdo
-                            if ($bodyContentType == 'html' && $bodyContent) {
-                                preg_match_all('/<img[^>]+src="data:image\/([^;]+);base64,([^"]+)"/', $bodyContent, $matches, PREG_SET_ORDER);
-    
-                                foreach ($matches as $match) {
-                                    try {
-                                        $imageType = $match[1];
-                                        $base64Data = $match[2];
-                                        $decodedContent = base64_decode($base64Data);
-    
-                                        if ($decodedContent !== false) {
-                                            $filename = uniqid("inline_img_") . '.' . $imageType;
-                                            $fullMimeType = 'image/' . $imageType;
-    
-                                            $this->emailModel->saveAttachment(
-                                                $emailId,
-                                                $filename,
-                                                $fullMimeType,
-                                                strlen($decodedContent),
-                                                $decodedContent
-                                            );
+                            if ($emailData['hasAttachments']) {
+                                try {
+                                    // Obter anexos da mensagem
+                                    $attachmentsResponse = $this->httpClient->get("https://graph.microsoft.com/v1.0/me/messages/{$emailData['id']}/attachments", [
+                                        'headers' => [
+                                            'Authorization' => 'Bearer ' . $accessToken,
+                                            'Accept' => 'application/json'
+                                        ]
+                                    ]);
+                            
+                                    $attachments = json_decode($attachmentsResponse->getBody(), true);
+                            
+                                    if (isset($attachments['value']) && is_array($attachments['value'])) { 
+                                        foreach ($attachments['value'] as $attachment) {
+                                            try {
+                                                $filename = $attachment['name'] ?? null;
+                                                $contentBytes = isset($attachment['contentBytes']) ? base64_decode($attachment['contentBytes']) : null;
+                            
+                                                if (is_null($filename) || empty($filename)) {
+                                                    error_log("Anexo ignorado: o nome do arquivo está nulo.");
+                                                    continue;
+                                                }
+                            
+                                                if ($contentBytes === false) {
+                                                    error_log("Falha ao obter o conteúdo do anexo: $filename");
+                                                    continue;
+                                                }
+                            
+                                                $mimeTypeName = $attachment['contentType'] ?? 'application/octet-stream';
+                            
+                                                // Salvar o anexo no banco de dados
+                                                $this->emailModel->saveAttachment(
+                                                    $emailId,
+                                                    $filename,
+                                                    $mimeTypeName,
+                                                    strlen($contentBytes),
+                                                    $contentBytes
+                                                );
+                            
+                                                // Substituir "cid:" diretamente no HTML do corpo da mensagem
+                                                if (isset($body_html)) {
+                                                    $body_html = preg_replace(
+                                                        '/<img[^>]+src="cid:([^"]+)"/',
+                                                        '<img src="data:' . $mimeTypeName . ';base64,' . base64_encode($contentBytes) . '"',
+                                                        $body_html
+                                                    );
+                                                }
+                                            } catch (Exception $e) {
+                                                $this->errorLogController->logError("Erro ao salvar e substituir anexo: " . $e->getMessage(), __FILE__, __LINE__, $user_id);
+                                            }
                                         }
-                                    } catch (Exception $e) {
-                                        $this->errorLogController->logError("Erro ao processar imagem embutida: " . $e->getMessage(), __FILE__, __LINE__, $user_id);
+                                    } else {
+                                        $this->errorLogController->logError("Nenhum anexo encontrado para a mensagem {$emailData['id']}.", __FILE__, __LINE__, $user_id);
                                     }
+                                } catch (Exception $e) {
+                                    $this->errorLogController->logError("Erro ao processar anexos para a mensagem {$emailData['id']}: " . $e->getMessage(), __FILE__, __LINE__, $user_id);
                                 }
                             }
+                            
     
                             // Processar anexos
                             if ($emailData['hasAttachments']) {
@@ -580,7 +627,6 @@ class OutlookOAuth2Service {
                     }
                 }
     
-                // Remover e-mails do banco de dados que não estão mais no servidor
                 $deletedMessageIds = array_diff($storedMessageIds, $processedMessageIds);
                 foreach ($deletedMessageIds as $deletedMessageId) {
                     $this->emailModel->deleteEmailByMessageId($deletedMessageId, $user_id);
