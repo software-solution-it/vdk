@@ -65,6 +65,73 @@ class WebhookController {
         }
     }
 
+    public function updateWebhook($id) {
+        header('Content-Type: application/json');
+        $data = json_decode(file_get_contents("php://input"));
+    
+        if (!empty($data->url) && !empty($data->secret) && !empty($data->name)) {
+            if (strpos($data->url, 'https://') !== 0) {
+                http_response_code(400);
+                echo json_encode([
+                    'Status' => 'Error',
+                    'Message' => 'URL must be HTTPS',
+                    'Data' => null
+                ]);
+                return;
+            }
+    
+            $webhookData = [
+                'url' => $data->url,
+                'secret' => $data->secret,
+                'name' => $data->name
+            ];
+    
+            if ($this->webhookService->updateWebhook($id, $webhookData)) {
+                http_response_code(200);
+                echo json_encode([
+                    'Status' => 'Success',
+                    'Message' => 'Webhook updated successfully',
+                    'Data' => null
+                ]);
+            } else {
+                http_response_code(500);
+                echo json_encode([
+                    'Status' => 'Error',
+                    'Message' => 'Unable to update webhook',
+                    'Data' => null
+                ]);
+            }
+        } else {
+            http_response_code(400);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Incomplete data',
+                'Data' => null
+            ]);
+        }
+    }
+
+
+    public function deleteWebhook($id) {
+        header('Content-Type: application/json');
+    
+        if ($this->webhookService->deleteWebhook($id)) {
+            http_response_code(200);
+            echo json_encode([
+                'Status' => 'Success',
+                'Message' => 'Webhook deleted successfully',
+                'Data' => null
+            ]);
+        } else {
+            http_response_code(500);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Unable to delete webhook',
+                'Data' => null
+            ]);
+        }
+    }
+
     public function getList() {
         header('Content-Type: application/json');
         $user_id = $_GET['user_id'] ?? null;

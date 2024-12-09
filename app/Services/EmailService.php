@@ -332,70 +332,67 @@ class EmailService {
     }
     
     public function listEmails($folder_id = null, $folder_name = null, $limit, $offset)
-{
-    // Base query para os emails
-    $baseQuery = "
-        SELECT 
-            e.id,
-            e.body_text,
-            e.from,
-            e.subject,
-            e.date_received,
-            COUNT(a.id) AS attachment_count
-        FROM 
-            emails e
-        LEFT JOIN 
-            email_attachments a
-        ON 
-            e.id = a.email_id
-    ";
-
-    // Filtro para folder_id ou folder_name
-    $filterQuery = "";
-    $params = [
-        ':limit' => $limit,
-        ':offset' => $offset,
-    ];
-
-    if (!is_null($folder_id)) {
-        $filterQuery = "WHERE e.folder_id = :folder_id";
-        $params[':folder_id'] = $folder_id;
-    } else if (!is_null($folder_name)) {
-        $baseQuery .= "INNER JOIN email_folders ef ON e.folder_id = ef.id ";
-        $filterQuery = "WHERE UPPER(ef.folder_name) LIKE UPPER(:folder_name)";
-        $params[':folder_name'] = '%' . $folder_name . '%'; // Adiciona curingas para busca parcial
+    {
+        $baseQuery = "
+            SELECT 
+                e.id,
+                e.body_text,
+                e.from,
+                e.subject,
+                e.date_received,
+                COUNT(a.id) AS attachment_count
+            FROM 
+                emails e
+            LEFT JOIN 
+                email_attachments a
+            ON 
+                e.id = a.email_id
+        ";
+    
+        $filterQuery = "";
+        $params = [
+            ':limit' => $limit,
+            ':offset' => $offset,
+        ];
+    
+        if (!is_null($folder_id)) {
+            $filterQuery = "WHERE e.folder_id = :folder_id";
+            $params[':folder_id'] = $folder_id;
+        } else if (!is_null($folder_name)) {
+            $baseQuery .= "INNER JOIN email_folders ef ON e.folder_id = ef.id ";
+            $filterQuery = "WHERE UPPER(ef.folder_name) LIKE UPPER(:folder_name)";
+            $params[':folder_name'] = '%' . $folder_name . '%'; 
+        }
+    
+        $query = $baseQuery . $filterQuery . "
+            GROUP BY 
+                e.id, e.body_text, e.from, e.subject, e.date_received
+            ORDER BY 
+                e.date_received DESC
+            LIMIT 
+                :limit OFFSET :offset";
+    
+        $stmt = $this->db->prepare($query);
+    
+        foreach ($params as $param => $value) {
+            if ($param === ':limit' || $param === ':offset') {
+                $stmt->bindValue($param, (int)$value, PDO::PARAM_INT); 
+            } else {
+                $stmt->bindValue($param, $value);
+            }
+        }
+    
+        $stmt->execute();
+        $emails = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+        $countStmt = count($emails);
+    
+        return [
+            'total' => $countStmt,
+            'emails' => $emails
+        ];
     }
     
-
-    // Finalizando a query principal
-    $query = $baseQuery . $filterQuery . "
-        GROUP BY 
-            e.id, e.body_text, e.from, e.subject, e.date_received
-        LIMIT 
-            :limit OFFSET :offset";
-
-    // Preparar e executar a query principal
-    $stmt = $this->db->prepare($query);
-
-    foreach ($params as $param => $value) {
-        if ($param === ':limit' || $param === ':offset') {
-            $stmt->bindValue($param, (int)$value, PDO::PARAM_INT); // Converte para inteiro
-        } else {
-            $stmt->bindValue($param, $value);
-        }
-    }
-
-    $stmt->execute();
-    $emails = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    $countStmt = count($emails);
-
-    // Retornar os resultados
-    return [
-        'total' => $countStmt,
-        'emails' => $emails
-    ];
-}
 
     
     
@@ -434,7 +431,7 @@ class EmailService {
                 SELECT id, email_id, subject, sender, recipient, body_html, body_text, date_received, in_reply_to, `references`, folder_id, conversation_step
                 FROM mail.emails
                 WHERE conversation_id = :conversation_id
-                ORDER BY conversation_step ASC
+                ORDER BY conversation_step DESC
             ";
             $stmt = $this->db->prepare($query);
             $stmt->bindParam(':conversation_id', $conversation_id, PDO::PARAM_STR);

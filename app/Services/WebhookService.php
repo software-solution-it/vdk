@@ -33,19 +33,86 @@ class WebhookService {
         try {
             $response = $this->client->post($url, [
                 'headers' => [
-                    'Authorization' => 'Bearer ' . $token,
+                    'X-Signature' => $token,
                     'Content-Type' => 'application/json'
                 ],
                 'json' => $event,
                 'verify' => true 
             ]);
-
+    
             return $response->getStatusCode() === 200;
         } catch (\Exception $e) {
             error_log("Erro ao enviar webhook para $url: " . $e->getMessage());
             return false;
         }
     }
+    
+
+    public function updateWebhook($id, $data) {
+        try {
+            $webhook = $this->webhookModel->getById($id);
+            if (!$webhook) {
+                return [
+                    'status' => false,
+                    'message' => 'Webhook not found'
+                ];
+            } 
+    
+            $updated = $this->webhookModel->update($id, $data);
+            if ($updated) {
+                return [
+                    'status' => true,
+                    'message' => 'Webhook updated successfully',
+                    'data' => $this->webhookModel->getById($id) 
+                ];
+            }
+    
+            return [
+                'status' => false,
+                'message' => 'Failed to update webhook'
+            ];
+        } catch (\Exception $e) {
+            error_log("Erro ao atualizar webhook com ID $id: " . $e->getMessage());
+            return [
+                'status' => false,
+                'message' => 'Internal server error'
+            ];
+        }
+    }
+
+ 
+    public function deleteWebhook($id) {
+        try {
+            $webhook = $this->webhookModel->getById($id);
+            if (!$webhook) {
+                return [
+                    'status' => false,
+                    'message' => 'Webhook not found'
+                ];
+            }
+    
+            $deleted = $this->webhookModel->delete($id);
+            if ($deleted) {
+                return [
+                    'status' => true,
+                    'message' => 'Webhook deleted successfully'
+                ];
+            }
+    
+            return [
+                'status' => false,
+                'message' => 'Failed to delete webhook'
+            ];
+        } catch (\Exception $e) {
+            error_log("Erro ao deletar webhook com ID $id: " . $e->getMessage());
+            return [
+                'status' => false,
+                'message' => 'Internal server error'
+            ];
+        }
+    }
+     
+    
 
     public function registerWebhook($data) {
         return $this->webhookModel->register($data);

@@ -408,9 +408,57 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                         $fromAddress = $message->getFrom()->getAddress();
                         $fromName = $message->getFrom()->getName() ?? null;
                         $subject = $message->getSubject() ?? 'Sem Assunto';
-                        $date_received = $message->getDate()->format('Y-m-d H:i:s');
+                        $date_received = $message->getDate()->setTimezone(new \DateTimeZone('America/Sao_Paulo'))->format('Y-m-d H:i:s');
                         $isRead = $message->isSeen() ? 1 : 0;
                         $body_html = $message->getBodyHtml();
+
+                        $body_html = $message->getBodyHtml();
+
+                        if ($body_html && $message->hasAttachments()) {
+                            $attachments = $message->getAttachments();
+                            $attachmentMap = [];
+                        
+                            foreach ($attachments as $attachment) {
+                                $parameters = $attachment->getParameters();
+                        
+                                $contentId = $parameters->get('id');
+                                if ($contentId) {
+                                    $contentId = trim($contentId, '<>');
+                                    $attachmentMap[$contentId] = $attachment;
+                                }
+                            }
+                        
+                            preg_match_all('/<img[^>]+src="cid:([^"]+)"/', $body_html, $cidMatches, PREG_SET_ORDER);
+                            foreach ($cidMatches as $match) {
+                                try {
+                                    $cid = $match[1]; 
+                                    if (isset($attachmentMap[$cid])) {
+                                        $attachment = $attachmentMap[$cid];
+                         
+                                        $contentBytes = $attachment->getDecodedContent();
+                                        if ($contentBytes === false) {
+                                            continue;
+                                        }
+                        
+                                        $mimeType = $attachment->getType() . '/' . $attachment->getSubtype();
+                        
+                                        $base64Data = base64_encode($contentBytes);
+                        
+                                        $base64Image = "data:$mimeType;base64,$base64Data";
+                                        $body_html = str_replace("cid:$cid", $base64Image, $body_html);
+                                    }
+                                } catch (Exception $e) {
+                                    $this->errorLogController->logError(
+                                        "Erro ao processar Content-ID para substituição no HTML: " . $e->getMessage(),
+                                        __FILE__,
+                                        __LINE__,
+                                        $user_id
+                                    );
+                                }
+                            }
+                        }
+                        
+
                         $body_text = $message->getBodyText();
     
                         $bcc = $message->getBcc();
@@ -499,7 +547,6 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                             }
                         }
     
-                        // Processamento de anexos
                         if ($message->hasAttachments()) {
                             $attachments = $message->getAttachments();
                             foreach ($attachments as $attachment) {

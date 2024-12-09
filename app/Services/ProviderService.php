@@ -61,6 +61,19 @@ class ProviderService {
         return ['status' => false, 'message' => 'Failed to update provider'];
     }
     
+    public function getProviderById($id) {
+        try {
+            $provider = $this->providerModel->getById($id);
+    
+            if ($provider) {
+                return $provider;
+            }
+    
+            return null;
+        } catch (\Exception $e) {
+            throw new \Exception("Error retrieving provider: " . $e->getMessage());
+        }
+    }
 
 
     public function deleteProvider($id) {

@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Services\ProviderService;
 use App\Config\Database;
 use App\Controllers\ErrorLogController;
+use Exception;
 
 class ProviderController {
     private $providerService;
@@ -102,5 +103,52 @@ class ProviderController {
             'Message' => 'Providers retrieved successfully.',
             'Data' => $response
         ]);
+    }
+
+    public function getProviderById($id) {
+        header('Content-Type: application/json');
+    
+        try {
+            if (empty($id)) {
+                http_response_code(400);
+                echo json_encode([
+                    'Status' => 'Error',
+                    'Message' => 'Provider ID is required',
+                    'Data' => null
+                ]);
+                return;
+            }
+    
+            $response = $this->providerService->getProviderById($id);
+    
+            if ($response) {
+                http_response_code(200);
+                echo json_encode([
+                    'Status' => 'Success',
+                    'Message' => 'Provider retrieved successfully',
+                    'Data' => $response
+                ]);
+            } else {
+                http_response_code(404);
+                echo json_encode([
+                    'Status' => 'Error',
+                    'Message' => 'Provider not found',
+                    'Data' => null
+                ]);
+            } 
+        } catch (Exception $e) {
+            $this->errorLogController->logError(
+                "Error retrieving provider: " . $e->getMessage(),
+                __FILE__,
+                __LINE__,
+                null
+            );
+            http_response_code(500);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Internal server error',
+                'Data' => null
+            ]);
+        }
     }
 }

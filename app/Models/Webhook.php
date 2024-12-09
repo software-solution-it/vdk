@@ -36,6 +36,49 @@ class Webhook {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    public function update($id, $data) {
+        $query = "
+            UPDATE webhooks
+            SET url = :url, secret = :secret, name = :name, updated_at = NOW()
+            WHERE id = :id
+        ";
+    
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+        $stmt->bindParam(':url', $data['url'], PDO::PARAM_STR);
+        $stmt->bindParam(':secret', $data['secret'], PDO::PARAM_STR);
+        $stmt->bindParam(':name', $data['name'], PDO::PARAM_STR);
+    
+        return $stmt->execute();
+    }
+
+    public function delete($id) {
+        $query = "
+            DELETE FROM webhooks
+            WHERE id = :id
+        ";
+    
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+    
+        return $stmt->execute();
+    }
+
+    
+    public function getById($id) {
+        $query = "
+            SELECT * FROM webhooks
+            WHERE id = :id
+        ";
+    
+        $stmt = $this->db->prepare($query);
+        $stmt->bindParam(':id', $id, \PDO::PARAM_INT);
+        $stmt->execute();
+    
+        return $stmt->fetch(\PDO::FETCH_ASSOC); // Retorna o webhook como array associativo ou false se não encontrar
+    }
+    
+
     public function registerEvent($data) {
         $query = "INSERT INTO events (webhook_id, event_type, payload, status) VALUES (:webhook_id, :event_type, :payload, :status)";
         $stmt = $this->conn->prepare($query);

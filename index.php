@@ -337,6 +337,17 @@ switch ($request_uri[0]) {
         }
         break;
 
+        case '/api/provider/get':
+            $controller = new ProviderController();
+            $id = $_GET['id'] ?? null; // Obtém o ID a partir dos parâmetros da URL
+            if ($id) {
+                $controller->getProviderById($id);
+            } else {
+                echo json_encode(['status' => false, 'message' => 'ID is required']);
+            }
+            break;
+        
+
     case '/api/email/sync/consume':
         $emailSync = new EmailSyncController();
         $emailSync->startConsumer();
@@ -386,5 +397,26 @@ switch ($request_uri[0]) {
         $webhook = new WebhookController();
         $webhook->registerWebhook();
         break;
+
+        case '/api/webhook/update':
+            $webhook = new WebhookController();
+            $id = $_GET['id'] ?? null;
+            if ($id) {
+                $webhook->updateWebhook($id);
+            } else {
+                echo json_encode(['status' => false, 'message' => 'ID is required']);
+            }
+            break; 
+    
+        case '/api/webhook/delete':
+            $webhook = new WebhookController();
+            $id = $_GET['id'] ?? null;
+            if ($id) {
+                $webhook->deleteWebhook($id);
+            } else {
+                echo json_encode(['status' => false, 'message' => 'ID is required']);
+            }
+            break;
+    
 
 }
