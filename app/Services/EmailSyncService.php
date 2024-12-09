@@ -412,60 +412,7 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                         $isRead = $message->isSeen() ? 1 : 0;
                         $body_html = $message->getBodyHtml();
 
-                        $body_html = $message->getBodyHtml();
-
-                        if ($body_html && $message->hasAttachments()) {
-                            $attachments = $message->getAttachments();
-                            $attachmentMap = [];
                         
-                            foreach ($attachments as $attachment) {
-                                // Obtemos os cabeçalhos do anexo
-                                $structure = $attachment->getStructure();
-                                $contentId = isset($structure->id) ? trim($structure->id, '<>') : null;
-                        
-                                if ($contentId) {
-                                    $attachmentMap[$contentId] = $attachment;
-                                }
-                            }
-                        
-                            // Procura referências a "cid:" no HTML
-                            preg_match_all('/<img[^>]+src="cid:([^"]+)"/', $body_html, $cidMatches, PREG_SET_ORDER);
-                        
-                            foreach ($cidMatches as $match) {
-                                try {
-                                    $cid = $match[1]; // Pega o ID de Content-ID da imagem referenciada
-                        
-                                    if (isset($attachmentMap[$cid])) {
-                                        $attachment = $attachmentMap[$cid];
-                        
-                                        // Decodifica o conteúdo do anexo
-                                        $contentBytes = $attachment->getDecodedContent();
-                                        if ($contentBytes === false) {
-                                            continue;
-                                        }
-                        
-                                        // Obtém o MIME type do anexo
-                                        $mimeType = $attachment->getType() . '/' . $attachment->getSubtype();
-                        
-                                        // Codifica em Base64
-                                        $base64Data = base64_encode($contentBytes);
-                        
-                                        // Substitui a referência "cid:" pelo Base64 embutido no HTML
-                                        $base64Image = "data:$mimeType;base64,$base64Data";
-                                        $body_html = str_replace("cid:$cid", $base64Image, $body_html);
-                                    }
-                                } catch (Exception $e) {
-                                    $this->errorLogController->logError(
-                                        "Erro ao processar Content-ID para substituição no HTML: " . $e->getMessage(),
-                                        __FILE__,
-                                        __LINE__,
-                                        $user_id
-                                    );
-                                }
-                            }
-                        }
-                        
-
                         $body_text = $message->getBodyText();
     
                         $bcc = $message->getBcc();
@@ -503,6 +450,64 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                         }
                 
                         $conversation_id = $references ? explode(', ', $references)[0] : $messageId;
+
+                        if ($message->hasAttachments()) {
+                            $attachments = $message->getAttachments();
+                            $attachmentMap = []; // Mapear Content-ID para Base64
+                        
+                            foreach ($attachments as $attachment) {
+                                try {
+                                    $filename = $attachment->getFilename();
+                                    if (is_null($filename) || empty($filename)) {
+                                        error_log("Anexo ignorado: o nome do arquivo está nulo.");
+                                        continue;
+                                    }
+                        
+                                    $mimeTypeName = $attachment->getType();
+                                    $subtype = $attachment->getSubtype();
+                                    $fullMimeType = $mimeTypeName . '/' . $subtype;
+                                    $contentBytes = $attachment->getDecodedContent();
+                        
+                                    if ($contentBytes === false) {
+                                        error_log("Falha ao obter o conteúdo do anexo: $filename");
+                                        continue;
+                                    }
+                        
+                                    // Salvar o anexo no banco de dados
+                                    $this->emailModel->saveAttachment(
+                                        $emailId,
+                                        $filename,
+                                        $fullMimeType,
+                                        strlen($contentBytes),
+                                        $contentBytes
+                                    );
+                        
+                                    // Adicionar ao mapa Content-ID -> Base64
+                                    $structure = $attachment->getStructure();
+                                    $contentId = isset($structure->id) ? trim($structure->id, '<>') : null;
+                        
+                                    if ($contentId) {
+                                        $attachmentMap[$contentId] = "data:$fullMimeType;base64," . base64_encode($contentBytes);
+                                    }
+                                } catch (Exception $e) {
+                                    $this->errorLogController->logError("Erro ao salvar anexo: " . $e->getMessage(), __FILE__, __LINE__, $user_id);
+                                }
+                            }
+                        
+                            // Substituir referências "cid:" no HTML usando o mapa de Base64
+                            if (!empty($attachmentMap)) {
+                                preg_match_all('/<img[^>]+src="cid:([^"]+)"/', $body_html, $cidMatches, PREG_SET_ORDER);
+                        
+                                foreach ($cidMatches as $match) {
+                                    $cid = $match[1];
+                                    if (isset($attachmentMap[$cid])) {
+                                        // Substitui "cid:" pelo conteúdo Base64
+                                        $body_html = str_replace("cid:$cid", $attachmentMap[$cid], $body_html);
+                                    }
+                                }
+                            }
+                        }
+                        
                 
     
                         $emailId = $this->emailModel->saveEmail(
@@ -554,35 +559,7 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                             }
                         }
     
-                        if ($message->hasAttachments()) {
-                            $attachments = $message->getAttachments();
-                            foreach ($attachments as $attachment) {
-                                try {
-                                    $filename = $attachment->getFilename();
-                                    if (is_null($filename) || empty($filename)) {
-                                        error_log("Anexo ignorado: o nome do arquivo está nulo.");
-                                        continue;
-                                    }
-                                    $mimeTypeName = $attachment->getType();
-                                    $subtype = $attachment->getSubtype();
-                                    $fullMimeType = $mimeTypeName . '/' . $subtype;
-                                    $contentBytes = $attachment->getDecodedContent();
-                                    if ($contentBytes === false) {
-                                        error_log("Falha ao obter o conteúdo do anexo: $filename");
-                                        continue;
-                                    }
-                                    $this->emailModel->saveAttachment(
-                                        $emailId,
-                                        $filename,
-                                        $fullMimeType,
-                                        strlen($contentBytes),
-                                        $contentBytes
-                                    );
-                                } catch (Exception $e) {
-                                    $this->errorLogController->logError("Erro ao salvar anexo: " . $e->getMessage(), __FILE__, __LINE__, $user_id);
-                                }
-                            }
-                        }
+                       
     
                         $event = [
                             'Status' => 'Success',
