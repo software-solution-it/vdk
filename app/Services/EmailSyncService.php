@@ -453,7 +453,6 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
 
                         if ($message->hasAttachments()) {
                             $attachments = $message->getAttachments();
-                            $attachmentMap = []; // Mapear Content-ID para Base64
                         
                             foreach ($attachments as $attachment) {
                                 try {
@@ -482,28 +481,14 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                                         $contentBytes
                                     );
                         
-                                    // Adicionar ao mapa Content-ID -> Base64
-                                    $structure = $attachment->getStructure();
-                                    $contentId = isset($structure->id) ? trim($structure->id, '<>') : null;
-                        
-                                    if ($contentId) {
-                                        $attachmentMap[$contentId] = "data:$fullMimeType;base64," . base64_encode($contentBytes);
-                                    }
+                                    // Procura e substitui o "cid:" diretamente no HTML
+                                    $body_html = preg_replace(
+                                        '/<img[^>]+src="cid:([^"]+)"/',
+                                        '<img src="data:' . $fullMimeType . ';base64,' . base64_encode($contentBytes) . '"',
+                                        $body_html
+                                    );
                                 } catch (Exception $e) {
-                                    $this->errorLogController->logError("Erro ao salvar anexo: " . $e->getMessage(), __FILE__, __LINE__, $user_id);
-                                }
-                            }
-                        
-                            // Substituir referências "cid:" no HTML usando o mapa de Base64
-                            if (!empty($attachmentMap)) {
-                                preg_match_all('/<img[^>]+src="cid:([^"]+)"/', $body_html, $cidMatches, PREG_SET_ORDER);
-                        
-                                foreach ($cidMatches as $match) {
-                                    $cid = $match[1];
-                                    if (isset($attachmentMap[$cid])) {
-                                        // Substitui "cid:" pelo conteúdo Base64
-                                        $body_html = str_replace("cid:$cid", $attachmentMap[$cid], $body_html);
-                                    }
+                                    $this->errorLogController->logError("Erro ao salvar e substituir anexo: " . $e->getMessage(), __FILE__, __LINE__, $user_id);
                                 }
                             }
                         }
