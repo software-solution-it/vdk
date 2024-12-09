@@ -202,13 +202,13 @@ class OutlookOAuth2Service {
         }
     }
 
-    public function syncEmailsOutlook($user_id, $email_account_id, $email_id) {
+    public function syncEmailsOutlook($user_id, $email_account_id) {
         try {
             // Passo 1: Obter a conta de e-mail e o token de acesso
-            $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $email_id);
+            $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $email_account_id);
     
             if (!$emailAccount) {
-                throw new Exception("Email account not found for user ID: $user_id and email ID: $email_id");
+                throw new Exception("Email account not found for user ID: $user_id and email ID: $email_account_id");
             }
     
             $accessToken = $emailAccount['oauth_token'];
