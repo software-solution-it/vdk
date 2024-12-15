@@ -11,29 +11,50 @@ class ProviderService {
     }
 
     public function createProvider($data) {
+        // Validação de campos
         $requiredFields = ['name', 'smtp_host', 'smtp_port', 'imap_host', 'imap_port', 'encryption'];
         $missingFields = $this->validateFields($data, $requiredFields);
-
+    
         if (!empty($missingFields)) {
-            return ['status' => false, 'message' => 'Missing fields: ' . implode(', ', $missingFields)];
+            return [
+                'status' => false, 
+                'message' => 'Validation failed: Missing fields: ' . implode(', ', $missingFields),
+                'error_code' => 'MISSING_FIELDS'
+            ];
         }
-
-        $created = $this->providerModel->create(
-            $data['name'],
-            $data['smtp_host'],
-            $data['smtp_port'],
-            $data['imap_host'],
-            $data['imap_port'],
-            $data['encryption']
-        );
-
-        if ($created) {
-            $provider = $this->providerModel->getById($created);
-            return ['status' => true, 'message' => 'Provider created successfully', 'data' => $provider];
+    
+        // Criação no banco de dados
+        try {
+            $created = $this->providerModel->create(
+                $data['name'],
+                $data['smtp_host'],
+                $data['smtp_port'],
+                $data['imap_host'],
+                $data['imap_port'],
+                $data['encryption']
+            );
+    
+            if ($created) {
+                $provider = $this->providerModel->getById($created);
+                return ['status' => true, 'message' => 'Provider created successfully', 'data' => $provider];
+            }
+    
+            return [
+                'status' => false, 
+                'message' => 'Failed to create provider. Please try again later.',
+                'error_code' => 'CREATE_FAILED'
+            ];
+        } catch (\Exception $e) {
+            // Tratamento de exceção
+            return [
+                'status' => false,
+                'message' => 'An unexpected error occurred while creating provider.',
+                'error_code' => 'UNEXPECTED_ERROR',
+                'details' => $e->getMessage()
+            ];
         }
-
-        return ['status' => false, 'message' => 'Failed to create provider'];
     }
+    
 
     public function updateProvider($id, $data) {
         // Verifica se o registro existe
