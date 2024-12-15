@@ -21,16 +21,16 @@ class ProviderController {
     public function createProvider() {
         header('Content-Type: application/json');
         $data = json_decode(file_get_contents('php://input'), true);
-    
+
         $requiredFields = ['name', 'smtp_host', 'smtp_port', 'imap_host', 'imap_port', 'encryption'];
         $missingFields = [];
-    
+
         foreach ($requiredFields as $field) {
             if (empty($data[$field])) {
                 $missingFields[] = $field;
             }
         }
-    
+
         if (!empty($missingFields)) {
             http_response_code(400);
             echo json_encode([
@@ -40,7 +40,7 @@ class ProviderController {
             ]);
             return;
         }
-    
+
         $response = $this->providerService->createProvider($data);
         http_response_code($response['status'] ? 201 : 500);
         echo json_encode([
@@ -49,31 +49,33 @@ class ProviderController {
             'Data' => $response['status'] ? $response['data'] : null
         ]);
     }
-    
+
     public function updateProvider($id) {
         header('Content-Type: application/json');
         $data = json_decode(file_get_contents('php://input'), true);
-    
-        $requiredFields = ['name', 'smtp_host', 'smtp_port', 'imap_host', 'imap_port', 'encryption'];
-        $missingFields = [];
-    
-        foreach ($requiredFields as $field) {
-            if (empty($data[$field])) {
-                $missingFields[] = $field;
-            }
-        }
-    
-        if (!empty($missingFields)) {
+
+        if (empty($id)) {
             http_response_code(400);
             echo json_encode([
                 'Status' => 'Error',
-                'Message' => 'Missing fields: ' . implode(', ', $missingFields),
+                'Message' => 'Provider ID is required',
                 'Data' => null
             ]);
             return;
         }
-    
+
         $response = $this->providerService->updateProvider($id, $data);
+
+        if ($response['message'] === 'Provider not found') {
+            http_response_code(404);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Provider not found',
+                'Data' => null
+            ]);
+            return;
+        }
+
         http_response_code($response['status'] ? 200 : 500);
         echo json_encode([
             'Status' => $response['status'] ? 'Success' : 'Error',
@@ -81,11 +83,32 @@ class ProviderController {
             'Data' => $response['status'] ? $response['data'] : null
         ]);
     }
-    
-    
+
     public function deleteProvider($id) {
         header('Content-Type: application/json');
+
+        if (empty($id)) {
+            http_response_code(400);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Provider ID is required',
+                'Data' => null
+            ]);
+            return;
+        }
+
         $response = $this->providerService->deleteProvider($id);
+
+        if ($response['message'] === 'Provider not found') {
+            http_response_code(404);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'Provider not found',
+                'Data' => null
+            ]);
+            return;
+        }
+
         http_response_code($response['status'] ? 200 : 500);
         echo json_encode([
             'Status' => $response['status'] ? 'Success' : 'Error',
@@ -93,7 +116,7 @@ class ProviderController {
             'Data' => null
         ]);
     }
-    
+
     public function getAllProviders() {
         header('Content-Type: application/json');
         $response = $this->providerService->getAllProviders();
@@ -107,7 +130,7 @@ class ProviderController {
 
     public function getProviderById($id) {
         header('Content-Type: application/json');
-    
+
         try {
             if (empty($id)) {
                 http_response_code(400);
@@ -118,9 +141,9 @@ class ProviderController {
                 ]);
                 return;
             }
-    
+
             $response = $this->providerService->getProviderById($id);
-    
+
             if ($response) {
                 http_response_code(200);
                 echo json_encode([
