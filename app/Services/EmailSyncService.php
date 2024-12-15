@@ -111,7 +111,7 @@ class EmailSyncService
                     $task['password']
                 );
             }   else if($task['provider_id'] == 3){ 
-                $this->outlookOAuth2Service->syncEmailsOutlook($task['user_id'],$task['email_account_id'], $task['provider_id']);
+                $this->outlookOAuth2Service->syncEmailsOutlook($task['user_id'],$task['email_account_id']);
 
             }   else if ($task['provider_id'] == 1){
                 $this->gmailOauth2Service->syncEmailsGmail($task['user_id'],$task['email_account_id'], $task['provider_id']);

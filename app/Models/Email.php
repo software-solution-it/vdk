@@ -14,8 +14,6 @@ class Email {
     private $errorLogController;
 
 
-
-
     public function __construct($db) {
         $this->conn = $db;
 
