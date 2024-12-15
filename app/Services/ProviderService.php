@@ -48,8 +48,8 @@ class ProviderService {
             // Tratamento de exceção
             return [
                 'status' => false,
-                'message' => 'An unexpected error occurred while creating provider.',
-                'error_code' => 'UNEXPECTED_ERROR',
+                'message' => 'Provider with this name already exists.',
+                'error_code' => 'CREATE_FAILED',
                 'details' => $e->getMessage()
             ];
         }
