@@ -54,75 +54,47 @@ class ProviderService {
         }
     }
     
+
     public function updateProvider($id, $data) {
-        // Verifica se o registro existe
+        try{
         $existingProvider = $this->providerModel->getById($id);
         if (!$existingProvider) {
-            return [
-                'status' => false,
-                'message' => 'Provider not found',
-                'error_code' => 'PROVIDER_NOT_FOUND'
-            ];
+            return ['status' => false, 'message' => 'Provider not found'];
         }
-    
+
         // Valida campos obrigatórios
         $requiredFields = ['name', 'smtp_host', 'smtp_port', 'imap_host', 'imap_port', 'encryption'];
         $missingFields = $this->validateFields($data, $requiredFields);
-    
+
         if (!empty($missingFields)) {
-            return [
-                'status' => false,
-                'message' => 'Missing fields: ' . implode(', ', $missingFields),
-                'error_code' => 'MISSING_FIELDS'
-            ];
+            return ['status' => false, 'message' => 'Missing fields: ' . implode(', ', $missingFields)];
         }
-    
-        // Verifica duplicidade do nome (se já pertence a outro registro)
-        $providerWithSameName = $this->providerModel->getByName($data['name']);
-        if ($providerWithSameName && $providerWithSameName['id'] != $id) {
-            return [
-                'status' => false,
-                'message' => 'Provider with this name already exists.',
-                'error_code' => 'DUPLICATE_NAME'
-            ];
+
+        // Atualiza o registro
+        $updated = $this->providerModel->update(
+            $id,
+            $data['name'],
+            $data['smtp_host'],
+            $data['smtp_port'],
+            $data['imap_host'],
+            $data['imap_port'],
+            $data['encryption']
+        );
+
+        if ($updated) {
+            $provider = $this->providerModel->getById($id);
+            return ['status' => true, 'message' => 'Provider updated successfully', 'data' => $provider];
         }
-    
-        // Tenta atualizar o registro
-        try {
-            $updated = $this->providerModel->update(
-                $id,
-                $data['name'],
-                $data['smtp_host'],
-                $data['smtp_port'],
-                $data['imap_host'],
-                $data['imap_port'],
-                $data['encryption']
-            );
-    
-            if ($updated) {
-                $provider = $this->providerModel->getById($id);
-                return [
-                    'status' => true,
-                    'message' => 'Provider updated successfully',
-                    'data' => $provider
-                ];
-            }
-    
-            return [
-                'status' => false,
-                'message' => 'Failed to update provider. Please try again later.',
-                'error_code' => 'UPDATE_FAILED'
-            ];
-        } catch (\Exception $e) {
-            return [
-                'status' => false,
-                'message' => 'Provider with this name already exists.',
-                'error_code' => 'UPDATE_FAILED',
-                'details' => $e->getMessage()
-            ];
-        }
+        
+    }catch (\Exception $e) {
+        return [
+            'status' => false,
+            'message' => 'Provider with this name already exists.',
+            'error_code' => 'UPDATE_FAILED',
+            'details' => $e->getMessage()
+        ];
     }
-    
+    }
 
     public function deleteProvider($id) {
         // Verifica se o registro existe
