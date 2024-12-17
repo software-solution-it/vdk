@@ -416,9 +416,7 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                                         $contentBytes
                                     );
                         
-                                    if (strpos($body_html, 'cid:') !== false) {
-                                        $body_html = $this->replaceCidWithBase64($body_html, $attachment);
-                                    }
+                                    $body_html = $this->replaceCidWithBase64($body_html, $attachment);
                                 } catch (Exception $e) {
                                     $this->errorLogController->logError(
                                         "Erro ao salvar anexo e substituir CID: " . $e->getMessage(),
