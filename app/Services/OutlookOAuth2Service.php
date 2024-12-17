@@ -234,9 +234,19 @@ class OutlookOAuth2Service {
 
             $folders = ['INBOX_PROCESSED', 'SPAM_PROCESSED', 'TRASH_PROCESSED'];
 
-            foreach ($folders as $folderName) {
-                $url = 'https://graph.microsoft.com/v1.0/me/mailFolders';
+            // Passo 1: Obter as pastas existentes
+            $existingFolders = $this->getMailFolders($accessToken);
         
+            // Passo 2: Criar pastas se não existirem
+            foreach ($folders as $folderName) {
+                // Verificar se a pasta já existe
+                if (in_array($folderName, array_column($existingFolders, 'displayName'))) {
+                    $this->errorLogController->logError("A pasta '$folderName' já existe. Ignorando criação.", __FILE__, __LINE__);
+                    continue;  // Pula para a próxima pasta
+                }
+         
+                // Se a pasta não existir, cria a pasta
+                $url = 'https://graph.microsoft.com/v1.0/me/mailFolders';
                 $body = [
                     "displayName" => $folderName
                 ];
@@ -694,6 +704,24 @@ class OutlookOAuth2Service {
             throw new Exception('Error while syncing emails: ' . $e->getMessage());
         }
     }
+
+    private function getMailFolders($accessToken)
+{
+    try {
+        $response = $this->httpClient->get('https://graph.microsoft.com/v1.0/me/mailFolders', [
+            'headers' => [
+                'Authorization' => 'Bearer ' . $accessToken,
+                'Accept' => 'application/json'
+            ]
+        ]);
+
+        $folders = json_decode($response->getBody(), true);
+        return $folders['value'] ?? [];
+    } catch (Exception $e) {
+        $this->errorLogController->logError("Erro ao obter pastas de e-mail: " . $e->getMessage(), __FILE__, __LINE__);
+        return [];
+    }
+}
     
     // Função auxiliar para obter o ID da pasta pelo nome
     private function getFolderIdByName($folderName, $accessToken) {
