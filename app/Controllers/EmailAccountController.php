@@ -14,14 +14,25 @@ class EmailAccountController {
         $db = $database->getConnection();
         $this->emailAccountService = new EmailAccountService($db);
         $this->errorLogController = new ErrorLogController(); 
-    }
+    } 
 
     public function createEmailAccount() {
         header('Content-Type: application/json');
         $data = json_decode(file_get_contents("php://input"), true);
-
+    
         try {
             $result = $this->emailAccountService->createEmailAccount($data);
+            
+            if (isset($result['status']) && !$result['status']) {
+                http_response_code(400); 
+                echo json_encode([
+                    'Status' => 'Error',
+                    'Message' => $result['message'], 
+                    'Data' => null
+                ]);
+                return;
+            }
+    
             http_response_code(201);
             echo json_encode([
                 'Status' => 'Success',
@@ -38,6 +49,7 @@ class EmailAccountController {
             ]);
         }
     }
+    
 
     public function updateEmailAccount($id) {
         header('Content-Type: application/json');
