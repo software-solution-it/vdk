@@ -106,13 +106,13 @@ class User {
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(":id", $id);
         $stmt->execute();
-    
+        
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$user) {
-            return null;
+            return null;  
         }
-    
+        
         $userData = [
             'id' => $user['id'],
             'name' => $user['name'],
@@ -121,7 +121,7 @@ class User {
             'created_at' => $user['created_at'],
             'email_accounts' => [] 
         ];
-    
+        
         if ($user['email_account_id']) {
             $userData['email_accounts'][] = [
                 'id' => $user['email_account_id'],
@@ -129,9 +129,10 @@ class User {
                 'provider_id' => $user['provider_id']
             ];
         }
-    
+        
         return $userData;
     }
+    
     
     
 
