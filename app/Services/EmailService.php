@@ -415,8 +415,13 @@ class EmailService {
         ];
     }
 
-    public function viewEmailThread($email_id) {
+    public function viewEmailThread($email_id, $order = 'DESC') {
         try {
+            $order = strtoupper($order);
+            if (!in_array($order, ['ASC', 'DESC'])) {
+                throw new Exception("Invalid sorting parameter. Use 'ASC' or 'DESC'.");
+            }
+    
             $query = "
                 SELECT conversation_id
                 FROM mail.emails
@@ -429,7 +434,7 @@ class EmailService {
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
     
             if (!$result || !$result['conversation_id']) {
-                throw new Exception("E-mail não pertence a uma conversa ou não encontrado.");
+                throw new Exception("Email does not belong to a conversation or was not found.");
             }
     
             $conversation_id = $result['conversation_id'];
@@ -438,7 +443,7 @@ class EmailService {
                 SELECT id, email_id, subject, sender, recipient, body_html, body_text, date_received, in_reply_to, `references`, folder_id, conversation_step
                 FROM mail.emails
                 WHERE conversation_id = :conversation_id
-                ORDER BY conversation_step DESC
+                ORDER BY conversation_step $order
             ";
             $stmt = $this->db->prepare($query);
             $stmt->bindParam(':conversation_id', $conversation_id, PDO::PARAM_STR);
@@ -471,10 +476,11 @@ class EmailService {
                 'attachments' => $allAttachments,
             ];
         } catch (Exception $e) {
-            $this->errorLogController->logError("Erro ao visualizar a thread: " . $e->getMessage(), __FILE__, __LINE__, null);
-            throw new Exception("Erro ao visualizar a thread: " . $e->getMessage());
+            $this->errorLogController->logError("Error viewing email thread: " . $e->getMessage(), __FILE__, __LINE__, null);
+            throw new Exception("Error viewing email thread: " . $e->getMessage());
         }
     }
+    
 
 
     public function getAttachmentById($attachment_id) {

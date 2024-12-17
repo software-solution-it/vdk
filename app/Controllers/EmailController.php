@@ -592,13 +592,28 @@ class EmailController {
 
     public function viewEmail($email_id) {
         header('Content-Type: application/json');
+        
+        $order = isset($_GET['order']) ? $_GET['order'] : 'DESC';
+    
+        $order = strtoupper($order);
+        if (!in_array($order, ['ASC', 'DESC'])) {
+            http_response_code(400);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => "Invalid 'order' parameter. Use 'ASC' or 'DESC'.",
+                'Data' => null
+            ]);
+            return;
+        }
+    
         $requiredParams = ['email_id'];
         if (!$this->validateParams($requiredParams, ['email_id' => $email_id])) {
             return;
         }
-
+    
         try {
-            $email = $this->emailService->viewEmailThread($email_id);
+            $email = $this->emailService->viewEmailThread($email_id, $order);
+    
             if ($email) {
                 http_response_code(200);
                 echo json_encode([
@@ -610,7 +625,7 @@ class EmailController {
                 http_response_code(404);
                 echo json_encode([
                     'Status' => 'Error',
-                    'Message' => 'E-mail não encontrado.',
+                    'Message' => 'Email not found.',
                     'Data' => null
                 ]);
             }
@@ -619,9 +634,11 @@ class EmailController {
             http_response_code(500);
             echo json_encode([
                 'Status' => 'Error',
-                'Message' => 'Erro ao visualizar o e-mail: ' . $e->getMessage(),
+                'Message' => 'An error occurred while retrieving the email: ' . $e->getMessage(),
                 'Data' => null
             ]); 
         }
     }
+    
+    
 }

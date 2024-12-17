@@ -14,13 +14,12 @@ class IMAPController {
         header('Content-Type: application/json');
     
         try {
+            $requiredParams = ['email', 'password', 'imap_host', 'imap_port', 'encryption'];
             $data = json_decode(file_get_contents('php://input'), true);
-    
-            $requiredParams = ['user_id', 'email_id'];
             $missingParams = [];
     
             foreach ($requiredParams as $param) {
-                if (!isset($data[$param])) {
+                if (!isset($data[$param]) || empty($data[$param])) {
                     $missingParams[] = $param;
                 }
             }
@@ -35,11 +34,21 @@ class IMAPController {
                 return;
             }
     
-            $user_id = $data['user_id'];
-            $email_id = $data['email_id'];
+            $email = $data['email'];
+            $password = $data['password'];
+            $imap_host = $data['imap_host'];
+            $imap_port = $data['imap_port'];
+            $encryption = $data['encryption'];
     
-            $result = $this->connectionIMAPService->testIMAPConnection($user_id, $email_id);
+            $result = $this->connectionIMAPService->testIMAPConnection(
+                $email,
+                $password,
+                $imap_host,
+                $imap_port,
+                $encryption
+            );
     
+            // Retorno da resposta
             http_response_code($result['status'] ? 200 : 500);
             echo json_encode([
                 'Status' => $result['status'] ? 'Success' : 'Error',
@@ -56,6 +65,7 @@ class IMAPController {
             ]);
         }
     }
+    
     
     
 }
