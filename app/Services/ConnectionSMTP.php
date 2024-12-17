@@ -23,6 +23,12 @@ class ConnectionSMTP {
         $mail = new PHPMailer(true);
     
         try {
+            // Validação inicial
+            if (empty($smtp_host) || empty($smtp_port) || empty($email) || empty($password) || empty($recipient)) {
+                throw new Exception('Missing required SMTP parameters.');
+            }
+    
+            // Configuração do PHPMailer
             $mail->isSMTP();
             $mail->Host       = $smtp_host;
             $mail->SMTPAuth   = true;
@@ -30,6 +36,10 @@ class ConnectionSMTP {
             $mail->Password   = $password; 
             $mail->SMTPSecure = $encryption; 
             $mail->Port       = $smtp_port;
+            $mail->Timeout    = 6;
+    
+            $mail->SMTPKeepAlive = false; 
+            $mail->SMTPDebug     = 0;
     
             $mail->CharSet = 'UTF-8';
             $mail->setFrom($email, 'SMTP Test'); 
@@ -52,6 +62,7 @@ class ConnectionSMTP {
             ];
         }
     }
+    
     
     
 }
