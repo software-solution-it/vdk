@@ -55,12 +55,13 @@ class OutlookOAuth2Service {
     public function initializeOAuthParameters($emailAccount, $user_id, $email_id) {
         $this->clientId = $emailAccount['client_id'];
         $this->clientSecret = $emailAccount['client_secret'];
-
+    
         $extraParams = base64_encode(json_encode(['user_id' => $user_id, 'email_id' => $email_id]));
-
+    
+        // Certifique-se de que o redirecionamento é correto
         $this->redirectUri = 'http://localhost:3000/callback?extra=' . urlencode($extraParams);
     }
-
+    
     public function getAuthorizationUrl($user_id, $email_id) {
         try {
             // Obter a conta de e-mail
@@ -79,20 +80,20 @@ class OutlookOAuth2Service {
                 'timestamp' => time()
             ]));
     
-            // Construir a URL de autorização
+            // Defina corretamente a URL de autorização com o tenant correto (se necessário)
             $authorizationUrl = 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize?'
                 . http_build_query([
                     'client_id' => $this->clientId,
                     'response_type' => 'code',
                     'redirect_uri' => $this->redirectUri,
-                    'scope' => implode(' ', $this->scopes),
+                    'scope' => implode(' ', $this->scopes), // Certifique-se de que o escopo está correto
                     'response_mode' => 'query',
                     'state' => $state
                 ]);
     
             return [
                 'status' => true,
-                'authorization_url' => $authorizationUrl
+                'authorization_url' => $authorizationUrl 
             ];
     
         } catch (Exception $e) {
@@ -100,16 +101,17 @@ class OutlookOAuth2Service {
             throw new Exception('Error generating authorization URL: ' . $e->getMessage());
         }
     }
-
+    
     public function getAccessToken($user_id, $email_id, $code) {
         try {
             $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $email_id);
             if (!$emailAccount) {
                 throw new Exception("Email account not found for user ID: $user_id and email ID: $email_id");
             }
-
-            $this->initializeOAuthParameters($emailAccount, $user_id, $email_id);     
-
+    
+            $this->initializeOAuthParameters($emailAccount, $user_id, $email_id);
+    
+            // Solicitar o access token usando o código de autorização
             $response = $this->httpClient->post('https://login.microsoftonline.com/common/oauth2/v2.0/token', [
                 'form_params' => [
                     'client_id' => $this->clientId,
@@ -117,12 +119,12 @@ class OutlookOAuth2Service {
                     'code' => $code,
                     'redirect_uri' => $this->redirectUri,
                     'grant_type' => 'authorization_code',
-                    'scope' => implode(' ', $this->scopes)
+                    'scope' => implode(' ', $this->scopes)  // Certifique-se de que o escopo está correto
                 ]
             ]);
-
+    
             $body = json_decode($response->getBody(), true);
-
+    
             if (isset($body['access_token']) && isset($body['refresh_token'])) {
                 $this->emailAccountModel->update(
                     $emailAccount['id'],
@@ -134,7 +136,7 @@ class OutlookOAuth2Service {
                     $emailAccount['client_id'],
                     $emailAccount['client_secret']
                 );
-
+    
                 return [
                     'access_token' => $body['access_token'],
                     'refresh_token' => $body['refresh_token']
@@ -142,7 +144,7 @@ class OutlookOAuth2Service {
             } else {
                 throw new Exception('Access token or refresh token not found in response');
             }
-
+    
         } catch (RequestException $e) {
             $this->errorLogController->logError('Failed to get access token: ' . $e->getMessage(), __FILE__, __LINE__, $user_id);
             throw new Exception('Failed to get access token: ' . $e->getMessage());
@@ -151,6 +153,7 @@ class OutlookOAuth2Service {
             throw new Exception('Error during access token retrieval: ' . $e->getMessage());
         }
     }
+    
 
     public function refreshAccessToken($user_id, $email_id) {
         try {

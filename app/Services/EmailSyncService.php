@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\FolderAssociation;
 use Ddeboer\Imap\Server;
-use Ddeboer\Imap\Search\Date\Since;
 use Ddeboer\Imap\Message\EmailAddress;
 use App\Models\Email;
 use App\Models\EmailAccount;
@@ -55,7 +54,7 @@ class EmailSyncService
         $this->syncEmailsByUserIdAndProviderId($user_id, $email_id);
     } catch (Exception $e) {
         $this->errorLogController->logError("Erro no startConsumer: " . $e->getMessage(), __FILE__, __LINE__, $user_id);
-        throw $e; // Relance a exceção se quiser que seja capturada pelo catch externo
+        throw $e;
     }
     }
 
@@ -248,14 +247,13 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
             if ($associationsResponse['Status'] === 'Success') {
                 $associations = $associationsResponse['Data'];
             } else {
-                // Trata o erro se a resposta não for bem-sucedida
                 $this->errorLogController->logError(
                     "Falha ao recuperar associações: " . $associationsResponse['Message'],
                     __FILE__,
                     __LINE__,
                     $user_id
                 );
-                $associations = []; // Define como um array vazio para evitar erros posteriores
+                $associations = []; 
             }
             
             $processedFolders = ['INBOX_PROCESSED', 'SPAM_PROCESSED', 'TRASH_PROCESSED'];
@@ -267,7 +265,6 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
             }
             
             foreach (['INBOX', 'SPAM', 'TRASH'] as $folderType) {
-                // Filtra as associações pelo tipo de pasta
                 $filteredAssociations = array_filter($associations, function ($assoc) use ($folderType) {
                     return $assoc['folder_type'] === $folderType;
                 });
@@ -305,7 +302,6 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
             
                     $messages = $originalMailbox->getMessages();
 
-                    // Log para mensagens originais
                     $this->errorLogController->logError(
                         "Mensagens: " . json_encode($messages, JSON_PRETTY_PRINT),
                         __FILE__,
@@ -313,17 +309,15 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                         $user_id
                     );
                     
-                    // Remove mensagens duplicadas
                     $uniqueMessages = [];
                     foreach ($messages as $message) {
                         $messageId = $message->getId();
                         if (!isset($uniqueMessages[$messageId])) {
-                            $uniqueMessages[$messageId] = $message; // Armazena a mensagem com o ID como chave
+                            $uniqueMessages[$messageId] = $message; 
                         }
                     }
-                    $messages = array_values($uniqueMessages); // Reorganiza as mensagens únicas como um array numerado
+                    $messages = array_values($uniqueMessages);
                     
-                    // Log para mensagens únicas
                     $this->errorLogController->logError(
                         "Mensagens únicas: " . json_encode($messages, JSON_PRETTY_PRINT),
                         __FILE__,
