@@ -109,9 +109,6 @@ class OutlookOAuth2Service {
                 throw new Exception("Email account not found for user ID: $user_id and email ID: $email_id");
             }
     
-            $this->initializeOAuthParameters($emailAccount, $user_id, $email_id);
-    
-            // Solicitar o access token usando o código de autorização
             $response = $this->httpClient->post('https://login.microsoftonline.com/common/oauth2/v2.0/token', [
                 'form_params' => [
                     'client_id' => $this->clientId,
@@ -119,7 +116,7 @@ class OutlookOAuth2Service {
                     'code' => $code,
                     'redirect_uri' => $this->redirectUri,
                     'grant_type' => 'authorization_code',
-                    'scope' => implode(' ', $this->scopes)  // Certifique-se de que o escopo está correto
+                    'scope' => implode(' ', $this->scopes)
                 ]
             ]);
     
