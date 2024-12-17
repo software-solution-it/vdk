@@ -151,11 +151,12 @@ class EmailController {
                         $recipientEmails,
                         $subject,
                         $htmlTemplate,
-                        $inReplyTo,
+                        "",
                         $priority,
                         $attachments,
                         $ccEmails,
-                        $bccEmails
+                        $bccEmails,
+                        $inReplyTo
                     );
     
                     $sendResults[] = [
