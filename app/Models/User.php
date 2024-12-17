@@ -70,17 +70,21 @@ class User {
     }
 
     public function getByEmail($email) {
-        $query = "SELECT u.id, u.name, u.email, r.role_name, u.created_at
-                  FROM " . $this->table . " u 
-                  JOIN " . $this->roleTable . " r ON u.role_id = r.id 
-                  WHERE u.email = :email"; 
-        
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return null;
+        }
+    
+        $query = "SELECT id, name, email, password, verification_code, code_expiration, role_id, is_verified, created_at
+                  FROM " . $this->table . " 
+                  WHERE email = :email";
+    
         $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(":email", $email);  
+        $stmt->bindParam(":email", $email, PDO::PARAM_STR);
         $stmt->execute();
     
-        return $stmt->fetch(PDO::FETCH_ASSOC); 
+        return $stmt->fetch(PDO::FETCH_ASSOC);
     }
+    
     
 
     public function getUserById($id) {
