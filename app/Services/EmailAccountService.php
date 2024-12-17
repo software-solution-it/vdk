@@ -37,38 +37,52 @@ class EmailAccountService {
     
         return $missingFields;
     }
-    
 
     public function createEmailAccount($data) {
         $requiredFields = ['user_id', 'email', 'provider_id', 'password', 'oauth_token', 'refresh_token', 'client_id', 'client_secret', 'is_basic'];
         $missingFields = $this->validateFields($data, $requiredFields);
     
         if (!empty($missingFields)) {
-            return null; // Retorna null se faltar algum campo obrigatório
+            return [
+                'status' => false,
+                'message' => 'Missing fields: ' . implode(', ', $missingFields),
+                'data' => null,
+                'http_code' => 400
+            ];
         }
     
-        // Verifica se o usuário existe
         $user = $this->userModel->getUserById($data['user_id']);
         if (!$user) {
-            return null; // Retorna null se o usuário não existir
+            return [
+                'status' => false,
+                'message' => 'User does not exist',
+                'data' => null,
+                'http_code' => 400
+            ]; 
         }
     
-        // Verifica se o provider existe
         $provider = $this->providerModel->getById($data['provider_id']);
         if (!$provider) {
-            return null; // Retorna null se o provider não existir
+            return [
+                'status' => false,
+                'message' => 'Provider does not exist',
+                'data' => null,
+                'http_code' => 400
+            ]; 
         }
     
-        // Verifica se já existe uma conta de e-mail com o mesmo email e provider
         $existingEmailAccount = $this->emailAccountModel->getByEmailAndProvider($data['email'], $data['provider_id']);
         if ($existingEmailAccount) {
-            return null; // Retorna null se o email já estiver associado a esse provider
+            return [
+                'status' => false,
+                'message' => 'Email account already exists for this provider',
+                'data' => null,
+                'http_code' => 400
+            ]; 
         }
     
-        // Criptografa a senha
         $encryptedPassword = EncryptionHelper::encrypt($data['password']);
     
-        // Cria a conta de e-mail
         $emailAccountId = $this->emailAccountModel->create(
             $data['user_id'],
             $data['email'],
@@ -81,23 +95,28 @@ class EmailAccountService {
             $data['is_basic'] ?? true
         );
     
-        // Se a criação for bem-sucedida, retorna os dados da conta de e-mail criada
         if ($emailAccountId) {
-            // Busca os dados da conta de e-mail recém-criada
-            return $this->emailAccountModel->getById($emailAccountId);
+            $createdEmailAccount = $this->emailAccountModel->getById($emailAccountId);
+            return [
+                'status' => true,
+                'message' => 'Email account created successfully.',
+                'data' => $createdEmailAccount,
+                'http_code' => 201
+            ];
         }
     
-        return null; // Retorna null se a criação falhar
+        return [
+            'status' => false,
+            'message' => 'Failed to create email account',
+            'data' => null,
+            'http_code' => 400
+        ];
     }
-    
-    
-    
-    
 
     public function updateEmailAccount($id, $data) {
         $existingEmailAccount = $this->emailAccountModel->getById($id);
         if (!$existingEmailAccount) {
-            return ['status' => false, 'message' => 'Email account not found'];
+            return ['status' => false, 'message' => 'Email account not found', 'data' => null, 'http_code' => 400];
         }
     
         $requiredFields = ['email', 'provider_id', 'oauth_token', 'refresh_token', 'client_id', 'client_secret', 'is_basic'];
@@ -106,7 +125,7 @@ class EmailAccountService {
         });
     
         if (!empty($missingFields)) {
-            return ['status' => false, 'message' => 'Missing fields: ' . implode(', ', $missingFields)];
+            return ['status' => false, 'message' => 'Missing fields: ' . implode(', ', $missingFields), 'data' => null, 'http_code' => 400];
         }
     
         $encryptedPassword = isset($data['password']) && $data['password'] !== '' 
@@ -131,26 +150,20 @@ class EmailAccountService {
             return $this->emailAccountModel->getById($id);
         }
     
-        return ['status' => false, 'message' => 'Failed to update email account'];
+        return ['status' => false, 'message' => 'Failed to update email account', 'data' => null, 'http_code' => 400];
     }
     
-    
-    
-
     public function deleteEmailAccount($id) {
         $emailAccount = $this->emailAccountModel->getById($id);
         
         if (!$emailAccount) {
-            return ['status' => false, 'message' => 'Email account not found'];
+            return ['status' => false, 'message' => 'Email account not found', 'data' => null, 'http_code' => 400];
         }
     
         $emails = $this->emailModel->getEmailsByUserId($id);
         foreach ($emails as $email) {
-            
             $this->emailAttachmentModel->deleteAttachmentsByEmailId($email['id']);
-
             $this->emailModel->deleteEmail($email['email_id']);
-            
         }
 
         $this->emailFolderModel->deleteFoldersByEmailAccountId($id);
@@ -158,22 +171,17 @@ class EmailAccountService {
         $deleted = $this->emailAccountModel->delete($id);
     
         if ($deleted) {
-            return ['status' => true, 'message' => 'Email account and all associated data deleted successfully'];
+            return ['status' => true, 'message' => 'Email account and all associated data deleted successfully', 'data' => null, 'http_code' => 200];
         }
         
-        return ['status' => false, 'message' => 'Failed to delete email account and associated data'];
+        return ['status' => false, 'message' => 'Failed to delete email account and associated data', 'data' => null, 'http_code' => 400];
     }
     
-
     public function getEmailAccountByUserId($id) {
-        $result = $this->emailAccountModel->getEmailAccountByUserId($id);
-
-        return $result; 
+        return $this->emailAccountModel->getEmailAccountByUserId($id);
     }
 
     public function getEmailAccountById($id) {
-        $result = $this->emailAccountModel->getEmailAccountById($id);
-
-        return $result; 
+        return $this->emailAccountModel->getEmailAccountById($id);
     }
 }
