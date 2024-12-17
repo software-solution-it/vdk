@@ -232,9 +232,6 @@ class EmailService {
     
             $attachments = $this->emailAttachmentModel->getAttachmentsByEmailId($email_id);
             foreach ($attachments as $attachment) {
-                if (file_exists($attachment['file_path'])) {
-                    unlink($attachment['file_path']); 
-                }
 
                 $this->emailAttachmentModel->deleteAttachmentsByEmailId($email_id);
             }

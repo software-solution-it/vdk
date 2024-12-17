@@ -11,14 +11,13 @@ class EmailAttachment {
     }
 
 
-    public function saveAttachment($email_id, $filename, $file_path, $mime_type, $size) {
-        $query = "INSERT INTO " . $this->table . " (email_id, filename, file_path, mime_type, size) 
-                  VALUES (:email_id, :filename, :file_path, :mime_type, :size)";
+    public function saveAttachment($email_id, $filename, $mime_type, $size) {
+        $query = "INSERT INTO " . $this->table . " (email_id, filename, mime_type, size) 
+                  VALUES (:email_id, :filename, :mime_type, :size)";
 
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':email_id', $email_id);
         $stmt->bindParam(':filename', $filename);
-        $stmt->bindParam(':file_path', $file_path);
         $stmt->bindParam(':mime_type', $mime_type);
         $stmt->bindParam(':size', $size);
 
