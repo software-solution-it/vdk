@@ -87,26 +87,29 @@ class UserController {
         $data = json_decode(file_get_contents("php://input"));
     
         if (!empty($data->id) && !empty($data->name) && !empty($data->email) && !empty($data->role_id)) {
+            // Verifica se a senha foi fornecida
             $password = !empty($data->password) ? $data->password : null;
             
+            // Chama o serviço para atualizar o usuário
             $response = $this->userService->updateUser($data->id, $data->name, $data->email, $data->role_id, $password);
-
-
-            http_response_code($response['status'] ? 200 : 500);
+    
+            // Retorna a resposta baseada no status da operação
+            http_response_code($response['http_code']);
             echo json_encode([
                 'Status' => $response['status'] ? 'Success' : 'Error',
-                'Message' => $response['status'] ? 'User updated successfully' : 'Failed to update user',
-                'Data' => null
+                'Message' => $response['message'],
+                'Data' => $response['data']
             ]);
         } else {
             http_response_code(400);
             echo json_encode([
                 'Status' => 'Error',
-                'Message' => 'Incomplete data. ID, name, email, and role_id are required.',
+                'Message' => 'Incomplete data. id, name, email, and role_id are required.',
                 'Data' => null
             ]);
         }
     }
+    
     
 
     public function deleteUser() {

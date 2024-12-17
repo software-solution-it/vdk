@@ -63,6 +63,7 @@ class UserService {
 
     public function updateUser($id, $name, $email, $role_id, $password = null) {
         try {
+            // Verifica se o usuário existe
             $user = $this->userModel->getUserById($id);
             if (!$user) {
                 return [
@@ -73,6 +74,7 @@ class UserService {
                 ];
             }
     
+            // Verifica se o role_id fornecido existe
             $roleExists = $this->roleModel->getById($role_id);
             if (!$roleExists) {
                 return [
@@ -83,6 +85,7 @@ class UserService {
                 ];
             }
     
+            // Verifica se o e-mail já está em uso por outro usuário (se o e-mail foi alterado)
             if ($email !== $user['email']) {
                 $existingUser = $this->userModel->getByEmail($email);
                 if ($existingUser) {
@@ -95,12 +98,14 @@ class UserService {
                 }
             }
     
+            // Se a senha foi fornecida, criptografa a senha
             if ($password) {
                 $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
             } else {
-                $hashedPassword = $user['password'];
-            } 
+                $hashedPassword = $user['password']; // Mantém a senha atual
+            }
     
+            // Tenta atualizar o usuário
             $updateResult = $this->userModel->update($id, $name, $email, $role_id, $hashedPassword);
             
             if ($updateResult) {
@@ -113,7 +118,7 @@ class UserService {
             } else {
                 return [
                     'status' => false,
-                    'message' => 'Failed to update user.',
+                    'message' => 'Failed to update user, no changes were made.',
                     'data' => null,
                     'http_code' => 500
                 ];
