@@ -416,6 +416,9 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                                         $contentBytes
                                     );
                         
+                                    if (strpos($body_html, 'cid:') !== false) {
+                                        $body_html = $this->replaceCidWithBase64($body_html, $attachment);
+                                    }
                                 } catch (Exception $e) {
                                     $this->errorLogController->logError(
                                         "Erro ao salvar anexo e substituir CID: " . $e->getMessage(),
@@ -451,76 +454,41 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                              
                         );
     
-                        if ($body_html) {
-                            // Encontrar todas as imagens referenciadas no HTML
-                            preg_match_all('/<img[^>]+src="cid:([^"]+)"/i', $body_html, $matches, PREG_SET_ORDER);
-                        
-                            $attachments = $message->getAttachments();
-                        
-                            foreach ($matches as $match) {
-                                $cid = $match[1]; // Pega o CID sem "cid:"
-                        
-                                foreach ($attachments as $attachment) {
-                                    $attachmentCid = $this->getContentIdFromAttachment($attachment);
-                        
-                                    if ($attachmentCid === $cid) {
-                                        try { 
-                                            // Salvar o anexo correspondente ao CID
-                                            $filename = uniqid("inline_img_") . '.' . pathinfo($attachment->getFilename(), PATHINFO_EXTENSION);
-                                            $decodedContent = $attachment->getDecodedContent();
-                        
-                                            if ($decodedContent !== false) {
-                                                $this->emailModel->saveAttachment(
-                                                    $emailId,
-                                                    $filename,
-                                                    'image/' . pathinfo($filename, PATHINFO_EXTENSION),
-                                                    strlen($decodedContent),
-                                                    $decodedContent
-                                                );
-                                                error_log("Imagem embutida $filename salva com sucesso.");
-                                            }
-                                        } catch (Exception $e) {
-                                            $this->errorLogController->logError(
-                                                "Erro ao salvar imagem inline: " . $e->getMessage(),
-                                                __FILE__,
-                                                __LINE__,
-                                                $user_id
-                                            );
-                                        }
-                                    }
-                                }
-                            }
+                        // 1. Captura todas as imagens referenciadas no HTML (src="cid:...")
+    preg_match_all('/<img[^>]+src="cid:([^"]+)"/i', $body_html, $matches, PREG_SET_ORDER);
 
-                            foreach ($attachments as $attachment) {
-                                $attachmentCid = $this->getContentIdFromAttachment($attachment);
-                        
-                                // Se o anexo já foi processado como inline, ignore
-                                if ($attachmentCid && in_array($attachmentCid, $processedCids)) {
-                                    continue;
-                                }
-                        
-                                try {
-                                    $filename = $attachment->getFilename() ?: uniqid("attachment_") . '.' . $attachment->getSubtype();
-                                    $decodedContent = $attachment->getDecodedContent();
-                        
-                                    if ($decodedContent !== false) {
-                                        $this->emailModel->saveAttachment(
-                                            $emailId, 
-                                            $filename,
-                                            'application/octet-stream', // Tipo MIME genérico
-                                            strlen($decodedContent),
-                                            $decodedContent
-                                        );
-                                        error_log("Anexo salvo: $filename.");
-                                    }
-                                } catch (Exception $e) {
-                                    error_log("Erro ao salvar anexo: " . $e->getMessage());
-                                }
-                            }
+    $attachments = $message->getAttachments();
+    $processedCids = []; // Para evitar duplicação de anexos
+
+    // 2. Processar anexos inline referenciados no HTML
+    foreach ($matches as $match) {
+        $cid = $match[1]; // CID sem "cid:"
+
+        foreach ($attachments as $attachment) {
+            $attachmentCid = $this->getContentIdFromAttachment($attachment);
+
+            if ($attachmentCid === $cid) {
+                try {
+                    $filename = uniqid("inline_img_") . '.' . pathinfo($attachment->getFilename(), PATHINFO_EXTENSION);
+                    $decodedContent = $attachment->getDecodedContent();
+
+                    if ($decodedContent !== false) {
+                        $this->emailModel->saveAttachment(
+                            $emailId,
+                            $filename,
+                            'image/' . pathinfo($filename, PATHINFO_EXTENSION),
+                            strlen($decodedContent),
+                            $decodedContent
+                        );
+                        $processedCids[] = $attachmentCid; // Marca como processado
+                        error_log("Imagem inline salva: $filename.");
+                    }
+                } catch (Exception $e) {
+                    error_log("Erro ao salvar imagem inline: " . $e->getMessage());
+                }
+            }
+        }
                         }
-                        
-                        
-                        
     
                        
     
@@ -571,34 +539,43 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                     'uuid' => uniqid(),
                 ]
             ];
-            
             $this->webhookService->triggerEvent($event, $user_id);
             error_log("Erro durante a sincronização de e-mails: " . $e->getMessage());
         }
         return;
     }
 
-    private function getContentIdFromAttachment($attachment): ?string
-{
-    // O método getHeaders() retorna todos os cabeçalhos como uma coleção.
-    $headers = $attachment->getHeaders();
-
-    // Buscar o Content-ID, se estiver presente nos cabeçalhos.
-    if ($headers->has('content-id')) {
-        return trim($headers->get('content-id'), '<>'); // Remove < e > do Content-ID
-    }
-
-    return null;
-}
-
-
     private function attachmentExists($emailId, $filename) {
         $existingAttachment = $this->emailModel->attachmentExists($emailId, $filename);
         return $existingAttachment !== null; 
     }
 
+    private function replaceCidWithBase64($body_html, $attachment) {
+        $contentBytes = $attachment->getDecodedContent();
+        $base64Content = base64_encode($contentBytes);
+        
+        $mimeTypeName = $attachment->getType();
+        $subtype = $attachment->getSubtype();
+        $fullMimeType = $mimeTypeName . '/' . $subtype;
     
+        $contentId = trim($attachment->getContentId(), '<>');
     
+        $pattern = '/<img[^>]+src="cid:' . preg_quote($contentId, '/') . '"/';
+        $replacement = '<img src="data:' . $fullMimeType . ';base64,' . $base64Content . '"';
+        
+        return preg_replace($pattern, $replacement, $body_html);
+    }
+    
+    private function getContentIdFromAttachment($attachment): ?string
+{
+    $headers = $attachment->getHeaders();
+
+    if ($headers->has('content-id')) {
+        return trim($headers->get('content-id'), '<>'); // Remove < e >
+    }
+
+    return null;
+}
     
     
 }
