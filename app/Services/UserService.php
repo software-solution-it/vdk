@@ -23,6 +23,12 @@ class UserService {
         $this->emailAccountModel = new EmailAccount($this->db);
     }
     public function createUser($name, $email, $password, $role_id) {
+        $existingUser = $this->userModel->getUserByEmail($email); 
+    
+        if ($existingUser) { 
+            return ['status' => false, 'message' => 'Email already exists.'];
+        }
+    
         $verificationCode = rand(100000, 999999);
         $expirationDateTime = date('Y-m-d H:i:s', strtotime('+5 minutes'));
     
@@ -31,11 +37,21 @@ class UserService {
         $createUserResult = $this->userModel->create($name, $email, $hashedPassword, $verificationCode, $expirationDateTime, $role_id);
     
         if ($createUserResult) {
-            return ['status' => true]; 
+            return [
+                'status' => true,
+                'data' => [
+                    'name' => $name,
+                    'email' => $email,
+                    'role_id' => $role_id,
+                    'verificationCode' => $verificationCode,
+                    'expirationDateTime' => $expirationDateTime
+                ]
+            ];
         } else {
-            return ['status' => false, 'message' => 'Could not save user to the database']; 
+            return ['status' => false, 'message' => 'Could not save user to the database'];
         }
     }
+    
     
 
     public function updateUser($id, $name, $email, $role_id) {

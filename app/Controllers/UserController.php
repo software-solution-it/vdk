@@ -71,21 +71,22 @@ class UserController {
             $create = $this->userService->createUser($data->name, $data->email, $data->password, $data->role_id);
     
             if ($create['status']) {
-                http_response_code(201); 
+                http_response_code(201);
                 echo json_encode([
                     'Status' => 'Success',
                     'Message' => 'User created successfully',
-                    'Data' => null
+                    'Data' => $create['data'] 
                 ]);
             } else {
-                http_response_code(500); 
+                http_response_code(500);
                 echo json_encode([
                     'Status' => 'Error',
-                    'Message' => 'Failed to create user: ' . $create['message'],
+                    'Message' => $create['message'], 
                     'Data' => null
                 ]);
             }
         } else {
+
             http_response_code(400); 
             echo json_encode([
                 'Status' => 'Error',
@@ -94,6 +95,7 @@ class UserController {
             ]);
         }
     }
+    
 
     public function updateUser() {
         header('Content-Type: application/json');
