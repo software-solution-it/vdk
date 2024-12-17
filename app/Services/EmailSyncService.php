@@ -550,11 +550,9 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
         $subtype = $attachment->getSubtype();
         $fullMimeType = $mimeTypeName . '/' . $subtype;
     
-        $contentId = trim($attachment->getContentId(), '<>');
-    
-        $pattern = '/<img[^>]+src="cid:' . preg_quote($contentId, '/') . '"/';
+        $pattern = '/<img[^>]+src="cid:[^"]+"/';
         $replacement = '<img src="data:' . $fullMimeType . ';base64,' . $base64Content . '"';
-        
+    
         return preg_replace($pattern, $replacement, $body_html);
     }
     
