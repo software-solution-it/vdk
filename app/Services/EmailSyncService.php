@@ -407,6 +407,8 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                         $fromAddress = $message->getFrom()->getAddress() ?? 'unknown@example.com';
                         $fromName = $message->getFrom()->getName() ?? 'Unknown Sender';
                         $subject = $message->getSubject() ?? 'Sem Assunto';
+                        $subject = preg_replace('/[\x{10000}-\x{10FFFF}]/u', '', $subject);
+                        $subject = mb_convert_encoding($subject, 'UTF-8', 'auto');
                         $date_received = $message->getDate()->setTimezone(new \DateTimeZone('America/Sao_Paulo'))->format('Y-m-d H:i:s');
                         $isRead = $message->isSeen() ? 1 : 0;
                         $body_html = $message->getBodyHtml();
