@@ -40,7 +40,7 @@ class EmailAccountService {
     
 
     public function createEmailAccount($data) {
-        $requiredFields = ['user_id', 'email', 'provider_id', 'password', 'oauth_token', 'refresh_token', 'client_id', 'client_secret', 'is_basic'];
+        $requiredFields = ['user_id', 'email', 'provider_id', 'password', 'is_basic'];
         $missingFields = $this->validateFields($data, $requiredFields);
     
         if (!empty($missingFields)) {
