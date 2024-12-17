@@ -293,7 +293,7 @@ class EmailService {
             $mail->SMTPSecure = $smtpConfig['encryption'];
             $mail->Port = $smtpConfig['smtp_port'];
     
-            $mail->setFrom($smtpConfig['email'], $user['name']);
+            $mail->setFrom($smtpConfig['email']);
     
             foreach ($recipientEmails as $recipientEmail) {
                 $mail->addAddress($recipientEmail);
@@ -568,8 +568,7 @@ class EmailService {
             $mail->SMTPSecure = $smtpConfig['encryption'];
             $mail->Port       = $smtpConfig['smtp_port'];
 
-            $mail->setFrom($smtpConfig['email']);
-
+            $mail->setFrom($smtpConfig['email'], $smtpConfig['name']);
             $mail->addAddress($recipientEmail);
 
             $mail->isHTML(true);
