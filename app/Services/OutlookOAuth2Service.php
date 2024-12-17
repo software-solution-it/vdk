@@ -2,7 +2,6 @@
 namespace App\Services;
 
 require_once __DIR__ . '/../../vendor/autoload.php';
-include_once __DIR__ . '/../models/EmailAccount.php';
 
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
