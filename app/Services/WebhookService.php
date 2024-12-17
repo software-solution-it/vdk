@@ -13,8 +13,9 @@ class WebhookService {
         $this->client = new Client();
     }
 
-    public function triggerEvent($event, $user_id) {
-        $webhooks = $this->webhookModel->getWebhooksByUserId($user_id);
+    public function triggerEvent($event, $email_account_id) { 
+        // Busca webhooks por email_account_id 
+        $webhooks = $this->webhookModel->getWebhooksByEmailAccountId($email_account_id); 
 
         foreach ($webhooks as $webhook) {
             $success = $this->sendWebhook($webhook['url'], $event, $webhook['secret']);
@@ -28,6 +29,13 @@ class WebhookService {
             $this->webhookModel->registerEvent($eventData);
         }
     }
+
+    public function getEventsList($email_account_id, $event_id = null, $limit = 10, $order = 'DESC') {
+        return $this->webhookModel->getEventsList($email_account_id, $event_id, $limit, $order);
+    }
+    
+    
+    
 
     private function sendWebhook($url, $event, $token) {
         try {
@@ -93,7 +101,7 @@ class WebhookService {
         return $this->webhookModel->register($data);
     }
 
-    public function getWebhooksByUserId($user_id) {
-        return $this->webhookModel->getWebhooksByUserId($user_id);
+    public function getWebhooksByEmailAccountId($email_account_id) {
+        return $this->webhookModel->getWebhooksByEmailAccountId($email_account_id);
     }
 }

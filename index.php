@@ -228,6 +228,8 @@ switch ($request_uri[0]) {
         $imapController->testConnection();
         break;
 
+
+
     case '/api/smtp/test':
         $smtpController = new SMTPController();
         $smtpController->testConnection();
@@ -407,7 +409,8 @@ switch ($request_uri[0]) {
             } else {
                 echo json_encode(['status' => false, 'message' => 'ID is required']);
             }
-            break; 
+            break;
+            
     
         case '/api/webhook/delete':
             $webhook = new WebhookController();

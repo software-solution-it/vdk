@@ -134,23 +134,42 @@ class WebhookController {
 
     public function getList() {
         header('Content-Type: application/json');
-        $user_id = $_GET['user_id'] ?? null;
-
-        if (!empty($user_id)) {
-            $webhooks = $this->webhookService->getWebhooksByUserId($user_id);
+    
+        $email_account_id = $_GET['email_account_id'] ?? null;
+        $event_id = $_GET['event_id'] ?? null;
+        $limit = isset($_GET['limit']) ? intval($_GET['limit']) : 10;
+        $order = isset($_GET['order']) && in_array(strtoupper($_GET['order']), ['ASC', 'DESC']) 
+            ? strtoupper($_GET['order']) 
+            : 'DESC'; 
+    
+        try {
+            if (empty($email_account_id)) {
+                http_response_code(400);
+                echo json_encode([ 
+                    'Status' => 'Error',
+                    'Message' => 'Email account ID is required.',
+                    'Data' => null
+                ]);
+                return;
+            }
+    
+            $events = $this->webhookService->getEventsList($email_account_id, $event_id, $limit, $order);
+    
             http_response_code(200);
             echo json_encode([
                 'Status' => 'Success',
-                'Message' => 'Webhooks retrieved successfully.',
-                'Data' => $webhooks
+                'Message' => 'Events retrieved successfully.',
+                'Data' => $events
             ]);
-        } else {
-            http_response_code(400);
+        } catch (\Exception $e) {
+            http_response_code(500);
             echo json_encode([
                 'Status' => 'Error',
-                'Message' => 'User ID is required',
+                'Message' => 'Failed to retrieve events: ' . $e->getMessage(),
                 'Data' => null
             ]);
         }
     }
+    
+    
 }
