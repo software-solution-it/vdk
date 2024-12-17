@@ -49,6 +49,23 @@ class Email {
         }
     }
 
+    public function attachmentExists($emailId, $filename) {
+        try {
+            $query = "SELECT COUNT(*) FROM " . $this->attachmentsTable . " WHERE email_id = :email_id AND filename = :filename";
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':email_id', $emailId, PDO::PARAM_INT);
+            $stmt->bindParam(':filename', $filename, PDO::PARAM_STR);
+            $stmt->execute();
+
+            $count = $stmt->fetchColumn();
+
+            return $count > 0;
+        } catch (Exception $e) {
+            $this->errorLogController->logError("Erro ao verificar existência de anexo: " . $e->getMessage(), __FILE__, __LINE__, null);
+            throw new Exception("Erro ao verificar existência de anexo: " . $e->getMessage());
+        }
+    }
+
 
     public function getFolderNameById($folder_id) {
         $query = "SELECT folder_name FROM email_folders WHERE id = :folder_id";

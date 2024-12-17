@@ -35,7 +35,7 @@ class EmailSyncService
     public function __construct($db)
     {
         $this->db = $db;
-        $this->emailModel = new Email($db);
+        $this->emailModel = new Email($db);  
         $this->emailAccountModel = new EmailAccount($db);
         $this->rabbitMQService = new RabbitMQService($db);
         $this->webhookService = new WebhookService();
@@ -390,18 +390,23 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                                     if (is_null($filename) || empty($filename)) {
                                         error_log("Anexo ignorado: o nome do arquivo está nulo.");
                                         continue;
+                                    } 
+                            
+                                    if ($this->attachmentExists($emailId, $filename)) {
+                                        error_log("Anexo '$filename' já existe para este e-mail. Ignorando...");
+                                        continue;  // Ignora o anexo se já existir
                                     }
-                        
+                            
                                     $mimeTypeName = $attachment->getType();
                                     $subtype = $attachment->getSubtype();
                                     $fullMimeType = $mimeTypeName . '/' . $subtype;
                                     $contentBytes = $attachment->getDecodedContent();
-                        
+                            
                                     if ($contentBytes === false) {
                                         error_log("Falha ao obter o conteúdo do anexo: $filename");
                                         continue;
                                     }
-                        
+                            
                                     $this->emailModel->saveAttachment(
                                         $emailId,
                                         $filename,
@@ -409,16 +414,15 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                                         strlen($contentBytes),
                                         $contentBytes
                                     );
-                        
+                            
                                     if (strpos($body_html, 'cid:') !== false) {
                                         $body_html = $this->replaceCidWithBase64($body_html, $attachment);
                                     }
-
-
                                 } catch (Exception $e) {
                                     $this->errorLogController->logError("Erro ao salvar e substituir anexo: " . $e->getMessage(), __FILE__, __LINE__, $user_id);
                                 }
                             }
+                            
                         }
                         
                 
@@ -521,6 +525,11 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
             error_log("Erro durante a sincronização de e-mails: " . $e->getMessage());
         }
         return;
+    }
+
+    private function attachmentExists($emailId, $filename) {
+        $existingAttachment = $this->emailModel->attachmentExists($emailId, $filename);
+        return $existingAttachment !== null; 
     }
 
     private function replaceCidWithBase64($body_html, $attachment) {
