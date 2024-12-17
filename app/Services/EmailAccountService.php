@@ -129,7 +129,7 @@ class EmailAccountService {
         $missingFields = array_filter($requiredFields, function ($field) use ($data) {
             return !array_key_exists($field, $data) || ($data[$field] === '' && !is_null($data[$field]));
         });
-        
+    
         if (!empty($missingFields)) {
             return [
                 'status' => false,
@@ -138,7 +138,26 @@ class EmailAccountService {
                 'http_code' => 400
             ];
         }
-        
+    
+        $provider = $this->providerModel->getById($data['provider_id']);
+        if (!$provider) {
+            return [
+                'status' => false,
+                'message' => 'Invalid provider_id: provider does not exist',
+                'data' => null,
+                'http_code' => 400
+            ];
+        }
+    
+        $user = $this->userModel->getUserById($data['user_id']);
+        if (!$user) {
+            return [
+                'status' => false,
+                'message' => 'Invalid user_id: user does not exist',
+                'data' => null,
+                'http_code' => 400
+            ];
+        }
     
         $encryptedPassword = isset($data['password']) && $data['password'] !== '' 
             ? EncryptionHelper::encrypt($data['password']) 
@@ -174,6 +193,7 @@ class EmailAccountService {
             'http_code' => 400
         ];
     }
+    
     
     public function deleteEmailAccount($id) {
         $emailAccount = $this->emailAccountModel->getById($id);
