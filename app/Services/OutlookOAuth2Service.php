@@ -107,7 +107,14 @@ class OutlookOAuth2Service {
             if (!$emailAccount) {
                 throw new Exception("Email account not found for user ID: $user_id and email ID: $email_id");
             }
-
+    
+            // Verifica se o refresh_token já existe
+            if ($emailAccount['refresh_token']) {
+                // Chama o método de refresh para renovar o token
+                return $this->refreshAccessToken($user_id, $email_id);
+            }
+    
+            // Se não tiver refresh_token, tenta obter um novo access_token com o código de autorização
             $this->initializeOAuthParameters($emailAccount, $user_id, $email_id);
     
             $response = $this->httpClient->post('https://login.microsoftonline.com/common/oauth2/v2.0/token', [
@@ -117,8 +124,7 @@ class OutlookOAuth2Service {
                     'code' => $code,
                     'redirect_uri' => $this->redirectUri,
                     'grant_type' => 'authorization_code',
-                    'scope' => implode(' ', $this->scopes),
-                    'client_info' => '1'
+                    'scope' => implode(' ', $this->scopes)
                 ]
             ]);
     
@@ -152,6 +158,7 @@ class OutlookOAuth2Service {
             throw new Exception('Error during access token retrieval: ' . $e->getMessage());
         }
     }
+    
     
 
     public function refreshAccessToken($user_id, $email_id) {
