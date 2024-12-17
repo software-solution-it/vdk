@@ -100,9 +100,9 @@ class ProviderService {
             return ['status' => false, 'message' => 'Provider not found', 'http_code' => 404];
         }
 
-        $associatedEmailAccount = $this->emailAccountModel->getByProviderId($id);
+        $associatedEmailAccount = $this->emailAccountModel->getByProvider($id);
         if ($associatedEmailAccount) {
-            return [
+            return [ 
                 'status' => false,
                 'message' => 'Cannot delete provider. Email account(s) are associated with this provider.',
                 'http_code' => 400
