@@ -142,6 +142,25 @@ class Email {
             return false; 
         }
     }
+
+    public function updateEmailBodyHtml($emailId, $body_html) {
+        try {
+            $query = "UPDATE " . $this->table . " SET body_html = :body_html WHERE email_id = :email_id";
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':body_html', $body_html, PDO::PARAM_STR);
+            $stmt->bindParam(':email_id', $emailId, PDO::PARAM_STR);
+    
+            if ($stmt->execute()) {
+                return true;
+            } else {
+                return false;
+            }
+        } catch (Exception $e) {
+            $this->errorLogController->logError("Erro ao atualizar body_html do email: " . $e->getMessage(), __FILE__, __LINE__, null);
+            throw new Exception("Erro ao atualizar body_html do email: " . $e->getMessage());
+        }
+    }
+     
     
     
     

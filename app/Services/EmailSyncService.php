@@ -268,9 +268,9 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
     
                     foreach ($messages as $key => $message) {
                         try {
-                            $emailId = $this->emailModel->getEmailIdByMessageId($message->getId(), $email_account_id);
-                            if (!$emailId) {
-                                $emailId = $this->emailModel->saveEmail(
+                            $email = $this->emailModel->getEmailByMessageId($message->getId(), $email_account_id);
+                            if (!$email) {
+                                $emailId = $this->emailModel->saveEmail( 
                                     $user_id,
                                     $email_account_id,
                                     $message->getId(),
@@ -283,7 +283,7 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                                     implode(', ', $message->getReferences()),
                                     is_array($message->getInReplyTo()) ? implode(', ', $message->getInReplyTo()) : $message->getInReplyTo(),
                                     $message->isSeen() ? 1 : 0,
-                                    $this->emailFolderModel->getFolderIdByName($associatedFolderName),
+                                    $this->emailFolderModel->getByFolderName($associatedFolderName),
                                     $message->getCc() ? implode(', ', array_map(fn($addr) => $addr->getAddress(), $message->getCc())) : null,
                                     null,
                                     $message->getReferences() ? explode(', ', $message->getReferences())[0] : $message->getId(),
@@ -320,7 +320,7 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                                     $body_html = $this->replaceCidWithBase64($message->getBodyHtml(), $attachment);
                                     $this->emailModel->updateEmailBodyHtml($emailId, $body_html);
                                 }
-                            }
+                            } 
     
                             if ($message->getBodyHtml()) {
                                 preg_match_all('/<img[^>]+src="data:image\/([^;]+);base64,([^"]+)"/', $message->getBodyHtml(), $matches, PREG_SET_ORDER);
@@ -359,7 +359,6 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                                     'to' => array_map(fn($addr) => $addr->getAddress(), iterator_to_array($message->getTo())),
                                     'received_at' => $message->getDate()->setTimezone(new \DateTimeZone('America/Sao_Paulo'))->format('Y-m-d H:i:s'),
                                     'user_id' => $user_id,
-                                    'folder_id' => $this->emailFolderModel->getFolderIdByName($associatedFolderName),
                                     'uuid' => uniqid(),
                                 ]
                             ];
@@ -473,7 +472,7 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
     
                                     if (!$this->attachmentExists($emailId, $filename)) {
                                         $this->emailModel->saveAttachment(
-                                            $emailId,
+                                            $emailId, 
                                             $filename,
                                             $fullMimeType,
                                             strlen($decodedContent),
@@ -528,7 +527,7 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
         }
         return;
     }
-    
+     
     private function attachmentExists($emailId, $filename) {
         return $this->emailModel->attachmentExists($emailId, $filename) !== null;
     }
