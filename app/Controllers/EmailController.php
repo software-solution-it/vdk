@@ -358,7 +358,7 @@ class EmailController {
                 'Status' => 'Error',
                 'Message' => 'O parâmetro "order" deve ser "ASC" ou "DESC".'
             ]);
-            return;
+            return; 
         }
     
         $offset = ($page - 1) * $limit;
