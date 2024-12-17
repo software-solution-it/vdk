@@ -15,30 +15,28 @@ class EmailAccountController {
         $this->emailAccountService = new EmailAccountService($db);
         $this->errorLogController = new ErrorLogController(); 
     } 
-
     public function createEmailAccount() {
         header('Content-Type: application/json');
         $data = json_decode(file_get_contents("php://input"), true);
     
         try {
             $result = $this->emailAccountService->createEmailAccount($data);
-            
-            if (isset($result['status']) && !$result['status']) {
-                http_response_code(400); 
+    
+            if ($result) {
+                http_response_code(201);
+                echo json_encode([
+                    'Status' => 'Success',
+                    'Message' => 'Email account created successfully.',
+                    'Data' => $result 
+                ]);
+            } else {
+                http_response_code(400);
                 echo json_encode([
                     'Status' => 'Error',
-                    'Message' => $result['message'], 
+                    'Message' => 'Failed to create email account or invalid data.',
                     'Data' => null
                 ]);
-                return;
             }
-    
-            http_response_code(201);
-            echo json_encode([
-                'Status' => 'Success',
-                'Message' => 'Email account created successfully.',
-                'Data' => $result
-            ]);
         } catch (\Exception $e) {
             $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
             http_response_code(500);
@@ -49,6 +47,7 @@ class EmailAccountController {
             ]);
         }
     }
+    
     
 
     public function updateEmailAccount($id) {
