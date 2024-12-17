@@ -18,9 +18,15 @@ class ConnectionIMAP {
 
     public function testIMAPConnection($email, $password, $imap_host, $imap_port, $encryption) {
         try {
+            imap_timeout(IMAP_OPENTIMEOUT, 6);
+            imap_timeout(IMAP_READTIMEOUT, 6);
+            imap_timeout(IMAP_WRITETIMEOUT, 6);
+
+    
+
             $mailbox = "{" . $imap_host . ":" . $imap_port . "/imap/" . $encryption . "}";
     
-            $imap = imap_open($mailbox, $email, $password);
+            $imap = imap_open($mailbox, $email, $password, 0, 0, ['DISABLE_AUTHENTICATOR' => 'GSSAPI']);
     
             if ($imap) {
                 $folders = imap_list($imap, $mailbox, '*');
@@ -30,7 +36,7 @@ class ConnectionIMAP {
                     return ['status' => false, 'message' => 'Failed to retrieve folder list: ' . imap_last_error()];
                 }
     
-                $folderNames = array_map(function($folder) use ($mailbox) {
+                $folderNames = array_map(function ($folder) use ($mailbox) {
                     return str_replace($mailbox, '', $folder);
                 }, $folders);
     
@@ -46,5 +52,6 @@ class ConnectionIMAP {
             return ['status' => false, 'message' => 'IMAP connection failed: ' . $e->getMessage()];
         }
     }
+    
     
 }
