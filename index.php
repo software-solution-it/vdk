@@ -171,9 +171,9 @@ switch ($request_uri[0]) {
         $controller->listEmailsByConversation();
         break;
 
-    case '/api/auth/register':
-        $auth = new AuthController();
-        $auth->preRegister();
+    case '/api/user/create':
+        $user = new UserController();
+        $user->createUser();
         break;
 
     case '/api/auth/resend-code':
@@ -195,6 +195,7 @@ switch ($request_uri[0]) {
         $user = new UserController();
         $user->updateUser();
         break;
+
 
     case '/api/user/delete':
         $user = new UserController();
