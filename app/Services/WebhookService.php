@@ -13,9 +13,8 @@ class WebhookService {
         $this->client = new Client();
     }
 
-    public function triggerEvent($event, $email_account_id) { 
-        // Busca webhooks por email_account_id 
-        $webhooks = $this->webhookModel->getWebhooksByEmailAccountId($email_account_id); 
+    public function triggerEvent($event,$user_id) { 
+        $webhooks = $this->webhookModel->getWebhooksByEmailAccountId($user_id); 
 
         foreach ($webhooks as $webhook) {
             $success = $this->sendWebhook($webhook['url'], $event, $webhook['secret']);
@@ -23,6 +22,7 @@ class WebhookService {
             $eventData = [
                 'webhook_id' => $webhook['id'],
                 'event_type' => $event['type'],
+                'email_account_id' => $event['Data']['email_account_id'],
                 'payload' => json_encode($event),
                 'status' => $success ? 'sent' : 'failed'
             ];

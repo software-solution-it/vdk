@@ -262,7 +262,7 @@ switch ($request_uri[0]) {
 
     case '/api/email/view':
         $emailController = new EmailController();
-        $email_id = $_GET['email_id'] ?? null;
+        $email_id = $_GET['email_id'] ?? null; 
         $emailController->viewEmail($email_id);
         break;
 

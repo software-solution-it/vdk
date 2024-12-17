@@ -52,10 +52,10 @@ class Webhook {
     
     
 
-    public function getWebhooksByEmailAccountId($email_account_id) {
-        $query = "SELECT * FROM webhooks WHERE email_account_id = :email_account_id";
+    public function getWebhooksByEmailAccountId($user_id) {
+        $query = "SELECT * FROM webhooks WHERE user_id = :user_id";
         $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(':email_account_id', $email_account_id, PDO::PARAM_INT);
+        $stmt->bindParam(':user_id', $user_id, PDO::PARAM_INT);
         $stmt->execute();
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -93,13 +93,14 @@ class Webhook {
     }
 
     public function registerEvent($data) {
-        $query = "INSERT INTO events (webhook_id, event_type, payload, status) 
-                  VALUES (:webhook_id, :event_type, :payload, :status)";
+        $query = "INSERT INTO events (webhook_id, event_type, payload, email_account_id, status) 
+                  VALUES (:webhook_id, :event_type, :payload, :email_account_id, :status)";
         $stmt = $this->conn->prepare($query);
 
         $stmt->bindParam(':webhook_id', $data['webhook_id'], PDO::PARAM_INT);
         $stmt->bindParam(':event_type', $data['event_type'], PDO::PARAM_STR);
         $stmt->bindParam(':payload', $data['payload'], PDO::PARAM_STR);
+        $stmt->bindParam(':email_account_id', $data['email_account_id'], PDO::PARAM_INT);
         $stmt->bindParam(':status', $data['status'], PDO::PARAM_STR);
 
         return $stmt->execute();
