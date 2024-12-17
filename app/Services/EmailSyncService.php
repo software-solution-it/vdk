@@ -484,6 +484,7 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                        
     
                         $event = [
+                            'type' => 'email_received',
                             'Status' => 'Success',
                             'Message' => 'Email received successfully',
                             'Data' => [
@@ -499,6 +500,7 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                                 'uuid' => uniqid(),
                             ]
                         ];
+
                         $this->webhookService->triggerEvent($event, $user_id);
                         $uidCounter++;
                     } catch (Exception $e) {
@@ -517,15 +519,18 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
             
         } catch (Exception $e) {
             $event = [
-                'Code' => 500,
+                'type' => 'email_processing_failed',
                 'Status' => 'Failed',
-                'Message' => 'Failed to sync emails',
+                'Message' => 'Failed to process email',
                 'Data' => [
                     'email_account_id' => $email_account_id,
-                    'user_id' => $user_id, 
+                    'message_id' => $messageId ?? null,
+                    'error' => $e->getMessage(),
+                    'user_id' => $user_id,
                     'uuid' => uniqid(),
                 ]
             ];
+            
             $this->webhookService->triggerEvent($event, $user_id);
             error_log("Erro durante a sincronização de e-mails: " . $e->getMessage());
         }

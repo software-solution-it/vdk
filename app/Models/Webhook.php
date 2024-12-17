@@ -2,17 +2,14 @@
 namespace App\Models;
 
 use App\Config\Database;
-
 use PDO;
 
 class Webhook {
     private $conn;
-    private $db;
 
     public function __construct() {
         $database = new Database();
-        $this->db = $database->getConnection();
-        $this->conn = $this->db;
+        $this->conn = $database->getConnection();
     }
 
     public function register($data) {
@@ -22,7 +19,7 @@ class Webhook {
         $stmt->bindParam(':user_id', $data['user_id']);
         $stmt->bindParam(':url', $data['url']);
         $stmt->bindParam(':secret', $data['secret']);
-        $stmt->bindParam(':name', $data['name']); 
+        $stmt->bindParam(':name', $data['name']);
 
         return $stmt->execute();
     }
@@ -37,47 +34,33 @@ class Webhook {
     }
 
     public function update($id, $data) {
-        $query = "
-            UPDATE webhooks
-            SET url = :url, secret = :secret, name = :name, updated_at = NOW()
-            WHERE id = :id
-        ";
-    
+        $query = "UPDATE webhooks SET url = :url, secret = :secret, name = :name, updated_at = NOW() WHERE id = :id";
         $stmt = $this->conn->prepare($query);
+
         $stmt->bindParam(':id', $id, PDO::PARAM_INT);
         $stmt->bindParam(':url', $data['url'], PDO::PARAM_STR);
         $stmt->bindParam(':secret', $data['secret'], PDO::PARAM_STR);
         $stmt->bindParam(':name', $data['name'], PDO::PARAM_STR);
-    
+
         return $stmt->execute();
     }
 
     public function delete($id) {
-        $query = "
-            DELETE FROM webhooks
-            WHERE id = :id
-        ";
-    
+        $query = "DELETE FROM webhooks WHERE id = :id";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':id', $id, PDO::PARAM_INT);
-    
+
         return $stmt->execute();
     }
 
-    
     public function getById($id) {
-        $query = "
-            SELECT * FROM webhooks
-            WHERE id = :id
-        ";
-    
-        $stmt = $this->db->prepare($query);
-        $stmt->bindParam(':id', $id, \PDO::PARAM_INT);
+        $query = "SELECT * FROM webhooks WHERE id = :id";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':id', $id, PDO::PARAM_INT);
         $stmt->execute();
-    
-        return $stmt->fetch(\PDO::FETCH_ASSOC); // Retorna o webhook como array associativo ou false se não encontrar
+
+        return $stmt->fetch(PDO::FETCH_ASSOC);
     }
-    
 
     public function registerEvent($data) {
         $query = "INSERT INTO events (webhook_id, event_type, payload, status) VALUES (:webhook_id, :event_type, :payload, :status)";
@@ -91,4 +74,3 @@ class Webhook {
         return $stmt->execute();
     }
 }
-

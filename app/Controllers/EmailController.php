@@ -523,7 +523,6 @@ class EmailController {
             if (!$folder_id && $folder_name) {
                 $folderDetails = $this->emailFolderModel->getByFolderName($folder_name); 
                 
-                // Verifica se não foi encontrado nenhum resultado ou se o resultado está vazio
                 if (!$folderDetails) {
                     http_response_code(400);
                     echo json_encode([
@@ -534,11 +533,10 @@ class EmailController {
                     return;
                 }
             
-                $folder_id = $folderDetails['id'];  // Atribui o folder_id encontrado
-                $folder_name = $folderDetails['folder_name']; // Atribui o folder_name correto
+                $folder_id = $folderDetails['id'];  
+                $folder_name = $folderDetails['folder_name'];
             }
     
-            // Se o folder_id foi fornecido, busca o folder_name correspondente
             if ($folder_id && !$folder_name) {
                 $folderDetails = $this->emailFolderModel->getFolderById($folder_id);
                 if (!$folderDetails) {
@@ -550,13 +548,11 @@ class EmailController {
                     ]);
                     return;
                 }
-                $folder_name = $folderDetails['folder_name'];  // Atribui o folder_name correspondente
+                $folder_name = $folderDetails['folder_name'];  
             }
     
-            // Adicionando log de debug para verificar os dados antes de mover o e-mail
             $this->errorLogController->logError('Tentando mover o e-mail. ID do E-mail: ' . $email_id . ' para a pasta: ' . $folder_name, __FILE__, __LINE__);
     
-            // Chama o serviço para mover o e-mail
             $result = $this->emailService->moveEmail($email_id, $folderDetails['folder_name']);
     
             if ($result) {

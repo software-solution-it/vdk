@@ -286,6 +286,7 @@ class GmailOAuth2Service {
                     );
     
                     $event = [
+                        'type' => 'email_received',
                         'Status' => 'Success',
                         'Message' => 'Email received successfully',
                         'Data' => [
