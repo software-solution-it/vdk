@@ -226,100 +226,171 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
         try {
             $server = new Server($imap_host, $imap_port);
             $connection = $server->authenticate($email, $password);
-
-
+    
             $associationsResponse = $this->folderAssociationModel->getAssociationsByEmailAccount($email_account_id);
-
-            
+    
             if ($associationsResponse['Status'] === 'Success') {
                 $associations = $associationsResponse['Data'];
             } else {
-                $associations = []; 
+                $associations = [];
             }
-            
+    
             $processedFolders = ['INBOX_PROCESSED', 'SPAM_PROCESSED', 'TRASH_PROCESSED'];
-            
+    
             foreach ($processedFolders as $processedFolder) {
                 if (!$connection->hasMailbox($processedFolder)) {
                     $connection->createMailbox($processedFolder);
                 }
             }
-            
+    
             foreach (['INBOX', 'SPAM', 'TRASH'] as $folderType) {
                 $filteredAssociations = array_filter($associations, function ($assoc) use ($folderType) {
                     return $assoc['folder_type'] === $folderType;
                 });
-            
-            
+    
                 if (!empty($filteredAssociations)) {
                     $association = current($filteredAssociations);
-            
                     $originalFolderName = $association['folder_name'];
                     $associatedFolderName = $association['associated_folder_name'];
-            
+    
                     $originalMailbox = $connection->getMailbox($originalFolderName);
-            
                     $associatedMailbox = $connection->getMailbox($associatedFolderName);
-            
+    
                     $messages = $originalMailbox->getMessages();
-                    
                     $uniqueMessages = [];
                     foreach ($messages as $message) {
                         $messageId = $message->getId();
                         if (!isset($uniqueMessages[$messageId])) {
-                            $uniqueMessages[$messageId] = $message; 
+                            $uniqueMessages[$messageId] = $message;
                         }
                     }
                     $messages = array_values($uniqueMessages);
-                    
+    
                     foreach ($messages as $key => $message) {
                         try {
-
+                            $emailId = $this->emailModel->getEmailIdByMessageId($message->getId(), $email_account_id);
+                            if (!$emailId) {
+                                $emailId = $this->emailModel->saveEmail(
+                                    $user_id,
+                                    $email_account_id,
+                                    $message->getId(),
+                                    $message->getSubject() ?? 'Sem Assunto',
+                                    $message->getFrom()->getAddress() ?? 'unknown@example.com',
+                                    implode(', ', array_map(fn($addr) => $addr->getAddress(), iterator_to_array($message->getTo()))),
+                                    $message->getBodyHtml(),
+                                    $message->getBodyText(),
+                                    $message->getDate()->setTimezone(new \DateTimeZone('America/Sao_Paulo'))->format('Y-m-d H:i:s'),
+                                    implode(', ', $message->getReferences()),
+                                    is_array($message->getInReplyTo()) ? implode(', ', $message->getInReplyTo()) : $message->getInReplyTo(),
+                                    $message->isSeen() ? 1 : 0,
+                                    $this->emailFolderModel->getFolderIdByName($associatedFolderName),
+                                    $message->getCc() ? implode(', ', array_map(fn($addr) => $addr->getAddress(), $message->getCc())) : null,
+                                    null,
+                                    $message->getReferences() ? explode(', ', $message->getReferences())[0] : $message->getId(),
+                                    $message->getReferences() ? count(explode(', ', $message->getReferences())) + 1 : 1,
+                                    $message->getFrom()->getName() ?? 'Unknown Sender'
+                                );
+                            }
+    
                             $message->move($associatedMailbox);
-            
-
-                            $this->emailModel->deleteEmail($message->getId());
-            
-                            unset($messages[$key]);
-            
-                            error_log("E-mail {$message->getId()} movido da pasta $originalFolderName para $associatedFolderName.");
+    
+                            $attachments = $message->getAttachments();
+                            foreach ($attachments as $attachment) {
+                                $filename = $attachment->getFilename();
+                                if (is_null($filename) || empty($filename)) {
+                                    continue;
+                                }
+    
+                                if (!$this->attachmentExists($emailId, $filename)) {
+                                    $fullMimeType = $attachment->getType() . '/' . $attachment->getSubtype();
+                                    $contentBytes = $attachment->getDecodedContent();
+    
+                                    if ($contentBytes !== false) {
+                                        $this->emailModel->saveAttachment(
+                                            $emailId,
+                                            $filename,
+                                            $fullMimeType,
+                                            strlen($contentBytes),
+                                            $contentBytes
+                                        );
+                                    }
+                                }
+    
+                                if (strpos($message->getBodyHtml(), 'cid:') !== false) {
+                                    $body_html = $this->replaceCidWithBase64($message->getBodyHtml(), $attachment);
+                                    $this->emailModel->updateEmailBodyHtml($emailId, $body_html);
+                                }
+                            }
+    
+                            if ($message->getBodyHtml()) {
+                                preg_match_all('/<img[^>]+src="data:image\/([^;]+);base64,([^"]+)"/', $message->getBodyHtml(), $matches, PREG_SET_ORDER);
+    
+                                foreach ($matches as $match) {
+                                    $imageType = $match[1];
+                                    $base64Data = $match[2];
+                                    $decodedContent = base64_decode($base64Data);
+    
+                                    if ($decodedContent !== false) {
+                                        $filename = uniqid("inline_img_") . '.' . $imageType;
+                                        $fullMimeType = 'image/' . $imageType;
+    
+                                        if (!$this->attachmentExists($emailId, $filename)) {
+                                            $this->emailModel->saveAttachment(
+                                                $emailId,
+                                                $filename,
+                                                $fullMimeType,
+                                                strlen($decodedContent),
+                                                $decodedContent
+                                            );
+                                        }
+                                    }
+                                }
+                            }
+    
+                            $event = [
+                                'Status' => 'Success',
+                                'Message' => 'Email received successfully',
+                                'Data' => [
+                                    'email_account_id' => $email_account_id,
+                                    'email_id' => $emailId,
+                                    'message_id' => $message->getId(),
+                                    'subject' => $message->getSubject() ?? 'Sem Assunto',
+                                    'from' => $message->getFrom()->getAddress() ?? 'unknown@example.com',
+                                    'to' => array_map(fn($addr) => $addr->getAddress(), iterator_to_array($message->getTo())),
+                                    'received_at' => $message->getDate()->setTimezone(new \DateTimeZone('America/Sao_Paulo'))->format('Y-m-d H:i:s'),
+                                    'user_id' => $user_id,
+                                    'folder_id' => $this->emailFolderModel->getFolderIdByName($associatedFolderName),
+                                    'uuid' => uniqid(),
+                                ]
+                            ];
+                            $this->webhookService->triggerEvent($event, $user_id);
                         } catch (Exception $e) {
-                            $this->errorLogController->logError(
-                                "Erro ao mover e-mail {$message->getId()} para a pasta associada $associatedFolderName: " . $e->getMessage(),
-                                __FILE__,
-                                __LINE__,
-                                $user_id
-                            );
-                            error_log("Erro ao mover e-mail {$message->getId()} da pasta $originalFolderName para $associatedFolderName: " . $e->getMessage());
+                            $this->errorLogController->logError("Erro ao processar e-mail: " . $e->getMessage(), __FILE__, __LINE__, $user_id);
                         }
                     }
-            
+    
                     $imapStream = $connection->getResource()->getStream();
                     imap_expunge($imapStream);
                 }
             }
-            
-            
     
-            $mailboxes = $connection->getMailboxes(); 
+            $mailboxes = $connection->getMailboxes();
             $folderNames = [];
             foreach ($mailboxes as $mailbox) {
                 if (!($mailbox->getAttributes() & \LATT_NOSELECT)) {
-                    $folderNames[] = $mailbox->getName(); 
+                    $folderNames[] = $mailbox->getName();
                 }
             }
-            $folders = $this->emailFolderModel->syncFolders($email_account_id, $folderNames); 
+            $folders = $this->emailFolderModel->syncFolders($email_account_id, $folderNames);
     
             foreach ($mailboxes as $mailbox) {
                 if ($mailbox->getAttributes() & \LATT_NOSELECT) {
-                    error_log("Ignorando a pasta de sistema: " . $mailbox->getName());
                     continue;
                 }
     
                 $folderName = $mailbox->getName();
     
                 if (!isset($folders[$folderName])) {
-                    error_log("Pasta " . $folderName . " não está sincronizada no banco de dados. Ignorando...");
                     continue;
                 }
     
@@ -327,7 +398,7 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                 $messages = $mailbox->getMessages();
     
                 $storedMessageIds = $this->emailModel->getEmailIdsByFolderId($user_id, $folderId);
-                $processedMessageIds = []; 
+                $processedMessageIds = [];
     
                 foreach ($messages as $message) {
                     try {
@@ -341,24 +412,17 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                         $date_received = $message->getDate()->setTimezone(new \DateTimeZone('America/Sao_Paulo'))->format('Y-m-d H:i:s');
                         $isRead = $message->isSeen() ? 1 : 0;
                         $body_html = $message->getBodyHtml();
-
-                        
                         $body_text = $message->getBodyText();
-    
                         $bcc = $message->getBcc();
                         if ($bcc && count($bcc) > 0) {
-                            error_log("E-mail contém CCO (BCC). Ignorando o processamento.");
                             continue;
                         }
-    
                         if (!$messageId || !$fromAddress) {
-                            error_log("E-mail com Message-ID ou From nulo. Ignorando...");
                             continue;
                         }
     
                         $existingEmail = $this->emailModel->emailExistsByMessageId($messageId, $email_account_id);
                         if ($existingEmail) {
-                            error_log("E-mail com Message-ID $messageId já foi processado. Ignorando...");
                             continue;
                         }
     
@@ -369,63 +433,10 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                         $references = implode(', ', $message->getReferences());
     
                         $ccAddresses = $message->getCc();
-                        $cc = $ccAddresses ? implode(', ', array_map(fn(EmailAddress $addr) => $addr->getAddress(), $ccAddresses)) : null;
+                        $cc = $ccAddresses ? implode(', ', array_map(fn($addr) => $addr->getAddress(), $ccAddresses)) : null;
     
-                        $conversation_id = null;
-                        $conversation_step = 1; 
-
-                        if (!empty($references)) {
-                            $referenceCount = count(explode(', ', $references));
-                            $conversation_step = $referenceCount + 1;
-                        }
-                
                         $conversation_id = $references ? explode(', ', $references)[0] : $messageId;
-
-                        if ($message->hasAttachments()) {
-                            $attachments = $message->getAttachments();
-                        
-                            foreach ($attachments as $attachment) {
-                                try {
-                                    $filename = $attachment->getFilename();
-                                    if (is_null($filename) || empty($filename)) {
-                                        error_log("Anexo ignorado: o nome do arquivo está nulo.");
-                                        continue;
-                                    } 
-                            
-                                    if ($this->attachmentExists($emailId, $filename)) {
-                                        error_log("Anexo '$filename' já existe para este e-mail. Ignorando...");
-                                        continue;  // Ignora o anexo se já existir
-                                    }
-                            
-                                    $mimeTypeName = $attachment->getType();
-                                    $subtype = $attachment->getSubtype();
-                                    $fullMimeType = $mimeTypeName . '/' . $subtype;
-                                    $contentBytes = $attachment->getDecodedContent();
-                            
-                                    if ($contentBytes === false) {
-                                        error_log("Falha ao obter o conteúdo do anexo: $filename");
-                                        continue;
-                                    }
-                            
-                                    $this->emailModel->saveAttachment(
-                                        $emailId,
-                                        $filename,
-                                        $fullMimeType,
-                                        strlen($contentBytes),
-                                        $contentBytes
-                                    );
-                            
-                                    if (strpos($body_html, 'cid:') !== false) {
-                                        $body_html = $this->replaceCidWithBase64($body_html, $attachment);
-                                    }
-                                } catch (Exception $e) {
-                                    $this->errorLogController->logError("Erro ao salvar e substituir anexo: " . $e->getMessage(), __FILE__, __LINE__, $user_id);
-                                }
-                            }
-                            
-                        }
-                        
-                
+                        $conversation_step = $references ? count(explode(', ', $references)) + 1 : 1;
     
                         $emailId = $this->emailModel->saveEmail(
                             $user_id,
@@ -433,35 +444,34 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                             $messageId,
                             $subject,
                             $fromAddress,
-                            implode(', ', array_map(fn(EmailAddress $addr) => $addr->getAddress(), iterator_to_array($message->getTo()))),
-                            $body_html, 
+                            implode(', ', array_map(fn($addr) => $addr->getAddress(), iterator_to_array($message->getTo()))),
+                            $body_html,
                             $body_text,
                             $date_received,
                             $references,
                             $inReplyTo,
                             $isRead,
-                            $folderId, 
+                            $folderId,
                             $cc,
-                            $uidCounter,
+                            null,
                             $conversation_id,
                             $conversation_step,
                             $fromName
-                             
                         );
     
                         if ($body_html) {
                             preg_match_all('/<img[^>]+src="data:image\/([^;]+);base64,([^"]+)"/', $body_html, $matches, PREG_SET_ORDER);
     
                             foreach ($matches as $match) {
-                                try {
-                                    $imageType = $match[1];
-                                    $base64Data = $match[2];
-                                    $decodedContent = base64_decode($base64Data);
+                                $imageType = $match[1];
+                                $base64Data = $match[2];
+                                $decodedContent = base64_decode($base64Data);
     
-                                    if ($decodedContent !== false) {
-                                        $filename = uniqid("inline_img_") . '.' . $imageType;
-                                        $fullMimeType = 'image/' . $imageType;
+                                if ($decodedContent !== false) {
+                                    $filename = uniqid("inline_img_") . '.' . $imageType;
+                                    $fullMimeType = 'image/' . $imageType;
     
+                                    if (!$this->attachmentExists($emailId, $filename)) {
                                         $this->emailModel->saveAttachment(
                                             $emailId,
                                             $filename,
@@ -470,13 +480,9 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                                             $decodedContent
                                         );
                                     }
-                                } catch (Exception $e) {
-                                    $this->errorLogController->logError("Erro ao processar imagem embutida: " . $e->getMessage(), __FILE__, __LINE__, $user_id);
                                 }
                             }
                         }
-    
-                       
     
                         $event = [
                             'Status' => 'Success',
@@ -487,7 +493,7 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                                 'message_id' => $messageId,
                                 'subject' => $subject,
                                 'from' => $fromAddress,
-                                'to' => array_map(fn(EmailAddress $addr) => $addr->getAddress(), iterator_to_array($message->getTo())),
+                                'to' => array_map(fn($addr) => $addr->getAddress(), iterator_to_array($message->getTo())),
                                 'received_at' => $date_received,
                                 'user_id' => $user_id,
                                 'folder_id' => $folderId,
@@ -495,7 +501,6 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                             ]
                         ];
                         $this->webhookService->triggerEvent($event, $user_id);
-                        $uidCounter++;
                     } catch (Exception $e) {
                         $this->errorLogController->logError("Erro ao processar e-mail: " . $e->getMessage(), __FILE__, __LINE__, $user_id);
                     }
@@ -504,12 +509,9 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                 $deletedMessageIds = array_diff($storedMessageIds, $processedMessageIds);
                 foreach ($deletedMessageIds as $deletedMessageId) {
                     $this->emailModel->deleteEmailByMessageId($deletedMessageId, $user_id);
-                    error_log("E-mail com Message-ID $deletedMessageId foi deletado no servidor e removido do banco de dados.");
                 }
-    
-                error_log("Sincronização de e-mails concluída para a pasta " . $folderName);
             }
-            
+    
         } catch (Exception $e) {
             $event = [
                 'Code' => 500,
@@ -526,25 +528,23 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
         }
         return;
     }
-
+    
     private function attachmentExists($emailId, $filename) {
-        $existingAttachment = $this->emailModel->attachmentExists($emailId, $filename);
-        return $existingAttachment !== null; 
+        return $this->emailModel->attachmentExists($emailId, $filename) !== null;
     }
-
+    
     private function replaceCidWithBase64($body_html, $attachment) {
         $contentBytes = $attachment->getDecodedContent();
         $base64Content = base64_encode($contentBytes);
-        $mimeTypeName = $attachment->getType();
-        $subtype = $attachment->getSubtype();
-        $fullMimeType = $mimeTypeName . '/' . $subtype;
-        
+        $fullMimeType = $attachment->getType() . '/' . $attachment->getSubtype();
+    
         return preg_replace(
             '/<img[^>]+src="cid:([^"]+)"/',
             '<img src="data:' . $fullMimeType . ';base64,' . $base64Content . '"',
             $body_html
         );
     }
+    
     
     
     
