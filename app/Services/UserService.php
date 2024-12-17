@@ -25,7 +25,6 @@ class UserService {
         $this->roleModel = new Role($this->db);
     }
 
-
     public function createUser($name, $email, $password, $role_id) {
         $existingUser = $this->userModel->getByEmail($email); 
     
@@ -61,10 +60,6 @@ class UserService {
             return ['status' => false, 'message' => 'Could not save user to the database'];
         }
     }
-    
-    
-    
-    
 
     public function updateUser($id, $name, $email, $role_id) {
         return $this->userModel->update($id, $name, $email, $role_id);
@@ -111,8 +106,6 @@ class UserService {
             ];
         }
     }
-    
-    
 
     public function getUserById($id) {
         return $this->userModel->getUserById($id);
@@ -134,7 +127,6 @@ class UserService {
         }
     
         $role_id = $roleResult['role_id'];
-    
     
         $functionalityQuery = "
         SELECT functionality_name 

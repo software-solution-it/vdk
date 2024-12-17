@@ -2,34 +2,30 @@
 
 namespace App\Controllers;
 
-use App\Services\AuthService;
-use App\Models\User;
-use App\Config\Database;
 use App\Services\UserService;
+use App\Config\Database;
 use App\Controllers\ErrorLogController;
 use Exception;
 
 class UserController {
     private $userService;
-    private $authService;
     private $errorLogController;
 
     public function __construct() {
         $database = new Database();
         $db = $database->getConnection();
-        $this->userService = new UserService(new User($db));
-        $this->authService = new AuthService(new User($db));
+        $this->userService = new UserService(new \App\Models\User($db));
         $this->errorLogController = new ErrorLogController();
     }
 
     public function listUsers() {
         header('Content-Type: application/json');
-        $users = $this->userService->listUsers();
+        $response = $this->userService->listUsers();
         http_response_code(200);
         echo json_encode([
             'Status' => 'Success',
             'Message' => 'Users retrieved successfully.',
-            'Data' => $users
+            'Data' => $response
         ]);
     }
 
@@ -37,13 +33,13 @@ class UserController {
         header('Content-Type: application/json');
         $id = $_GET['id'] ?? null;
         if ($id) { 
-            $user = $this->userService->getUserById($id);
-            if ($user) {
+            $response = $this->userService->getUserById($id);
+            if ($response) {
                 http_response_code(200);
                 echo json_encode([
                     'Status' => 'Success',
                     'Message' => 'User retrieved successfully.',
-                    'Data' => $user
+                    'Data' => $response
                 ]);
             } else {
                 http_response_code(404);
@@ -68,23 +64,14 @@ class UserController {
         $data = json_decode(file_get_contents("php://input"));
     
         if (!empty($data->name) && !empty($data->email) && !empty($data->password) && !empty($data->role_id)) {
-            $create = $this->userService->createUser($data->name, $data->email, $data->password, $data->role_id);
+            $response = $this->userService->createUser($data->name, $data->email, $data->password, $data->role_id);
     
-            if ($create['status']) {
-                http_response_code(201);
-                echo json_encode([
-                    'Status' => 'Success',
-                    'Message' => 'User created successfully',
-                    'Data' => $create['data']
-                ]);
-            } else {
-                http_response_code(500);
-                echo json_encode([
-                    'Status' => 'Error',
-                    'Message' => 'Failed to create user: ' . $create['message'],
-                    'Data' => null
-                ]);
-            }
+            http_response_code($response['status'] ? 201 : 500);
+            echo json_encode([
+                'Status' => $response['status'] ? 'Success' : 'Error',
+                'Message' => $response['message'],
+                'Data' => $response['status'] ? $response['data'] : null
+            ]);
         } else {
             http_response_code(400);
             echo json_encode([
@@ -94,31 +81,17 @@ class UserController {
             ]);
         }
     }
-    
-    
 
     public function updateUser() {
         header('Content-Type: application/json');
         $data = json_decode(file_get_contents("php://input"));
 
         if (!empty($data->id) && !empty($data->name) && !empty($data->email) && !empty($data->role_id)) {
-            $user = $this->userService->getUserById($data->id);
-            if (!$user) {
-                http_response_code(404);
-                echo json_encode([
-                    'Status' => 'Error',
-                    'Message' => 'User not found',
-                    'Data' => null
-                ]);
-                return;
-            }
-
-            $update = $this->userService->updateUser($data->id, $data->name, $data->email, $data->role_id);
-
-            http_response_code($update['status'] ? 200 : 500);
+            $response = $this->userService->updateUser($data->id, $data->name, $data->email, $data->role_id);
+            http_response_code($response['status'] ? 200 : 500);
             echo json_encode([
-                'Status' => $update['status'] ? 'Success' : 'Error',
-                'Message' => $update['status'] ? 'User updated successfully' : 'Failed to update user',
+                'Status' => $response['status'] ? 'Success' : 'Error',
+                'Message' => $response['status'] ? 'User updated successfully' : 'Failed to update user',
                 'Data' => null
             ]);
         } else {
@@ -135,10 +108,7 @@ class UserController {
         header('Content-Type: application/json');
         $id = $_GET['id'] ?? null;
     
-        error_log("DeleteUser invoked. ID: " . ($id ?? 'null'));
-    
         if (!$id) {
-            error_log("User ID not provided");
             http_response_code(400);
             echo json_encode([
                 'Status' => 'Error',
@@ -149,126 +119,19 @@ class UserController {
         }
     
         try {
-            $user = $this->userService->getUserById($id);
-            error_log("getUserById result: " . json_encode($user));
+            $response = $this->userService->deleteUser($id);
     
-            if (!$user) {
-                error_log("User not found for ID: $id");
-                http_response_code(404);
-                echo json_encode([
-                    'Status' => 'Error',
-                    'Message' => 'User not found',
-                    'Data' => null
-                ]);
-                return;
-            }
-    
-            $delete = $this->userService->deleteUser($id);
-            error_log("deleteUser result: " . json_encode($delete));
-    
-            if (!isset($delete['status']) || !$delete['status']) {
-                error_log("Failed to delete user for ID: $id");
-                http_response_code(500);
-                echo json_encode([
-                    'Status' => 'Error',
-                    'Message' => 'Failed to delete user',
-                    'Data' => null
-                ]);
-                return;
-            }
-    
-            error_log("User deleted successfully: $id");
-            http_response_code(200);
+            http_response_code($response['http_code']);
             echo json_encode([
-                'Status' => 'Success',
-                'Message' => 'User deleted successfully',
-                'Data' => null
+                'Status' => $response['status'] ? 'Success' : 'Error',
+                'Message' => $response['message'],
+                'Data' => $response['data'] ?? null
             ]);
         } catch (Exception $e) {
-            error_log("Unexpected error in deleteUser: " . $e->getMessage());
             http_response_code(500);
             echo json_encode([
                 'Status' => 'Error',
                 'Message' => 'An error occurred while deleting the user',
-                'Data' => null
-            ]);
-        }
-    }
-    
-
-    public function checkUserAccess() {
-        header('Content-Type: application/json');
-
-        $data = json_decode(file_get_contents('php://input'), true);
-
-        if (!empty($data['user_id']) && !empty($data['functionality_name'])) {
-            $user = $this->userService->getUserById($data['user_id']);
-
-            if (!$user) {
-                http_response_code(404);
-                echo json_encode([
-                    'Status' => 'Error',
-                    'Message' => 'User not found',
-                    'Data' => null
-                ]);
-                return;
-            }
-
-            $hasAccess = $this->userService->checkUserAccess($data['user_id'], $data['functionality_name']);
-
-            if ($hasAccess) {
-                http_response_code(200);
-                echo json_encode([
-                    'Status' => 'Success',
-                    'Message' => 'Access granted to ' . $data['functionality_name'],
-                    'Data' => null
-                ]);
-            } else {
-                http_response_code(403);
-                echo json_encode([
-                    'Status' => 'Error',
-                    'Message' => 'Access denied',
-                    'Data' => null
-                ]);
-            }
-        } else {
-            http_response_code(400);
-            echo json_encode([
-                'Status' => 'Error',
-                'Message' => 'User ID and functionality name are required',
-                'Data' => null
-            ]);
-        }
-    }
-
-    public function verifyCode() {
-        header('Content-Type: application/json');
-
-        $data = json_decode(file_get_contents('php://input'));
-
-        if (!empty($data->email) && !empty($data->verification_code)) {
-            $result = $this->authService->verifyLoginCode($data->email, $data->verification_code);
-
-            if (isset($result['token'])) {
-                http_response_code(200);
-                echo json_encode([
-                    'Status' => 'Success',
-                    'Message' => 'Verification successful.',
-                    'Data' => ['token' => $result['token']]
-                ]);
-            } else {
-                http_response_code(400);
-                echo json_encode([
-                    'Status' => 'Error',
-                    'Message' => $result['message'],
-                    'Data' => null
-                ]);
-            }
-        } else {
-            http_response_code(400);
-            echo json_encode([
-                'Status' => 'Error',
-                'Message' => 'Email and verification code are required.',
                 'Data' => null
             ]);
         }
