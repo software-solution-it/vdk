@@ -15,8 +15,7 @@ class SMTPController {
 
         try {
             $data = json_decode(file_get_contents('php://input'), true);
-
-            $requiredParams = ['user_id', 'email_id', 'recipient', 'html_body'];
+            $requiredParams = ['email', 'password', 'provider_id', 'recipient', 'html_body'];
             $missingParams = [];
 
             foreach ($requiredParams as $param) {
@@ -37,12 +36,19 @@ class SMTPController {
                 return;
             }
 
-            $user_id = $data['user_id'];
-            $email_id = $data['email_id'];
+            $email = $data['email'];
+            $password = $data['password'];
+            $provider_id = $data['provider_id'];
             $recipient = $data['recipient'];
             $html_body = $data['html_body'];
 
-            $result = $this->connectionSMTPService->testSMTPConnection($user_id, $email_id, $recipient, $html_body);
+            $result = $this->connectionSMTPService->testSMTPConnection(
+                $email,
+                $password,
+                $provider_id,
+                $recipient,
+                $html_body 
+            );
 
             http_response_code($result['status'] ? 200 : 500);
             echo json_encode([
