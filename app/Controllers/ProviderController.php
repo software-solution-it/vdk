@@ -21,16 +21,16 @@ class ProviderController {
     public function createProvider() {
         header('Content-Type: application/json');
         $data = json_decode(file_get_contents('php://input'), true);
-
+    
         $requiredFields = ['name', 'smtp_host', 'smtp_port', 'imap_host', 'imap_port', 'encryption'];
         $missingFields = [];
-
+    
         foreach ($requiredFields as $field) {
             if (empty($data[$field])) {
                 $missingFields[] = $field;
             }
         }
-
+    
         if (!empty($missingFields)) {
             http_response_code(400);
             echo json_encode([
@@ -40,8 +40,10 @@ class ProviderController {
             ]);
             return;
         }
+    
 
         $response = $this->providerService->createProvider($data);
+    
         http_response_code($response['status'] ? 201 : 500);
         echo json_encode([
             'Status' => $response['status'] ? 'Success' : 'Error',
@@ -49,6 +51,7 @@ class ProviderController {
             'Data' => $response['status'] ? $response['data'] : null
         ]);
     }
+    
 
     public function updateProvider($id) {
         header('Content-Type: application/json');

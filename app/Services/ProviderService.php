@@ -11,7 +11,6 @@ class ProviderService {
     }
 
     public function createProvider($data) {
-        // Validação de campos
         $requiredFields = ['name', 'smtp_host', 'smtp_port', 'imap_host', 'imap_port', 'encryption'];
         $missingFields = $this->validateFields($data, $requiredFields);
     
@@ -34,8 +33,12 @@ class ProviderService {
             );
     
             if ($created) {
-                $provider = $this->providerModel->getById($created);
-                return ['status' => true, 'message' => 'Provider created successfully', 'data' => $provider];
+                $provider = $this->providerModel->getById($created); 
+                return [
+                    'status' => true,
+                    'message' => 'Provider created successfully',
+                    'data' => $provider 
+                ];
             }
     
             return [
@@ -44,7 +47,6 @@ class ProviderService {
                 'error_code' => 'CREATE_FAILED'
             ];
         } catch (\Exception $e) {
-            // Tratamento de exceção
             return [
                 'status' => false,
                 'message' => 'Provider with this name already exists.',
@@ -62,7 +64,6 @@ class ProviderService {
             return ['status' => false, 'message' => 'Provider not found'];
         }
 
-        // Valida campos obrigatórios
         $requiredFields = ['name', 'smtp_host', 'smtp_port', 'imap_host', 'imap_port', 'encryption'];
         $missingFields = $this->validateFields($data, $requiredFields);
 
@@ -70,7 +71,6 @@ class ProviderService {
             return ['status' => false, 'message' => 'Missing fields: ' . implode(', ', $missingFields)];
         }
 
-        // Atualiza o registro
         $updated = $this->providerModel->update(
             $id,
             $data['name'],
@@ -97,13 +97,10 @@ class ProviderService {
     }
 
     public function deleteProvider($id) {
-        // Verifica se o registro existe
         $existingProvider = $this->providerModel->getById($id);
         if (!$existingProvider) {
             return ['status' => false, 'message' => 'Provider not found'];
         }
-
-        // Deleta o registro
         $deleted = $this->providerModel->delete($id);
 
         if ($deleted) {
