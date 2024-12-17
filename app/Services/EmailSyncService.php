@@ -224,45 +224,45 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
         error_log("Sincronizando e-mails para o usuário $user_id e provedor $provider_id");
     
         try {
+            // Autenticação no servidor IMAP
             $server = new Server($imap_host, $imap_port);
             $connection = $server->authenticate($email, $password);
-
-
+    
+            // Obter associações de pastas
             $associationsResponse = $this->folderAssociationModel->getAssociationsByEmailAccount($email_account_id);
-
-            
+    
             if ($associationsResponse['Status'] === 'Success') {
                 $associations = $associationsResponse['Data'];
             } else {
                 $associations = []; 
             }
-            
+    
+            // Garantir que pastas processadas existam
             $processedFolders = ['INBOX_PROCESSED', 'SPAM_PROCESSED', 'TRASH_PROCESSED'];
-            
             foreach ($processedFolders as $processedFolder) {
                 if (!$connection->hasMailbox($processedFolder)) {
                     $connection->createMailbox($processedFolder);
                 }
             }
-            
+    
+            // Processar pastas específicas
             foreach (['INBOX', 'SPAM', 'TRASH'] as $folderType) {
                 $filteredAssociations = array_filter($associations, function ($assoc) use ($folderType) {
                     return $assoc['folder_type'] === $folderType;
                 });
-            
-            
+    
                 if (!empty($filteredAssociations)) {
                     $association = current($filteredAssociations);
-            
+    
                     $originalFolderName = $association['folder_name'];
                     $associatedFolderName = $association['associated_folder_name'];
-            
+    
                     $originalMailbox = $connection->getMailbox($originalFolderName);
-            
                     $associatedMailbox = $connection->getMailbox($associatedFolderName);
-            
+    
                     $messages = $originalMailbox->getMessages();
-                    
+    
+                    // Remover mensagens duplicadas com base no Message-ID
                     $uniqueMessages = [];
                     foreach ($messages as $message) {
                         $messageId = $message->getId();
@@ -271,17 +271,14 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                         }
                     }
                     $messages = array_values($uniqueMessages);
-                    
+    
+                    // Mover mensagens para a pasta processada
                     foreach ($messages as $key => $message) {
                         try {
-
                             $message->move($associatedMailbox);
-            
-
                             $this->emailModel->deleteEmail($message->getId());
-            
                             unset($messages[$key]);
-            
+    
                             error_log("E-mail {$message->getId()} movido da pasta $originalFolderName para $associatedFolderName.");
                         } catch (Exception $e) {
                             $this->errorLogController->logError(
@@ -293,14 +290,14 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                             error_log("Erro ao mover e-mail {$message->getId()} da pasta $originalFolderName para $associatedFolderName: " . $e->getMessage());
                         }
                     }
-            
+    
+                    // Expungir mensagens deletadas
                     $imapStream = $connection->getResource()->getStream();
                     imap_expunge($imapStream);
                 }
             }
-            
-            
     
+            // Sincronizar pastas no banco de dados
             $mailboxes = $connection->getMailboxes(); 
             $folderNames = [];
             foreach ($mailboxes as $mailbox) {
@@ -310,6 +307,7 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
             }
             $folders = $this->emailFolderModel->syncFolders($email_account_id, $folderNames); 
     
+            // Processar cada pasta
             foreach ($mailboxes as $mailbox) {
                 if ($mailbox->getAttributes() & \LATT_NOSELECT) {
                     error_log("Ignorando a pasta de sistema: " . $mailbox->getName());
@@ -341,12 +339,6 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                         $date_received = $message->getDate()->setTimezone(new \DateTimeZone('America/Sao_Paulo'))->format('Y-m-d H:i:s');
                         $isRead = $message->isSeen() ? 1 : 0;
                         $body_html = $message->getBodyHtml();
-
-                        if ($body_html) {
-                            $body_html = $this->replaceCidWithBase64($body_html, $message);
-                        }
-
-                        
                         $body_text = $message->getBodyText();
     
                         $bcc = $message->getBcc();
@@ -377,17 +369,56 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
     
                         $conversation_id = null;
                         $conversation_step = 1; 
-
+    
                         if (!empty($references)) {
                             $referenceCount = count(explode(', ', $references));
                             $conversation_step = $referenceCount + 1;
                         }
                 
                         $conversation_id = $references ? explode(', ', $references)[0] : $messageId;
-
+    
+                        // Primeiro, processar o body_html substituindo os CIDs
                         if ($message->hasAttachments()) {
                             $attachments = $message->getAttachments();
-                        
+    
+                            // Mapeia CIDs para anexos
+                            $cidMap = $this->mapCidsToAttachments($attachments);
+    
+                            foreach ($cidMap as $cid => $attachment) {
+                                // Convert CID para base64 e substituir no body_html
+                                $body_html = $this->replaceCidWithBase64($body_html, $attachment, $cid);
+                            }
+                        }
+    
+                        // Salvar o e-mail no banco de dados com o body_html atualizado
+                        $emailId = $this->emailModel->saveEmail(
+                            $user_id,
+                            $email_account_id,
+                            $messageId,
+                            $subject,
+                            $fromAddress,
+                            implode(', ', array_map(fn(EmailAddress $addr) => $addr->getAddress(), $message->getTo()->toArray())),
+                            $body_html, 
+                            $body_text,
+                            $date_received,
+                            $references,
+                            $inReplyTo,
+                            $isRead,
+                            $folderId, 
+                            $cc,
+                            $uidCounter,
+                            $conversation_id,
+                            $conversation_step,
+                            $fromName
+                        );
+    
+                        // Agora, processar anexos e salvar no banco de dados
+                        if ($message->hasAttachments()) {
+                            $attachments = $message->getAttachments();
+    
+                            // Mapeia CIDs para anexos novamente
+                            $cidMap = $this->mapCidsToAttachments($attachments);
+    
                             foreach ($attachments as $attachment) {
                                 try {
                                     $filename = $attachment->getFilename();
@@ -419,10 +450,13 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                                         strlen($contentBytes),
                                         $contentBytes
                                     );
-                        
+    
+                                    // Extrair o CID do anexo (não necessário substituir novamente)
+                                    // Se desejar, pode armazenar o CID como metadata do anexo no banco de dados
+    
                                 } catch (Exception $e) {
                                     $this->errorLogController->logError(
-                                        "Erro ao salvar anexo e substituir CID: " . $e->getMessage(),
+                                        "Erro ao salvar anexo: " . $e->getMessage(),
                                         __FILE__,
                                         __LINE__,
                                         $user_id
@@ -430,60 +464,8 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                                 }
                             }
                         }
-                        
-                
     
-                        $emailId = $this->emailModel->saveEmail(
-                            $user_id,
-                            $email_account_id,
-                            $messageId,
-                            $subject,
-                            $fromAddress,
-                            implode(', ', array_map(fn(EmailAddress $addr) => $addr->getAddress(), iterator_to_array($message->getTo()))),
-                            $body_html, 
-                            $body_text,
-                            $date_received,
-                            $references,
-                            $inReplyTo,
-                            $isRead,
-                            $folderId, 
-                            $cc,
-                            $uidCounter,
-                            $conversation_id,
-                            $conversation_step,
-                            $fromName
-                             
-                        );
-    
-                        if ($body_html) {
-                            preg_match_all('/<img[^>]+src="data:image\/([^;]+);base64,([^"]+)"/', $body_html, $matches, PREG_SET_ORDER);
-    
-                            foreach ($matches as $match) {
-                                try {
-                                    $imageType = $match[1];
-                                    $base64Data = $match[2];
-                                    $decodedContent = base64_decode($base64Data);
-    
-                                    if ($decodedContent !== false) {
-                                        $filename = uniqid("inline_img_") . '.' . $imageType;
-                                        $fullMimeType = 'image/' . $imageType;
-    
-                                        $this->emailModel->saveAttachment(
-                                            $emailId,
-                                            $filename,
-                                            $fullMimeType,
-                                            strlen($decodedContent),
-                                            $decodedContent
-                                        );
-                                    }
-                                } catch (Exception $e) {
-                                    $this->errorLogController->logError("Erro ao processar imagem embutida: " . $e->getMessage(), __FILE__, __LINE__, $user_id);
-                                }
-                            }
-                        }
-    
-                       
-    
+                        // Disparar evento de recebimento de e-mail
                         $event = [
                             'type' => 'email_received',
                             'Status' => 'Success',
@@ -494,14 +476,14 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                                 'message_id' => $messageId,
                                 'subject' => $subject,
                                 'from' => $fromAddress,
-                                'to' => array_map(fn(EmailAddress $addr) => $addr->getAddress(), iterator_to_array($message->getTo())),
+                                'to' => array_map(fn(EmailAddress $addr) => $addr->getAddress(), $message->getTo()->toArray()),
                                 'received_at' => $date_received,
                                 'user_id' => $user_id,
                                 'folder_id' => $folderId,
                                 'uuid' => uniqid(),
                             ]
                         ];
-
+    
                         $this->webhookService->triggerEvent($event, $user_id);
                         $uidCounter++;
                     } catch (Exception $e) {
@@ -509,6 +491,7 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                     }
                 }
     
+                // Remover e-mails que foram deletados no servidor
                 $deletedMessageIds = array_diff($storedMessageIds, $processedMessageIds);
                 foreach ($deletedMessageIds as $deletedMessageId) {
                     $this->emailModel->deleteEmailByMessageId($deletedMessageId, $user_id);
@@ -537,49 +520,61 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
         }
         return;
     }
-
+    
+    /**
+     * Verifica se um anexo já existe no banco de dados para o e-mail especificado.
+     *
+     * @param int $emailId ID do e-mail.
+     * @param string $filename Nome do arquivo do anexo.
+     * @return bool Verdadeiro se o anexo existir, falso caso contrário.
+     */
     private function attachmentExists($emailId, $filename) {
         $existingAttachment = $this->emailModel->attachmentExists($emailId, $filename);
         return $existingAttachment !== null; 
     }
-
-    private function replaceCidWithBase64($body_html, $message) {
-        // Tentativa de buscar attachments com partes MIME
-        if (method_exists($message, 'getParts')) {
-            $parts = $message->getParts();
-            foreach ($parts as $part) {
-                $contentId = $part->getContentId();
-                $contentType = $part->getContentType();
     
-                if ($contentId && strpos($contentType, 'image/') === 0) {
-                    $base64Content = base64_encode($part->getDecodedContent());
-                    $mimeType = $contentType;
-                    $cleanContentId = trim($contentId, '<>');
+    /**
+     * Substitui um CID específico no corpo HTML pelo conteúdo Base64 do anexo correspondente.
+     *
+     * @param string $body_html Corpo HTML do e-mail.
+     * @param object $attachment Objeto do anexo.
+     * @param string $cid CID a ser substituído.
+     * @return string Corpo HTML atualizado com a substituição.
+     */
+    private function replaceCidWithBase64($body_html, $attachment, $cid) {
+        $contentBytes = $attachment->getDecodedContent();
+        $base64Content = base64_encode($contentBytes);
+        
+        $mimeTypeName = $attachment->getType();
+        $subtype = $attachment->getSubtype();
+        $fullMimeType = $mimeTypeName . '/' . $subtype;
     
-                    $pattern = '/<img[^>]+src="cid:' . preg_quote($cleanContentId, '/') . '"/';
-                    $replacement = '<img src="data:' . $mimeType . ';base64,' . $base64Content . '"';
-                    $body_html = preg_replace($pattern, $replacement, $body_html);
-                }
-            }
-        }
+        // Substituir apenas o CID específico no corpo do HTML
+        $pattern = '/<img([^>]+)src=["\']cid:' . preg_quote($cid, '/') . '["\']/i';
+        $replacement = '<img$1src="data:' . $fullMimeType . ';base64,' . $base64Content . '"';
     
-        // Fallback: Verifica attachments inline
-        if ($message->hasAttachments()) {
-            foreach ($message->getAttachments() as $attachment) {
-                if ($attachment->getContentId()) {
-                    $base64Content = base64_encode($attachment->getDecodedContent());
-                    $mimeType = $attachment->getType() . '/' . $attachment->getSubtype();
-                    $cleanContentId = trim($attachment->getContentId(), '<>');
-    
-                    $pattern = '/<img[^>]+src="cid:' . preg_quote($cleanContentId, '/') . '"/';
-                    $replacement = '<img src="data:' . $mimeType . ';base64,' . $base64Content . '"';
-                    $body_html = preg_replace($pattern, $replacement, $body_html);
-                }
-            }
-        }
-    
-        return $body_html;
+        return preg_replace($pattern, $replacement, $body_html);
     }
+    
+    /**
+     * Mapeia CIDs para os anexos correspondentes.
+     *
+     * @param array $attachments Array de objetos de anexos.
+     * @return array Mapeamento de CID para objeto de anexo.
+     */
+    private function mapCidsToAttachments($attachments) {
+        $cidMap = [];
+        foreach ($attachments as $attachment) {
+            $cidHeader = $attachment->getHeaders()->get('content-id');
+            if ($cidHeader) {
+                // Remove caracteres "<" e ">" do CID
+                $cid = trim($cidHeader->getValue(), '<>');
+                $cidMap[$cid] = $attachment;
+            }
+        }
+        return $cidMap;
+    }
+     
     
     
     
