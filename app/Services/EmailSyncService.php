@@ -342,6 +342,10 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                         $isRead = $message->isSeen() ? 1 : 0;
                         $body_html = $message->getBodyHtml();
 
+                        if ($body_html) {
+                            $body_html = $this->replaceCidWithBase64($body_html, $message);
+                        }
+
                         
                         $body_text = $message->getBodyText();
     
@@ -416,9 +420,6 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                                         $contentBytes
                                     );
                         
-                                    if (strpos($body_html, 'cid:') !== false) {
-                                        $body_html = $this->replaceCidWithBase64($body_html, $attachment);
-                                    }
                                 } catch (Exception $e) {
                                     $this->errorLogController->logError(
                                         "Erro ao salvar anexo e substituir CID: " . $e->getMessage(),
@@ -542,18 +543,38 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
         return $existingAttachment !== null; 
     }
 
-    private function replaceCidWithBase64($body_html, $attachment) {
-        $contentBytes = $attachment->getDecodedContent();
-        $base64Content = base64_encode($contentBytes);
-        
-        $mimeTypeName = $attachment->getType();
-        $subtype = $attachment->getSubtype();
-        $fullMimeType = $mimeTypeName . '/' . $subtype;
+    private function replaceCidWithBase64($body_html, $message) {
+        // Varrer todas as partes do corpo MIME da mensagem
+        $parts = $message->getParts();
     
-        $pattern = '/<img[^>]+src="cid:[^"]+"/';
-        $replacement = '<img src="data:' . $fullMimeType . ';base64,' . $base64Content . '"';
+        foreach ($parts as $part) {
+            // Verifica se a parte contém um Content-ID e é uma imagem
+            $contentId = $part->getContentId();
+            $contentType = $part->getContentType();
     
-        return preg_replace($pattern, $replacement, $body_html);
+            if ($contentId && strpos($contentType, 'image/') === 0) {
+                $contentBytes = $part->getDecodedContent();
+                if ($contentBytes === false) {
+                    error_log("Falha ao decodificar conteúdo da imagem CID: " . $contentId);
+                    continue;
+                }
+    
+                // Gera o base64 a partir do conteúdo da imagem
+                $base64Content = base64_encode($contentBytes);
+                $mimeType = $contentType;
+    
+                // Remove os sinais "<>" do Content-ID
+                $cleanContentId = trim($contentId, '<>');
+    
+                // Substitui o 'cid' no HTML
+                $pattern = '/<img[^>]+src="cid:' . preg_quote($cleanContentId, '/') . '"/';
+                $replacement = '<img src="data:' . $mimeType . ';base64,' . $base64Content . '"';
+    
+                $body_html = preg_replace($pattern, $replacement, $body_html);
+            }
+        }
+    
+        return $body_html;
     }
     
     
