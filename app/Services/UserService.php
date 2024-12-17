@@ -23,7 +23,7 @@ class UserService {
         $this->emailAccountModel = new EmailAccount($this->db);
     }
     public function createUser($name, $email, $password, $role_id) {
-        $existingUser = $this->userModel->getUserByEmail($email); 
+        $existingUser = $this->userModel->getByEmail($email); 
     
         if ($existingUser) {
             return ['status' => false, 'message' => 'Email already exists.'];
