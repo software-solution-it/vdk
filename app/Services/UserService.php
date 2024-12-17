@@ -62,8 +62,67 @@ class UserService {
     }
 
     public function updateUser($id, $name, $email, $role_id) {
-        return $this->userModel->update($id, $name, $email, $role_id);
+        try {
+            $user = $this->userModel->getUserById($id);
+            if (!$user) {
+                return [
+                    'status' => false,
+                    'message' => 'User not found.',
+                    'data' => null,
+                    'http_code' => 404
+                ];
+            }
+    
+            $roleExists = $this->roleModel->getById($role_id);
+            if (!$roleExists) {
+                return [
+                    'status' => false,
+                    'message' => 'Role does not exist.',
+                    'data' => null,
+                    'http_code' => 400
+                ];
+            }
+    
+            if ($email !== $user['email']) {
+                $existingUser = $this->userModel->getByEmail($email);
+                if ($existingUser) {
+                    return [
+                        'status' => false,
+                        'message' => 'Email already exists.',
+                        'data' => null,
+                        'http_code' => 400
+                    ];
+                }
+            }
+    
+            $updateResult = $this->userModel->update($id, $name, $email, $role_id);
+            
+            if ($updateResult) {
+                return [
+                    'status' => true,
+                    'message' => 'User updated successfully.',
+                    'data' => null,
+                    'http_code' => 200
+                ];
+            } else {
+                return [
+                    'status' => false,
+                    'message' => 'Failed to update user.',
+                    'data' => null,
+                    'http_code' => 500
+                ];
+            }
+        } catch (Exception $e) {
+            error_log("Error in userService->updateUser: " . $e->getMessage());
+            return [
+                'status' => false,
+                'message' => 'An error occurred while updating the user.',
+                'data' => null,
+                'http_code' => 500
+            ];
+        }
     }
+    
 
     public function deleteUser($id) {
         try {
