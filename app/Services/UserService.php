@@ -74,25 +74,44 @@ class UserService {
         try {
             $emailAccounts = $this->emailAccountModel->getEmailAccountByUserId($id);
     
-            if (!empty($emailAccounts)) {
+            if (!empty($emailAccounts)) { 
                 return [
                     'status' => false,
-                    'message' => 'Cannot delete user. Email accounts are associated with this user.'
+                    'message' => 'Cannot delete user. Email accounts are associated with this user.',
+                    'data' => null, 
+                    'http_code' => 400
                 ];
             }
     
             $result = $this->userModel->delete($id);
+            
             if ($result === true) {
-                return ['status' => true];
+                return [
+                    'status' => true,
+                    'message' => 'User deleted successfully.',
+                    'data' => null, 
+                    'http_code' => 200
+                ];
             } else {
                 error_log("Failed to delete user in userModel->delete for ID: $id");
-                return ['status' => false, 'message' => 'Failed to delete user.'];
+                return [
+                    'status' => false,
+                    'message' => 'Failed to delete user.',
+                    'data' => null, 
+                    'http_code' => 500
+                ];
             }
-        } catch (Exception $e) { 
+        } catch (Exception $e) {
             error_log("Error in userService->deleteUser: " . $e->getMessage());
-            return ['status' => false, 'message' => 'An error occurred while deleting the user.'];
+            return [
+                'status' => false,
+                'message' => 'An error occurred while deleting the user.',
+                'data' => null,
+                'http_code' => 500
+            ];
         }
     }
+    
     
 
     public function getUserById($id) {
