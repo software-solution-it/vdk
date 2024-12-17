@@ -543,27 +543,40 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
     }
 
     private function replaceCidWithBase64($body_html, $attachment) {
-        // Obtém o conteúdo decodificado do anexo
+        // Carrega o HTML em um objeto DOMDocument
+        $dom = new \DOMDocument();
+        libxml_use_internal_errors(true); // Para ignorar erros de HTML malformado (como entidades não fechadas)
+        $dom->loadHTML($body_html);
+        libxml_clear_errors();
+    
+        // Obtém o conteúdo do anexo em base64
         $contentBytes = $attachment->getDecodedContent();
         $base64Content = base64_encode($contentBytes);
         
         // Obtém o tipo MIME e o sub-tipo do anexo
         $mimeTypeName = $attachment->getType();
-        $subtype = $attachment->getSubtype();
+        $subtype = $attachment->getSubtype(); 
         $fullMimeType = $mimeTypeName . '/' . $subtype;
     
-        // Obtém o CID (Content-ID) e remove os caracteres "<" e ">"
+        // Obtém o CID (Content-ID) sem os sinais de "<>"
         $contentId = trim($attachment->getContentId(), '<>');
     
-        // Expressão regular para capturar a tag <img> com src="cid:..."
-        // Ajustamos para aceitar atributos adicionais na tag <img>
-        $pattern = '/<img[^>]+src=["\']cid:' . preg_quote($contentId, '/') . '["\'][^>]*>/i';
+        // Encontra todas as tags <img> no HTML
+        $images = $dom->getElementsByTagName('img');
     
-        // Substitui o CID no corpo HTML pelo conteúdo base64
-        $replacement = '<img src="data:' . $fullMimeType . ';base64,' . $base64Content . '"';
+        foreach ($images as $img) {
+            // Verifica se o src começa com "cid:" e corresponde ao Content-ID
+            $src = $img->getAttribute('src');
+            if (strpos($src, 'cid:') !== false && strpos($src, $contentId) !== false) {
+                // Substitui o src pela versão base64
+                $img->setAttribute('src', 'data:' . $fullMimeType . ';base64,' . $base64Content);
+            }
+        }
     
-        // Realiza a substituição
-        return preg_replace($pattern, $replacement, $body_html);
+        // Salva o HTML modificado de volta em uma string
+        $body_html = $dom->saveHTML();
+        
+        return $body_html;
     }
     
     
