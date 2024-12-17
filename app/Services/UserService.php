@@ -1,17 +1,18 @@
 <?php
+
 namespace App\Services;
 
 use App\Models\User;
 use App\Models\EmailAccount;
+use App\Models\Role; 
 use App\Config\Database;
 use PDO;
 use Exception;
 
 class UserService {
     private $userModel;
-
     private $emailAccountModel;
-
+    private $roleModel; 
     private $db;
 
     public function __construct(User $userModel) {
@@ -21,12 +22,21 @@ class UserService {
         $this->db = $database->getConnection();
 
         $this->emailAccountModel = new EmailAccount($this->db);
+        $this->roleModel = new Role($this->db);
     }
+
+
     public function createUser($name, $email, $password, $role_id) {
         $existingUser = $this->userModel->getByEmail($email); 
     
         if ($existingUser) {
             return ['status' => false, 'message' => 'Email already exists.'];
+        }
+    
+        $roleExists = $this->roleModel->getById($role_id);
+    
+        if (!$roleExists) {
+            return ['status' => false, 'message' => 'Role does not exist.'];
         }
     
         $verificationCode = rand(100000, 999999);
@@ -51,6 +61,7 @@ class UserService {
             return ['status' => false, 'message' => 'Could not save user to the database'];
         }
     }
+    
     
     
     
