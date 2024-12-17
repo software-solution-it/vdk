@@ -452,31 +452,48 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                         );
     
                         if ($body_html) {
-                            preg_match_all('/<img[^>]+src="data:image\/([^;]+);base64,([^"]+)"/', $body_html, $matches, PREG_SET_ORDER);
-    
+                            // Encontrar todas as imagens referenciadas no HTML
+                            preg_match_all('/<img[^>]+src="cid:([^"]+)"/i', $body_html, $matches, PREG_SET_ORDER);
+                        
+                            $attachments = $message->getAttachments();
+                        
                             foreach ($matches as $match) {
-                                try {
-                                    $imageType = $match[1];
-                                    $base64Data = $match[2];
-                                    $decodedContent = base64_decode($base64Data);
-    
-                                    if ($decodedContent !== false) {
-                                        $filename = uniqid("inline_img_") . '.' . $imageType;
-                                        $fullMimeType = 'image/' . $imageType;
-    
-                                        $this->emailModel->saveAttachment(
-                                            $emailId,
-                                            $filename,
-                                            $fullMimeType,
-                                            strlen($decodedContent),
-                                            $decodedContent
-                                        );
+                                $cid = $match[1]; // Pega o CID sem "cid:"
+                        
+                                foreach ($attachments as $attachment) {
+                                    $attachmentCid = $this->getContentIdFromAttachment($attachment);
+                        
+                                    if ($attachmentCid === $cid) {
+                                        try { 
+                                            // Salvar o anexo correspondente ao CID
+                                            $filename = uniqid("inline_img_") . '.' . pathinfo($attachment->getFilename(), PATHINFO_EXTENSION);
+                                            $decodedContent = $attachment->getDecodedContent();
+                        
+                                            if ($decodedContent !== false) {
+                                                $this->emailModel->saveAttachment(
+                                                    $emailId,
+                                                    $filename,
+                                                    'image/' . pathinfo($filename, PATHINFO_EXTENSION),
+                                                    strlen($decodedContent),
+                                                    $decodedContent
+                                                );
+                                                error_log("Imagem embutida $filename salva com sucesso.");
+                                            }
+                                        } catch (Exception $e) {
+                                            $this->errorLogController->logError(
+                                                "Erro ao salvar imagem inline: " . $e->getMessage(),
+                                                __FILE__,
+                                                __LINE__,
+                                                $user_id
+                                            );
+                                        }
                                     }
-                                } catch (Exception $e) {
-                                    $this->errorLogController->logError("Erro ao processar imagem embutida: " . $e->getMessage(), __FILE__, __LINE__, $user_id);
                                 }
                             }
                         }
+                        
+                        
+                        
     
                        
     
@@ -533,6 +550,20 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
         }
         return;
     }
+
+    private function getContentIdFromAttachment($attachment): ?string
+{
+    // O método getHeaders() retorna todos os cabeçalhos como uma coleção.
+    $headers = $attachment->getHeaders();
+
+    // Buscar o Content-ID, se estiver presente nos cabeçalhos.
+    if ($headers->has('content-id')) {
+        return trim($headers->get('content-id'), '<>'); // Remove < e > do Content-ID
+    }
+
+    return null;
+}
+
 
     private function attachmentExists($emailId, $filename) {
         $existingAttachment = $this->emailModel->attachmentExists($emailId, $filename);
