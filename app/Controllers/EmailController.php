@@ -86,7 +86,7 @@ class EmailController {
             $user_id = $data['user_id'];
             $email_account_id = $data['email_account_id'];
             $sendResults = [];
-            
+    
             foreach ($data['emails'] as $emailData) {
                 $requiredParams = ['recipientEmails', 'subject', 'htmlTemplate'];
                 $missingParams = [];
@@ -124,7 +124,7 @@ class EmailController {
                                     'result' => 'falhou',
                                     'message' => "Falha ao decodificar o arquivo anexado: {$attachment['name']}"
                                 ];
-                                continue 2; 
+                                continue 2;
                             }
                             $attachments[] = [
                                 'name' => $attachment['name'],
@@ -137,10 +137,13 @@ class EmailController {
                                 'result' => 'falhou',
                                 'message' => 'Dados do anexo incompletos. Nome, mimetype e base64 são necessários.'
                             ];
-                            continue 2; 
+                            continue 2;
                         }
                     }
                 }
+    
+                // Adicionando o 'In-Reply-To' (referência ao e-mail original)
+                $inReplyTo = isset($emailData['inReplyTo']) ? $emailData['inReplyTo'] : null;
     
                 try {
                     $result = $this->emailService->sendEmail(
@@ -149,7 +152,7 @@ class EmailController {
                         $recipientEmails,
                         $subject,
                         $htmlTemplate,
-                        null,
+                        $inReplyTo,
                         $priority,
                         $attachments,
                         $ccEmails,
@@ -188,8 +191,9 @@ class EmailController {
             ]);
         }
     
-        ob_end_flush(); 
+        ob_end_flush();
     }
+    
 
     public function sendEmail() {
         ob_start();

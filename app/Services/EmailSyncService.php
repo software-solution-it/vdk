@@ -472,7 +472,6 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                                         continue;
                                     }
                         
-                                    // Salvar o anexo no banco de dados
                                     $this->emailModel->saveAttachment(
                                         $emailId,
                                         $filename,
@@ -481,12 +480,11 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                                         $contentBytes
                                     );
                         
-                                    // Procura e substitui o "cid:" diretamente no HTML
-                                    $body_html = preg_replace(
-                                        '/<img[^>]+src="cid:([^"]+)"/',
-                                        '<img src="data:' . $fullMimeType . ';base64,' . base64_encode($contentBytes) . '"',
-                                        $body_html
-                                    );
+                                    if (strpos($body_html, 'cid:') !== false) {
+                                        $body_html = $this->replaceCidWithBase64($body_html, $attachment);
+                                    }
+
+
                                 } catch (Exception $e) {
                                     $this->errorLogController->logError("Erro ao salvar e substituir anexo: " . $e->getMessage(), __FILE__, __LINE__, $user_id);
                                 }
@@ -595,6 +593,20 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
             throw $e;
         }
         return;
+    }
+
+    private function replaceCidWithBase64($body_html, $attachment) {
+        $contentBytes = $attachment->getDecodedContent();
+        $base64Content = base64_encode($contentBytes);
+        $mimeTypeName = $attachment->getType();
+        $subtype = $attachment->getSubtype();
+        $fullMimeType = $mimeTypeName . '/' . $subtype;
+        
+        return preg_replace(
+            '/<img[^>]+src="cid:([^"]+)"/',
+            '<img src="data:' . $fullMimeType . ';base64,' . $base64Content . '"',
+            $body_html
+        );
     }
     
     

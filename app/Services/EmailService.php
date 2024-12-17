@@ -46,7 +46,7 @@ class EmailService {
         $this->errorLogController = new ErrorLogController();
     }
 
-    public function sendEmail($user_id, $email_account_id, $recipientEmails, $subject, $htmlBody, $plainBody = '', $priority = null, $attachments = [], $ccEmails = [], $bccEmails = []) {
+    public function sendEmail($user_id, $email_account_id, $recipientEmails, $subject, $htmlBody, $plainBody = '', $priority = null, $attachments = [], $ccEmails = [], $bccEmails = [], $inReplyTo = null) {
         if (!is_array($recipientEmails)) {
             $recipientEmails = [$recipientEmails];
         }
@@ -74,7 +74,7 @@ class EmailService {
             ];
         }
         $smtpConfig['password'] = EncryptionHelper::decrypt($smtpConfig['password']);
-
+    
         $message = [
             'user_id' => $user_id,
             'email_account_id' => $email_account_id, 
@@ -82,10 +82,11 @@ class EmailService {
             'ccEmails' => $ccEmails,
             'bccEmails' => $bccEmails,
             'subject' => $subject,
-            'htmlBody' => $htmlBody,
+            'htmlBody' => $htmlBody, 
             'plainBody' => $plainBody,
             'priority' => $priority,
             'attachments' => $attachments,
+            'inReplyTo' => $inReplyTo 
         ];
     
         $queue_name = 'email_sending_queue';
@@ -107,6 +108,7 @@ class EmailService {
             'message' => 'E-mail enviado com sucesso.'
         ];
     }
+    
 
 
     public function moveEmail($email_id, $new_folder_name) {
@@ -261,26 +263,26 @@ class EmailService {
         $bccEmails = $message['bccEmails'] ?? [];
         $subject = $message['subject'];
         $htmlBody = $message['htmlBody'];
-        $priority = $message['priority'] ?? null;
         $attachments = $message['attachments'] ?? [];
-
+        $inReplyTo = $message['inReplyTo'] ?? null;
+    
         $user = $this->userService->getUserById($user_id);
         if (!$user) {
             error_log("Usuário não encontrado: $user_id");
             return false;
         }
-
+    
         $smtpConfig = $this->emailAccountModel->getById($email_account_id);
         if (!$smtpConfig) {
             error_log("Configurações de SMTP não encontradas para o email_account_id $email_account_id");
             return false;
         }
         $smtpConfig['password'] = EncryptionHelper::decrypt($smtpConfig['password']);
-
+    
         $this->errorLogController->logError("SMTP Config: " . json_encode($smtpConfig), __FILE__, __LINE__);
-
+    
         $mail = new PHPMailer(true);
-
+    
         try {
             $mail->CharSet = 'UTF-8';
             $mail->isSMTP();
@@ -290,9 +292,9 @@ class EmailService {
             $mail->Password = $smtpConfig['password'];
             $mail->SMTPSecure = $smtpConfig['encryption'];
             $mail->Port = $smtpConfig['smtp_port'];
-
-            $mail->setFrom($smtpConfig['email'], 'Nome do Remetente');
-
+    
+            $mail->setFrom($smtpConfig['email'], $user['name']);
+    
             foreach ($recipientEmails as $recipientEmail) {
                 $mail->addAddress($recipientEmail);
             }
@@ -302,7 +304,7 @@ class EmailService {
             foreach ($bccEmails as $bccEmail) {
                 $mail->addBCC($bccEmail);
             }
-
+    
             foreach ($attachments as $attachment) {
                 if (isset($attachment['tmp_name']) && is_file($attachment['tmp_name'])) {
                     $mail->addAttachment($attachment['tmp_name'], $attachment['name']);
@@ -312,13 +314,16 @@ class EmailService {
                     error_log("Anexo inválido ou incompleto: " . json_encode($attachment));
                 }
             }
-
+    
             $mail->isHTML(true);
             $mail->Subject = $subject;
             $mail->Body = $htmlBody;
-            $mail->AltBody = 'Texto alternativo para clientes que não suportam HTML.';
-
-            if ($mail->send()) {
+    
+            if ($inReplyTo) {
+                $mail->addCustomHeader('In-Reply-To', $inReplyTo);
+            }
+    
+            if ($mail->send()) { 
                 return true;
             } else {
                 error_log('Falha ao enviar o e-mail.');
@@ -328,8 +333,8 @@ class EmailService {
             error_log('Erro ao enviar e-mail: ' . $e->getMessage());
             return false;
         }
-
     }
+    
     
     public function listEmails($folder_id = null, $folder_name = null, $limit, $offset)
     {
