@@ -404,6 +404,23 @@ class OutlookOAuth2Service {
                         $fromName = $emailData['from']['emailAddress']['name'] ?? '';
                         $subject = $emailData['subject'] ?? '(Sem Assunto)';
                         $date_received = $emailData['receivedDateTime'] ?? null;
+                        if ($date_received) {
+                            try { 
+                                $utcDate = new \DateTime($date_received, new \DateTimeZone('UTC'));
+                        
+                                $brasiliaTimezone = new \DateTimeZone('America/Sao_Paulo');
+                        
+
+                                $utcDate->setTimezone($brasiliaTimezone);
+                        
+                                $formattedDate = $utcDate->format('Y-m-d H:i:s');
+                        
+                                echo "Data e hora no horário de Brasília: " . $formattedDate;
+                            } catch (Exception $e) {
+
+                                echo "Erro ao converter a data: " . $e->getMessage();
+                            }
+                        }
                         $isRead = $emailData['isRead'] ?? false;
                         $toRecipients = implode(', ', array_map(function($recipient) {
                             return $recipient['emailAddress']['address'];
