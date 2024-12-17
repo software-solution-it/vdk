@@ -67,6 +67,17 @@ class UserService {
 
     public function deleteUser($id) {
         try {
+            $user = $this->userModel->getUserById($id);
+            
+            if (!$user) {
+                return [
+                    'status' => false,
+                    'message' => 'User not found.',
+                    'data' => null,
+                    'http_code' => 404
+                ];
+            }
+    
             $emailAccounts = $this->emailAccountModel->getEmailAccountByUserId($id);
     
             if (!empty($emailAccounts)) { 
@@ -80,7 +91,7 @@ class UserService {
     
             $result = $this->userModel->delete($id);
             
-            if ($result === true) {
+            if ($result) {
                 return [
                     'status' => true,
                     'message' => 'User deleted successfully.',
@@ -106,6 +117,7 @@ class UserService {
             ];
         }
     }
+    
 
     public function getUserById($id) {
         return $this->userModel->getUserById($id);
