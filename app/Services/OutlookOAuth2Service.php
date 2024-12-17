@@ -107,6 +107,8 @@ class OutlookOAuth2Service {
             if (!$emailAccount) {
                 throw new Exception("Email account not found for user ID: $user_id and email ID: $email_id");
             }
+
+            $this->initializeOAuthParameters($emailAccount, $user_id, $email_id);
     
             $response = $this->httpClient->post('https://login.microsoftonline.com/common/oauth2/v2.0/token', [
                 'form_params' => [
