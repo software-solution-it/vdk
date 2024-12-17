@@ -319,10 +319,8 @@ class EmailService {
             $mail->Subject = $subject;
             $mail->Body = $htmlBody;
     
-            if ($inReplyTo) {
                 $mail->addCustomHeader('In-Reply-To', "<5KKGjRWSmzguhcYgUMoVkyaoyy4IXTdwZKdsWSdxGk@localhost>");
                 $mail->addCustomHeader('References', "<CAMbb+tcuzi4Ya52-+8vczN6MEQMVk0WD5wxD7dU0npbauPVicA@mail.gmail.com> <5KKGjRWSmzguhcYgUMoVkyaoyy4IXTdwZKdsWSdxGk@localhost>");
-            }
     
             if ($mail->send()) { 
                 return true;
