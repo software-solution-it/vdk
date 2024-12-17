@@ -97,7 +97,7 @@ class User {
 
     public function getUserById($id) {
         $query = "SELECT u.id, u.name, u.email, r.role_name, u.created_at, 
-                  e.id AS email_account_id, e.email AS email_account, e.provider_id 
+                         e.id AS email_account_id, e.email AS email_account, e.provider_id 
                   FROM " . $this->table . " u 
                   JOIN " . $this->roleTable . " r ON u.role_id = r.id 
                   LEFT JOIN email_accounts e ON u.id = e.user_id 
@@ -107,33 +107,32 @@ class User {
         $stmt->bindParam(":id", $id);
         $stmt->execute();
     
-        $user = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
         
-        if (empty($user)) {
-            return null; 
+        if (!$user) {
+            return null;
         }
     
         $userData = [
-            'id' => $user[0]['id'],
-            'name' => $user[0]['name'],
-            'email' => $user[0]['email'],
-            'role_name' => $user[0]['role_name'],
-            'created_at' => $user[0]['created_at'],
+            'id' => $user['id'],
+            'name' => $user['name'],
+            'email' => $user['email'],
+            'role_name' => $user['role_name'],
+            'created_at' => $user['created_at'],
             'email_accounts' => [] 
         ];
     
-        foreach ($user as $account) {
-            if ($account['email_account_id']) {
-                $userData['email_accounts'][] = [
-                    'id' => $account['email_account_id'],
-                    'email' => $account['email_account'],
-                    'provider_id' => $account['provider_id']
-                ];
-            }
+        if ($user['email_account_id']) {
+            $userData['email_accounts'][] = [
+                'id' => $user['email_account_id'],
+                'email' => $user['email_account'],
+                'provider_id' => $user['provider_id']
+            ];
         }
     
         return $userData;
     }
+    
     
 
     public function updateLoginVerificationCode($user_id, $verificationCode, $expirationTime) {
