@@ -6,6 +6,7 @@ use App\Helpers\EncryptionHelper;
 use App\Models\EmailFolder;
 use App\Models\Email;
 use App\Models\User;
+use App\Models\Provider;
 use App\Models\EmailAttachment;  
 
 class EmailAccountService {
@@ -14,6 +15,7 @@ class EmailAccountService {
     private $emailFolderModel;
     private $emailAttachmentModel; 
     private $userModel;
+    private $providerModel;
     
     public function __construct($db) {
         $this->emailAccountModel = new EmailAccount($db);
@@ -21,6 +23,7 @@ class EmailAccountService {
         $this->emailFolderModel = new EmailFolder($db);
         $this->emailAttachmentModel = new EmailAttachment($db);
         $this->userModel = new User($db);
+        $this->providerModel = new Provider($db);
     }
 
     public function validateFields($data, $requiredFields) {
@@ -44,10 +47,15 @@ class EmailAccountService {
             return ['status' => false, 'message' => 'Missing fields: ' . implode(', ', $missingFields)];
         }
     
-        // Verificar se o usuário existe
         $user = $this->userModel->getUserById($data['user_id']);
         if (!$user) {
-            return ['status' => false, 'message' => 'User does not exist'];  // Aqui, retornamos o erro diretamente
+            return ['status' => false, 'message' => 'User does not exist']; 
+        }
+    
+
+        $provider = $this->providerModel->getById($data['provider_id']);
+        if (!$provider) {
+            return ['status' => false, 'message' => 'Provider does not exist']; 
         }
     
         $encryptedPassword = EncryptionHelper::encrypt($data['password']);
