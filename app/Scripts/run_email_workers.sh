@@ -1,5 +1,5 @@
-DATABASE_USER="root"
-DATABASE_PASS="root"
+DATABASE_USER="nvm_prd"
+DATABASE_PASS="Cap0199**"
 DATABASE_NAME="mail"
 PHP_BIN="/usr/bin/php"
 WORKER_SCRIPT="/home/suporte/vdk/app/Worker/email_sync_worker.php"
