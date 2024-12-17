@@ -15,7 +15,7 @@ class EmailAccountController {
         $this->emailAccountService = new EmailAccountService($db);
         $this->errorLogController = new ErrorLogController(); 
     } 
-
+ 
     public function createEmailAccount() {
         header('Content-Type: application/json');
         $data = json_decode(file_get_contents("php://input"), true);
@@ -68,11 +68,12 @@ class EmailAccountController {
         header('Content-Type: application/json');
         try {
             $result = $this->emailAccountService->deleteEmailAccount($id);
-            http_response_code(200);
+    
+            http_response_code($result['http_code']);
             echo json_encode([
-                'Status' => 'Success',
-                'Message' => 'Email account deleted successfully.',
-                'Data' => $result
+                'Status' => $result['status'] ? 'Success' : 'Error',
+                'Message' => $result['message'],
+                'Data' => $result['data']
             ]);
         } catch (\Exception $e) {
             $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
@@ -84,6 +85,7 @@ class EmailAccountController {
             ]);
         }
     }
+    
 
     public function getEmailAccountByUserId($id) {
         header('Content-Type: application/json');
