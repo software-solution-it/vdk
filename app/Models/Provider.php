@@ -15,15 +15,21 @@ class Provider {
                   VALUES (:name, :smtp_host, :smtp_port, :imap_host, :imap_port, :encryption)";
         
         $stmt = $this->conn->prepare($query);
+    
         $stmt->bindParam(':name', $name);
         $stmt->bindParam(':smtp_host', $smtp_host);
         $stmt->bindParam(':smtp_port', $smtp_port);
         $stmt->bindParam(':imap_host', $imap_host);
         $stmt->bindParam(':imap_port', $imap_port);
         $stmt->bindParam(':encryption', $encryption);
-
-        return $stmt->execute();
+    
+        if ($stmt->execute()) {
+            return $this->conn->lastInsertId();
+        }
+    
+        return false;
     }
+    
 
 
     public function getById($id) {
