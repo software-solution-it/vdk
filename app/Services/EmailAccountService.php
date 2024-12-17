@@ -47,7 +47,7 @@ class EmailAccountService {
         // Verificar se o usuário existe
         $user = $this->userModel->getUserById($data['user_id']);
         if (!$user) {
-            return ['status' => false, 'message' => 'User does not exist'];
+            return ['status' => false, 'message' => 'User does not exist'];  // Aqui, retornamos o erro diretamente
         }
     
         $encryptedPassword = EncryptionHelper::encrypt($data['password']);
@@ -67,11 +67,12 @@ class EmailAccountService {
         if ($emailAccountId) {
             $createdEmailAccount = $this->emailAccountModel->getById($emailAccountId);
     
-            return $createdEmailAccount;
+            return ['status' => true, 'message' => 'Email account created successfully.', 'data' => $createdEmailAccount];
         }
     
         return ['status' => false, 'message' => 'Failed to create email account'];
     }
+    
     
     
 
