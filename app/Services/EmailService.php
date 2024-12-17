@@ -568,7 +568,8 @@ class EmailService {
             $mail->SMTPSecure = $smtpConfig['encryption'];
             $mail->Port       = $smtpConfig['smtp_port'];
 
-            $mail->setFrom($smtpConfig['email'], $smtpConfig['name']);
+            $mail->setFrom($smtpConfig['email']);
+
             $mail->addAddress($recipientEmail);
 
             $mail->isHTML(true);

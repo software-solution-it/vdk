@@ -142,7 +142,6 @@ class EmailController {
                     }
                 }
     
-                // Adicionando o 'In-Reply-To' (referência ao e-mail original)
                 $inReplyTo = isset($emailData['inReplyTo']) ? $emailData['inReplyTo'] : null;
     
                 try {
