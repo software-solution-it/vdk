@@ -543,20 +543,27 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
     }
 
     private function replaceCidWithBase64($body_html, $attachment) {
+        // Obtém o conteúdo decodificado do anexo
         $contentBytes = $attachment->getDecodedContent();
         $base64Content = base64_encode($contentBytes);
         
+        // Obtém o tipo MIME e o sub-tipo do anexo
         $mimeTypeName = $attachment->getType();
         $subtype = $attachment->getSubtype();
         $fullMimeType = $mimeTypeName . '/' . $subtype;
     
+        // Obtém o CID (Content-ID)
         $contentId = trim($attachment->getContentId(), '<>');
     
-        $pattern = '/<img[^>]+src="cid:' . preg_quote($contentId, '/') . '"/';
+        // Expressão regular para procurar qualquer imagem com CID no HTML
+        $pattern = '/<img[^>]+src=["\']cid:' . preg_quote($contentId, '/') . '["\'][^>]*>/';
+    
+        // Substitui o CID no corpo HTML pelo conteúdo base64
         $replacement = '<img src="data:' . $fullMimeType . ';base64,' . $base64Content . '"';
         
         return preg_replace($pattern, $replacement, $body_html);
     }
+    
     
     
     
