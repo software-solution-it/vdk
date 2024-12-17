@@ -361,7 +361,6 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                     $imapStream = $connection->getResource()->getStream();
                     imap_expunge($imapStream);
                 } else {
-                    // Nenhuma associação encontrada para este tipo de pasta
                     $this->errorLogController->logError(
                         "Nenhuma associação encontrada para " . $folderType,
                         __FILE__,
@@ -405,8 +404,8 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                     try {
                         $messageId = $message->getId();
                         $processedMessageIds[] = $messageId;
-                        $fromAddress = $message->getFrom()->getAddress();
-                        $fromName = $message->getFrom()->getName() ?? null;
+                        $fromAddress = $message->getFrom()->getAddress() ?? 'unknown@example.com';
+                        $fromName = $message->getFrom()->getName() ?? 'Unknown Sender';
                         $subject = $message->getSubject() ?? 'Sem Assunto';
                         $date_received = $message->getDate()->setTimezone(new \DateTimeZone('America/Sao_Paulo'))->format('Y-m-d H:i:s');
                         $isRead = $message->isSeen() ? 1 : 0;
