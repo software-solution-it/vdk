@@ -25,7 +25,7 @@ class UserService {
     public function createUser($name, $email, $password, $role_id) {
         $existingUser = $this->userModel->getUserByEmail($email); 
     
-        if ($existingUser) { 
+        if ($existingUser) {
             return ['status' => false, 'message' => 'Email already exists.'];
         }
     
@@ -51,6 +51,7 @@ class UserService {
             return ['status' => false, 'message' => 'Could not save user to the database'];
         }
     }
+    
     
     
 

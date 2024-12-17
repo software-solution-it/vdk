@@ -75,19 +75,18 @@ class UserController {
                 echo json_encode([
                     'Status' => 'Success',
                     'Message' => 'User created successfully',
-                    'Data' => $create['data'] 
+                    'Data' => $create['data']
                 ]);
             } else {
                 http_response_code(500);
                 echo json_encode([
                     'Status' => 'Error',
-                    'Message' => $create['message'], 
+                    'Message' => 'Failed to create user: ' . $create['message'],
                     'Data' => null
                 ]);
             }
         } else {
-
-            http_response_code(400); 
+            http_response_code(400);
             echo json_encode([
                 'Status' => 'Error',
                 'Message' => 'Incomplete data. Name, email, password, and role_id are required.',
@@ -95,6 +94,7 @@ class UserController {
             ]);
         }
     }
+    
     
 
     public function updateUser() {
