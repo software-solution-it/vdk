@@ -232,7 +232,7 @@ class OutlookOAuth2Service {
                 $associations = [];
             }
 
-            $folders = ['INBOX_PROCESSED', 'SPAM_PROCESSED', 'TRASH_PROCESSED'];
+            $folders = ['TRASH_PROCESSED', 'INBOX_PROCESSED', 'SPAM_PROCESSED'];
 
             // Passo 1: Obter as pastas existentes
             $existingFolders = $this->getMailFolders($accessToken);
