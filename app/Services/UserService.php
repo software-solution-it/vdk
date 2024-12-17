@@ -25,11 +25,18 @@ class UserService {
     public function createUser($name, $email, $password, $role_id) {
         $verificationCode = rand(100000, 999999);
         $expirationDateTime = date('Y-m-d H:i:s', strtotime('+5 minutes'));
-
+    
         $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
-
-        return $this->userModel->create($name, $email, $hashedPassword, $verificationCode, $expirationDateTime, $role_id);
+    
+        $createUserResult = $this->userModel->create($name, $email, $hashedPassword, $verificationCode, $expirationDateTime, $role_id);
+    
+        if ($createUserResult) {
+            return ['status' => true]; 
+        } else {
+            return ['status' => false, 'message' => 'Could not save user to the database']; 
+        }
     }
+    
 
     public function updateUser($id, $name, $email, $role_id) {
         return $this->userModel->update($id, $name, $email, $role_id);

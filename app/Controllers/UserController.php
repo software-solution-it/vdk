@@ -66,18 +66,27 @@ class UserController {
     public function createUser() {
         header('Content-Type: application/json');
         $data = json_decode(file_get_contents("php://input"));
-
+    
         if (!empty($data->name) && !empty($data->email) && !empty($data->password) && !empty($data->role_id)) {
             $create = $this->userService->createUser($data->name, $data->email, $data->password, $data->role_id);
-
-            http_response_code($create['status'] ? 201 : 500);
-            echo json_encode([
-                'Status' => $create['status'] ? 'Success' : 'Error',
-                'Message' => $create['status'] ? 'User created successfully' : 'Failed to create user',
-                'Data' => $create['status'] ? null : $create['message']
-            ]);
+    
+            if ($create['status']) {
+                http_response_code(201); 
+                echo json_encode([
+                    'Status' => 'Success',
+                    'Message' => 'User created successfully',
+                    'Data' => null
+                ]);
+            } else {
+                http_response_code(500); 
+                echo json_encode([
+                    'Status' => 'Error',
+                    'Message' => 'Failed to create user: ' . $create['message'],
+                    'Data' => null
+                ]);
+            }
         } else {
-            http_response_code(400);
+            http_response_code(400); 
             echo json_encode([
                 'Status' => 'Error',
                 'Message' => 'Incomplete data. Name, email, password, and role_id are required.',
