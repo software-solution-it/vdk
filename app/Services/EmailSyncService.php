@@ -544,33 +544,37 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
     }
 
     private function replaceCidWithBase64($body_html, $message) {
-        // Varrer todas as partes do corpo MIME da mensagem
-        $parts = $message->getParts();
+        // Tentativa de buscar attachments com partes MIME
+        if (method_exists($message, 'getParts')) {
+            $parts = $message->getParts();
+            foreach ($parts as $part) {
+                $contentId = $part->getContentId();
+                $contentType = $part->getContentType();
     
-        foreach ($parts as $part) {
-            // Verifica se a parte contém um Content-ID e é uma imagem
-            $contentId = $part->getContentId();
-            $contentType = $part->getContentType();
+                if ($contentId && strpos($contentType, 'image/') === 0) {
+                    $base64Content = base64_encode($part->getDecodedContent());
+                    $mimeType = $contentType;
+                    $cleanContentId = trim($contentId, '<>');
     
-            if ($contentId && strpos($contentType, 'image/') === 0) {
-                $contentBytes = $part->getDecodedContent();
-                if ($contentBytes === false) {
-                    error_log("Falha ao decodificar conteúdo da imagem CID: " . $contentId);
-                    continue;
+                    $pattern = '/<img[^>]+src="cid:' . preg_quote($cleanContentId, '/') . '"/';
+                    $replacement = '<img src="data:' . $mimeType . ';base64,' . $base64Content . '"';
+                    $body_html = preg_replace($pattern, $replacement, $body_html);
                 }
+            }
+        }
     
-                // Gera o base64 a partir do conteúdo da imagem
-                $base64Content = base64_encode($contentBytes);
-                $mimeType = $contentType;
+        // Fallback: Verifica attachments inline
+        if ($message->hasAttachments()) {
+            foreach ($message->getAttachments() as $attachment) {
+                if ($attachment->getContentId()) {
+                    $base64Content = base64_encode($attachment->getDecodedContent());
+                    $mimeType = $attachment->getType() . '/' . $attachment->getSubtype();
+                    $cleanContentId = trim($attachment->getContentId(), '<>');
     
-                // Remove os sinais "<>" do Content-ID
-                $cleanContentId = trim($contentId, '<>');
-    
-                // Substitui o 'cid' no HTML
-                $pattern = '/<img[^>]+src="cid:' . preg_quote($cleanContentId, '/') . '"/';
-                $replacement = '<img src="data:' . $mimeType . ';base64,' . $base64Content . '"';
-    
-                $body_html = preg_replace($pattern, $replacement, $body_html);
+                    $pattern = '/<img[^>]+src="cid:' . preg_quote($cleanContentId, '/') . '"/';
+                    $replacement = '<img src="data:' . $mimeType . ';base64,' . $base64Content . '"';
+                    $body_html = preg_replace($pattern, $replacement, $body_html);
+                }
             }
         }
     
