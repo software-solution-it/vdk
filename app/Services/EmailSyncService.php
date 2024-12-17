@@ -416,9 +416,6 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                                         $contentBytes
                                     );
                         
-                                    if (strpos($body_html, 'cid:') !== false) {
-                                        $body_html = $this->replaceCidWithBase64($body_html, $attachment);
-                                    }
                                 } catch (Exception $e) {
                                     $this->errorLogController->logError(
                                         "Erro ao salvar anexo e substituir CID: " . $e->getMessage(),
@@ -454,40 +451,40 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                              
                         );
     
-                        // 1. Captura todas as imagens referenciadas no HTML (src="cid:...")
-    preg_match_all('/<img[^>]+src="cid:([^"]+)"/i', $body_html, $matches, PREG_SET_ORDER);
-
-    $attachments = $message->getAttachments();
-    $processedCids = []; // Para evitar duplicação de anexos
-
-    // 2. Processar anexos inline referenciados no HTML
-    foreach ($matches as $match) {
-        $cid = $match[1]; // CID sem "cid:"
-
-        foreach ($attachments as $attachment) {
-            $attachmentCid = $this->getContentIdFromAttachment($attachment);
-
-            if ($attachmentCid === $cid) {
-                try {
-                    $filename = uniqid("inline_img_") . '.' . pathinfo($attachment->getFilename(), PATHINFO_EXTENSION);
-                    $decodedContent = $attachment->getDecodedContent();
-
-                    if ($decodedContent !== false) {
-                        $this->emailModel->saveAttachment(
-                            $emailId,
-                            $filename,
-                            'image/' . pathinfo($filename, PATHINFO_EXTENSION),
-                            strlen($decodedContent),
-                            $decodedContent
-                        );
-                        $processedCids[] = $attachmentCid; // Marca como processado
-                        error_log("Imagem inline salva: $filename.");
-                    }
-                } catch (Exception $e) {
-                    error_log("Erro ao salvar imagem inline: " . $e->getMessage());
-                }
-            }
-        }
+                        if ($body_html) {
+                            // 1. Captura todas as imagens referenciadas no HTML (src="cid:...")
+                            preg_match_all('/<img[^>]+src="cid:([^"]+)"/i', $body_html, $matches, PREG_SET_ORDER);
+                        
+                            $attachments = $message->getAttachments();
+                        
+                            foreach ($matches as $match) {
+                                $cid = $match[1]; 
+                        
+                                foreach ($attachments as $attachment) {
+                                    $attachmentCid = $this->getContentIdFromAttachment($attachment);
+                        
+                                    if ($attachmentCid === $cid) {
+                                        try {
+                                            $filename = uniqid("inline_img_") . '.' . pathinfo($attachment->getFilename(), PATHINFO_EXTENSION);
+                                            $decodedContent = $attachment->getDecodedContent();
+                        
+                                            if ($decodedContent !== false) {
+                                                $this->emailModel->saveAttachment(
+                                                    $emailId,
+                                                    $filename,
+                                                    'image/' . pathinfo($filename, PATHINFO_EXTENSION),
+                                                    strlen($decodedContent),
+                                                    $decodedContent
+                                                );
+                                                $processedCids[] = $attachmentCid; // Marca como processado
+                                                error_log("Imagem inline salva: $filename.");
+                                            }
+                                        } catch (Exception $e) {
+                                            error_log("Erro ao salvar imagem inline: " . $e->getMessage());
+                                        }
+                                    }
+                                }
+                            }
                         }
     
                        
@@ -566,6 +563,7 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
         return preg_replace($pattern, $replacement, $body_html);
     }
     
+
     private function getContentIdFromAttachment($attachment): ?string
 {
     $headers = $attachment->getHeaders();
@@ -576,6 +574,7 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
 
     return null;
 }
+    
     
     
 }
