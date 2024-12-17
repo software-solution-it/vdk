@@ -69,44 +69,17 @@ class User {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public function getUserByEmail($email) {
-        $query = "SELECT u.id, u.name, u.email, r.role_name, u.created_at, 
-                  e.id AS email_account_id, e.email AS email_account, e.provider_id 
+    public function getByEmail($email) {
+        $query = "SELECT u.id, u.name, u.email, r.role_name, u.created_at
                   FROM " . $this->table . " u 
                   JOIN " . $this->roleTable . " r ON u.role_id = r.id 
-                  LEFT JOIN email_accounts e ON u.id = e.user_id 
-                  WHERE u.email = :email";
+                  WHERE u.email = :email"; 
         
         $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(":email", $email);
+        $stmt->bindParam(":email", $email);  
         $stmt->execute();
     
-        $user = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        if (empty($user)) {
-            return null; 
-        }
-    
-        $userData = [
-            'id' => $user[0]['id'],
-            'name' => $user[0]['name'],
-            'email' => $user[0]['email'],
-            'role_name' => $user[0]['role_name'],
-            'created_at' => $user[0]['created_at'],
-            'email_accounts' => [] 
-        ];
-    
-        foreach ($user as $account) {
-            if ($account['email_account_id']) {
-                $userData['email_accounts'][] = [
-                    'id' => $account['email_account_id'],
-                    'email' => $account['email_account'],
-                    'provider_id' => $account['provider_id']
-                ];
-            }
-        }
-    
-        return $userData;
+        return $stmt->fetch(PDO::FETCH_ASSOC); 
     }
     
 
