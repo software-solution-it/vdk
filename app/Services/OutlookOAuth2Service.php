@@ -223,50 +223,33 @@ class OutlookOAuth2Service {
             if ($associationsResponse['Status'] === 'Success') {
                 $associations = $associationsResponse['Data'];
             } else {
-                $this->errorLogController->logError(
-                    "Falha ao recuperar associações de pastas",
-                    __FILE__,
-                    __LINE__,
-                    $user_id
-                );
                 $associations = [];
             }
 
             $folders = ['TRASH_PROCESSED', 'INBOX_PROCESSED', 'SPAM_PROCESSED'];
 
-            // Passo 1: Obter as pastas existentes
             $existingFolders = $this->getMailFolders($accessToken);
         
-            // Passo 2: Criar pastas se não existirem
             foreach ($folders as $folderName) {
-                // Verificar se a pasta já existe
                 if (in_array($folderName, array_column($existingFolders, 'displayName'))) {
-                    $this->errorLogController->logError("A pasta '$folderName' já existe. Ignorando criação.", __FILE__, __LINE__);
-                    continue;  // Pula para a próxima pasta
+                    continue; 
                 }
          
-                // Se a pasta não existir, cria a pasta
                 $url = 'https://graph.microsoft.com/v1.0/me/mailFolders';
                 $body = [
                     "displayName" => $folderName
                 ];
         
                 try {
-                    $response = $this->httpClient->post($url, [
+                     $this->httpClient->post($url, [
                         'headers' => [
                             'Authorization' => 'Bearer ' . $accessToken,
                             'Content-Type' => 'application/json',
                         ],
                         'json' => $body
                     ]);
+
         
-                    $responseBody = json_decode($response->getBody(), true);
-        
-                    if (isset($responseBody['id'])) {
-                        $this->errorLogController->logError("Pasta '$folderName' criada com sucesso.", __FILE__, __LINE__);
-                    } else {
-                        $this->errorLogController->logError("Falha ao criar a pasta '$folderName'.", __FILE__, __LINE__);
-                    }
                 } catch (Exception $e) {
                     $this->errorLogController->logError("Erro ao criar a pasta '$folderName': " . $e->getMessage(), __FILE__, __LINE__);
                 }
@@ -285,12 +268,6 @@ class OutlookOAuth2Service {
     
                     $originalFolderId = $this->getFolderIdByName($originalFolderName, $accessToken);
                     if (!$originalFolderId) {
-                        $this->errorLogController->logError(
-                            "Pasta original '$originalFolderName' não encontrada.",
-                            __FILE__,
-                            __LINE__,
-                            $user_id
-                        );
                         continue;
                     }
     
@@ -298,17 +275,10 @@ class OutlookOAuth2Service {
                     if (!$associatedFolderId) {
                         $associatedFolderId = $this->createFolder($associatedFolderName, $accessToken);
                         if (!$associatedFolderId) {
-                            $this->errorLogController->logError(
-                                "Falha ao criar a pasta associada '$associatedFolderName'.",
-                                __FILE__,
-                                __LINE__,
-                                $user_id
-                            );
                             continue;
                         }
                     }
     
-                    // Obter mensagens da pasta original
                     $emailsResponse = $this->httpClient->get("https://graph.microsoft.com/v1.0/me/mailFolders/{$originalFolderId}/messages", [
                         'headers' => [
                             'Authorization' => 'Bearer ' . $accessToken,
@@ -323,12 +293,6 @@ class OutlookOAuth2Service {
                     $emails = json_decode($emailsResponse->getBody(), true);
     
                     if (!isset($emails['value']) || !is_array($emails['value'])) {
-                        $this->errorLogController->logError(
-                            "Nenhum e-mail encontrado na pasta '$originalFolderName'.",
-                            __FILE__,
-                            __LINE__,
-                            $user_id
-                        );
                         continue;
                     }
     
@@ -336,17 +300,9 @@ class OutlookOAuth2Service {
                         $messageId = $emailData['id'];
     
                         try {
-                            // Mover o e-mail para a pasta associada
                             $this->moveEmail($messageId, $associatedFolderId, $accessToken, $user_id);
-                            // Deletar o e-mail do banco de dados
                             $this->emailModel->deleteEmailByMessageId($messageId, $user_id);
     
-                            $this->errorLogController->logError(
-                                "E-mail {$messageId} movido da pasta '$originalFolderName' para '$associatedFolderName'.",
-                                __FILE__,
-                                __LINE__,
-                                $user_id
-                            );
                         } catch (Exception $e) {
                             $this->errorLogController->logError(
                                 "Erro ao mover e-mail {$messageId} para a pasta associada $associatedFolderName: " . $e->getMessage(),
@@ -356,17 +312,9 @@ class OutlookOAuth2Service {
                             );
                         }
                     }
-                } else {
-                    $this->errorLogController->logError(
-                        "Nenhuma associação encontrada para a pasta $folderType",
-                        __FILE__,
-                        __LINE__,
-                        $user_id
-                    );
                 }
             }
     
-            // Passo 4: Obter a lista de pastas de e-mail via Microsoft Graph API
             $foldersResponse = $this->httpClient->get('https://graph.microsoft.com/v1.0/me/mailFolders', [
                 'headers' => [
                     'Authorization' => 'Bearer ' . $accessToken,
@@ -380,33 +328,22 @@ class OutlookOAuth2Service {
                 throw new Exception("Falha ao recuperar pastas de e-mail");
             }
     
-            // Extrair nomes das pastas
             $folderNames = array_map(function ($folder) {
                 return $folder['displayName'];
             }, $folders['value']);
     
-            // Sincronizar pastas com o banco de dados
             $syncedFolders = $this->emailFolderModel->syncFolders($email_account_id, $folderNames);
     
-            // Passo 5: Processar cada pasta
             foreach ($folders['value'] as $folder) {
                 $folderName = $folder['displayName'];
                 $folderId = $folder['id'];
     
                 if (!isset($syncedFolders[$folderName])) {
-                    // Pasta não sincronizada no banco de dados, ignorar
-                    $this->errorLogController->logError(
-                        "Pasta '$folderName' não está sincronizada no banco de dados. Ignorando...",
-                        __FILE__,
-                        __LINE__,
-                        $user_id
-                    );
                     continue;
                 }
     
                 $folderDbId = $syncedFolders[$folderName];
     
-                // Obter mensagens da pasta
                 $emailsResponse = $this->httpClient->get("https://graph.microsoft.com/v1.0/me/mailFolders/{$folderId}/messages", [
                     'headers' => [
                         'Authorization' => 'Bearer ' . $accessToken,
@@ -421,16 +358,9 @@ class OutlookOAuth2Service {
                 $emails = json_decode($emailsResponse->getBody(), true);
     
                 if (!isset($emails['value']) || !is_array($emails['value'])) {
-                    $this->errorLogController->logError(
-                        "Nenhum e-mail encontrado na pasta '$folderName'.",
-                        __FILE__,
-                        __LINE__,
-                        $user_id
-                    );
                     continue;
                 }
     
-                // Obter IDs de mensagens armazenadas no banco de dados
                 $storedMessageIds = $this->emailModel->getEmailIdsByFolderId($user_id, $folderDbId);
                 $processedMessageIds = [];
     
@@ -444,7 +374,6 @@ class OutlookOAuth2Service {
                         $subject = $emailData['subject'] ?? '(Sem Assunto)';
                         $date_received = $emailData['receivedDateTime'] ?? null;
                         if ($date_received) {
-                            // Converte o formato de data para o timezone de São Paulo
                             $date = new \DateTime($date_received, new \DateTimeZone('UTC'));  // Assume que a data está em UTC
                             $date->setTimezone(new \DateTimeZone('America/Sao_Paulo'));  // Ajusta para o timezone de São Paulo
                             $date_received = $date->format('Y-m-d H:i:s');  // Formata para o formato desejado
@@ -461,9 +390,8 @@ class OutlookOAuth2Service {
                         $inReplyTo = $emailData['internetMessageId'] ?? '';
                         $conversationId = $emailData['conversationId'] ?? '';
                         $bodyPreview = $emailData['bodyPreview'] ?? '';
-                        $body_text = $bodyPreview; // Assumindo que bodyPreview é o texto sem HTML
+                        $body_text = $bodyPreview;
     
-                        // Obter o conteúdo completo da mensagem
                         $messageDetailResponse = $this->httpClient->get("https://graph.microsoft.com/v1.0/me/messages/{$messageId}", [
                             'headers' => [
                                 'Authorization' => 'Bearer ' . $accessToken,
@@ -479,13 +407,11 @@ class OutlookOAuth2Service {
                         $bodyContentType = $messageDetails['body']['contentType'] ?? '';
     
                         if ($bodyContentType == 'html') {
-                            // Remove tags HTML para obter o body_text
                             $body_text = strip_tags($bodyContent);
                         } else {
                             $body_text = $bodyContent;
                         }
     
-                        // Calcular conversation_step
                         $references = '';
                         $conversation_step = 1;
                         $headers = $messageDetails['internetMessageHeaders'] ?? [];
@@ -500,7 +426,6 @@ class OutlookOAuth2Service {
                             $conversation_step = $referenceCount + 1;
                         }
     
-                        // Verificar se o e-mail já existe
                         $existingEmail = $this->emailModel->getEmailByMessageId($messageId, $user_id);
     
                         if ($existingEmail) {
@@ -587,8 +512,6 @@ class OutlookOAuth2Service {
                                                 $this->errorLogController->logError("Erro ao salvar e substituir anexo: " . $e->getMessage(), __FILE__, __LINE__, $user_id);
                                             }
                                         }
-                                    } else {
-                                        $this->errorLogController->logError("Nenhum anexo encontrado para a mensagem {$emailData['id']}.", __FILE__, __LINE__, $user_id);
                                     }
                                 } catch (Exception $e) {
                                     $this->errorLogController->logError("Erro ao processar anexos para a mensagem {$emailData['id']}: " . $e->getMessage(), __FILE__, __LINE__, $user_id);
@@ -630,7 +553,6 @@ class OutlookOAuth2Service {
                                 }
                             }
     
-                            // Disparar webhook
                             $event = [
                                 'Status' => 'Success',
                                 'Message' => 'Email saved successfully',
@@ -656,20 +578,8 @@ class OutlookOAuth2Service {
                 $deletedMessageIds = array_diff($storedMessageIds, $processedMessageIds);
                 foreach ($deletedMessageIds as $deletedMessageId) {
                     $this->emailModel->deleteEmailByMessageId($deletedMessageId, $user_id);
-                    $this->errorLogController->logError(
-                        "E-mail com Message-ID $deletedMessageId foi deletado no servidor e removido do banco de dados.",
-                        __FILE__,
-                        __LINE__,
-                        $user_id
-                    );
                 }
     
-                $this->errorLogController->logError(
-                    "Sincronização de e-mails concluída para a pasta '$folderName'.",
-                    __FILE__,
-                    __LINE__,
-                    $user_id
-                );
             }
     
             return true;
@@ -686,8 +596,6 @@ class OutlookOAuth2Service {
             ];
             $this->webhookService->triggerEvent($event, $user_id);
     
-            $this->errorLogController->logError('Error while syncing emails: ' . $e->getMessage(), __FILE__, __LINE__, $user_id);
-            throw new Exception('Error while syncing emails: ' . $e->getMessage());
         } catch (Exception $e) {
             $event = [
                 'Status' => 'Failed',
@@ -699,9 +607,6 @@ class OutlookOAuth2Service {
                 ]
             ];
             $this->webhookService->triggerEvent($event, $user_id);
-    
-            $this->errorLogController->logError('Error while syncing emails: ' . $e->getMessage(), __FILE__, __LINE__, $user_id);
-            throw new Exception('Error while syncing emails: ' . $e->getMessage());
         }
     }
 
@@ -787,16 +692,13 @@ class OutlookOAuth2Service {
             }
 
             $accessToken = $emailAccount['oauth_token'];
-            $this->errorLogController->logError("Deleting email for user ID: $user_id", __FILE__, __LINE__);
 
-            // Usando a API do Microsoft Graph para deletar o e-mail
             $this->httpClient->delete("https://graph.microsoft.com/v1.0/me/messages/$messageId", [
                 'headers' => [
                     'Authorization' => 'Bearer ' . $accessToken
                 ]
             ]);
 
-            // Remover ou marcar o e-mail como deletado no banco de dados
             $this->emailModel->deleteEmail($messageId);
 
             return true;

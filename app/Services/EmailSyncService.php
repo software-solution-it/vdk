@@ -172,8 +172,7 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
 
     if (!$emailAccount) {
         error_log("Conta de e-mail não encontrada para user_id={$user_id} e email_id={$email_id}");
-        $this->errorLogController->logError("Conta de e-mail não encontrada para user_id={$user_id} e email_id={$email_id}", __FILE__, __LINE__, $user_id);
-        
+
         return json_encode(['status' => false, 'message' => 'Conta de e-mail não encontrada.']);
     }
 
@@ -228,31 +227,13 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
             $server = new Server($imap_host, $imap_port);
             $connection = $server->authenticate($email, $password);
 
-            $this->errorLogController->logError(
-                "Iniciando associações: " . "Para email" . $email_account_id,
-                __FILE__,
-                __LINE__,
-                $user_id
-            );
 
             $associationsResponse = $this->folderAssociationModel->getAssociationsByEmailAccount($email_account_id);
 
-            $this->errorLogController->logError(
-                "Associações: " . json_encode($associationsResponse['Data'], JSON_PRETTY_PRINT),
-                __FILE__,
-                __LINE__,
-                $user_id
-            );
             
             if ($associationsResponse['Status'] === 'Success') {
                 $associations = $associationsResponse['Data'];
             } else {
-                $this->errorLogController->logError(
-                    "Falha ao recuperar associações: " . $associationsResponse['Message'],
-                    __FILE__,
-                    __LINE__,
-                    $user_id
-                );
                 $associations = []; 
             }
             
@@ -269,12 +250,6 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                     return $assoc['folder_type'] === $folderType;
                 });
             
-                $this->errorLogController->logError(
-                    "Filtro de associação: " . json_encode($filteredAssociations, JSON_PRETTY_PRINT),
-                    __FILE__,
-                    __LINE__,
-                    $user_id
-                );
             
                 if (!empty($filteredAssociations)) {
                     $association = current($filteredAssociations);
@@ -284,30 +259,9 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
             
                     $originalMailbox = $connection->getMailbox($originalFolderName);
             
-                    $this->errorLogController->logError(
-                        "originalMailbox: " . json_encode($originalMailbox, JSON_PRETTY_PRINT),
-                        __FILE__,
-                        __LINE__,
-                        $user_id
-                    );
-            
                     $associatedMailbox = $connection->getMailbox($associatedFolderName);
             
-                    $this->errorLogController->logError(
-                        "associatedMailbox: " . json_encode($associatedMailbox, JSON_PRETTY_PRINT),
-                        __FILE__,
-                        __LINE__,
-                        $user_id
-                    );
-            
                     $messages = $originalMailbox->getMessages();
-
-                    $this->errorLogController->logError(
-                        "Mensagens: " . json_encode($messages, JSON_PRETTY_PRINT),
-                        __FILE__,
-                        __LINE__,
-                        $user_id
-                    );
                     
                     $uniqueMessages = [];
                     foreach ($messages as $message) {
@@ -318,23 +272,11 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                     }
                     $messages = array_values($uniqueMessages);
                     
-                    $this->errorLogController->logError(
-                        "Mensagens únicas: " . json_encode($messages, JSON_PRETTY_PRINT),
-                        __FILE__,
-                        __LINE__,
-                        $user_id
-                    );
                     foreach ($messages as $key => $message) {
                         try {
 
                             $message->move($associatedMailbox);
             
-                            $this->errorLogController->logError(
-                                "E-mail {$message->getId()} movido para a pasta associada $associatedFolderName.",
-                                __FILE__,
-                                __LINE__,
-                                $user_id
-                            );
 
                             $this->emailModel->deleteEmail($message->getId());
             
@@ -354,13 +296,6 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
             
                     $imapStream = $connection->getResource()->getStream();
                     imap_expunge($imapStream);
-                } else {
-                    $this->errorLogController->logError(
-                        "Nenhuma associação encontrada para " . $folderType,
-                        __FILE__,
-                        __LINE__,
-                        $user_id
-                    );
                 }
             }
             
@@ -584,8 +519,6 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
             ];
             $this->webhookService->triggerEvent($event, $user_id);
             error_log("Erro durante a sincronização de e-mails: " . $e->getMessage());
-            $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__, $user_id);
-            throw $e;
         }
         return;
     }
