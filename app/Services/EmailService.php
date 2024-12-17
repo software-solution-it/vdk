@@ -321,6 +321,7 @@ class EmailService {
     
             if ($inReplyTo) {
                 $mail->addCustomHeader('In-Reply-To', $inReplyTo);
+                $mail->addCustomHeader('References', $inReplyTo);
             }
     
             if ($mail->send()) { 
