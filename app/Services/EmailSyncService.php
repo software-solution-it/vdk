@@ -552,17 +552,20 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
         $subtype = $attachment->getSubtype();
         $fullMimeType = $mimeTypeName . '/' . $subtype;
     
-        // Obtém o CID (Content-ID)
+        // Obtém o CID (Content-ID) e remove os caracteres "<" e ">"
         $contentId = trim($attachment->getContentId(), '<>');
     
-        // Expressão regular para procurar qualquer imagem com CID no HTML
-        $pattern = '/<img[^>]+src=["\']cid:' . preg_quote($contentId, '/') . '["\'][^>]*>/';
+        // Expressão regular para capturar a tag <img> com src="cid:..."
+        // Ajustamos para aceitar atributos adicionais na tag <img>
+        $pattern = '/<img[^>]+src=["\']cid:' . preg_quote($contentId, '/') . '["\'][^>]*>/i';
     
         // Substitui o CID no corpo HTML pelo conteúdo base64
         $replacement = '<img src="data:' . $fullMimeType . ';base64,' . $base64Content . '"';
-        
+    
+        // Realiza a substituição
         return preg_replace($pattern, $replacement, $body_html);
     }
+    
     
     
     
