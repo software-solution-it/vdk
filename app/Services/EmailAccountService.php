@@ -25,18 +25,18 @@ class EmailAccountService {
         $this->userModel = new User($db);
         $this->providerModel = new Provider($db);
     }
-
     public function validateFields($data, $requiredFields) {
         $missingFields = [];
     
         foreach ($requiredFields as $field) {
-            if (!array_key_exists($field, $data)) {
+            if (!array_key_exists($field, $data) || (is_null($data[$field]) && $data[$field] !== "")) {
                 $missingFields[] = $field;
             }
         }
     
         return $missingFields;
     }
+    
     
 
     public function createEmailAccount($data) {
