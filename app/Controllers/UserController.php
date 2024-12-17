@@ -85,9 +85,13 @@ class UserController {
     public function updateUser() {
         header('Content-Type: application/json');
         $data = json_decode(file_get_contents("php://input"));
-
+    
         if (!empty($data->id) && !empty($data->name) && !empty($data->email) && !empty($data->role_id)) {
-            $response = $this->userService->updateUser($data->id, $data->name, $data->email, $data->role_id);
+            $password = !empty($data->password) ? $data->password : null;
+            
+            $response = $this->userService->updateUser($data->id, $data->name, $data->email, $data->role_id, $password);
+
+            
             http_response_code($response['status'] ? 200 : 500);
             echo json_encode([
                 'Status' => $response['status'] ? 'Success' : 'Error',
@@ -103,6 +107,7 @@ class UserController {
             ]);
         }
     }
+    
 
     public function deleteUser() {
         header('Content-Type: application/json');

@@ -38,17 +38,25 @@ class User {
         }
     }
 
-    public function update($id, $name, $email, $role_id) {
-        $query = "UPDATE " . $this->table . " SET name = :name, email = :email, role_id = :role_id WHERE id = :id";
-        $stmt = $this->conn->prepare($query);
-
+    public function update($id, $name, $email, $role_id, $password = null) {
+        if ($password) {
+            $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
+            $query = "UPDATE " . $this->table . " SET name = :name, email = :email, role_id = :role_id, password = :password WHERE id = :id";
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(":password", $hashedPassword);
+        } else {
+            $query = "UPDATE " . $this->table . " SET name = :name, email = :email, role_id = :role_id WHERE id = :id";
+            $stmt = $this->conn->prepare($query);
+        }
+    
         $stmt->bindParam(":id", $id);
         $stmt->bindParam(":name", $name);
         $stmt->bindParam(":email", $email);
         $stmt->bindParam(":role_id", $role_id);
-
+    
         return $stmt->execute();
     }
+    
 
     public function delete($id) {
         $query = "DELETE FROM " . $this->table . " WHERE id = :id";

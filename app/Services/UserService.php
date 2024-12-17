@@ -61,7 +61,7 @@ class UserService {
         }
     }
 
-    public function updateUser($id, $name, $email, $role_id) {
+    public function updateUser($id, $name, $email, $role_id, $password = null) {
         try {
             $user = $this->userModel->getUserById($id);
             if (!$user) {
@@ -95,7 +95,13 @@ class UserService {
                 }
             }
     
-            $updateResult = $this->userModel->update($id, $name, $email, $role_id);
+            if ($password) {
+                $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
+            } else {
+                $hashedPassword = $user['password'];
+            } 
+    
+            $updateResult = $this->userModel->update($id, $name, $email, $role_id, $hashedPassword);
             
             if ($updateResult) {
                 return [
@@ -122,6 +128,7 @@ class UserService {
             ];
         }
     }
+    
     
 
     public function deleteUser($id) {
