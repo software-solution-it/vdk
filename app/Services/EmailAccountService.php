@@ -200,7 +200,12 @@ class EmailAccountService {
         $emailAccount = $this->emailAccountModel->getById($id);
         
         if (!$emailAccount) {
-            return ['status' => false, 'message' => 'Email account not found', 'data' => null, 'http_code' => 400];
+            return [
+                'status' => false,
+                'message' => 'Email account not found',
+                'data' => null,
+                'http_code' => 400
+            ];
         }
     
         $emails = $this->emailModel->getEmailsByUserId($id);
@@ -208,17 +213,28 @@ class EmailAccountService {
             $this->emailAttachmentModel->deleteAttachmentsByEmailId($email['id']);
             $this->emailModel->deleteEmail($email['email_id']);
         }
-
+    
         $this->emailFolderModel->deleteFoldersByEmailAccountId($id);
     
         $deleted = $this->emailAccountModel->delete($id);
     
         if ($deleted) {
-            return ['status' => true, 'message' => 'Email account and all associated data deleted successfully', 'data' => null, 'http_code' => 200];
+            return [
+                'status' => true,
+                'message' => 'Email account and all associated data deleted successfully',
+                'data' => null,
+                'http_code' => 200
+            ];
         }
         
-        return ['status' => false, 'message' => 'Failed to delete email account and associated data', 'data' => null, 'http_code' => 400];
+        return [
+            'status' => false,
+            'message' => 'Failed to delete email account and associated data',
+            'data' => null,
+            'http_code' => 400
+        ];
     }
+    
     
     public function getEmailAccountByUserId($id) {
         return $this->emailAccountModel->getEmailAccountByUserId($id);
