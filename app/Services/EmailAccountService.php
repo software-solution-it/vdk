@@ -26,7 +26,7 @@ class EmailAccountService {
         $this->providerModel = new Provider($db);
     }
 
-    public function validateFields($data, $requiredFields) {
+     public function validateFields($data, $requiredFields) {
         $missingFields = [];
     
         foreach ($requiredFields as $field) {
@@ -52,14 +52,20 @@ class EmailAccountService {
             return ['status' => false, 'message' => 'User does not exist']; 
         }
     
-
         $provider = $this->providerModel->getById($data['provider_id']);
         if (!$provider) {
             return ['status' => false, 'message' => 'Provider does not exist']; 
         }
     
+        $existingEmailAccount = $this->emailAccountModel->getByEmailAndProvider($data['email'], $data['provider_id']);
+        if ($existingEmailAccount) {
+            return ['status' => false, 'message' => 'Email account already exists for this provider'];
+        }
+    
+        // Criptografa a senha
         $encryptedPassword = EncryptionHelper::encrypt($data['password']);
     
+        // Cria a conta de e-mail
         $emailAccountId = $this->emailAccountModel->create(
             $data['user_id'],
             $data['email'],
@@ -75,7 +81,11 @@ class EmailAccountService {
         if ($emailAccountId) {
             $createdEmailAccount = $this->emailAccountModel->getById($emailAccountId);
     
-            return ['status' => true, 'message' => 'Email account created successfully.', 'data' => $createdEmailAccount];
+            return [
+                'status' => true,
+                'message' => 'Email account created successfully.',
+                'data' => $createdEmailAccount // Retorna os dados do email recém-criado
+            ];
         }
     
         return ['status' => false, 'message' => 'Failed to create email account'];

@@ -39,6 +39,17 @@ class EmailAccount {
         return false;
     }
 
+    public function getByEmailAndProvider($email, $provider_id) {
+        $query = "SELECT id FROM " . $this->table . " WHERE email = :email AND provider_id = :provider_id";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':email', $email);
+        $stmt->bindParam(':provider_id', $provider_id);
+        $stmt->execute();
+    
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+    
+
     public function updateTokens($id, $oauth_token, $refresh_token) {
         $query = "UPDATE " . $this->table . " SET oauth_token = :oauth_token, refresh_token = :refresh_token WHERE id = :id";
         
