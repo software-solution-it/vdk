@@ -26,7 +26,7 @@ class EmailAccountService {
         $this->providerModel = new Provider($db);
     }
 
-     public function validateFields($data, $requiredFields) {
+    public function validateFields($data, $requiredFields) {
         $missingFields = [];
     
         foreach ($requiredFields as $field) {
@@ -44,22 +44,25 @@ class EmailAccountService {
         $missingFields = $this->validateFields($data, $requiredFields);
     
         if (!empty($missingFields)) {
-            return ['status' => false, 'message' => 'Missing fields: ' . implode(', ', $missingFields)];
+            return null; // Retorna null se faltar algum campo obrigatório
         }
     
+        // Verifica se o usuário existe
         $user = $this->userModel->getUserById($data['user_id']);
         if (!$user) {
-            return ['status' => false, 'message' => 'User does not exist']; 
+            return null; // Retorna null se o usuário não existir
         }
     
+        // Verifica se o provider existe
         $provider = $this->providerModel->getById($data['provider_id']);
         if (!$provider) {
-            return ['status' => false, 'message' => 'Provider does not exist']; 
+            return null; // Retorna null se o provider não existir
         }
     
+        // Verifica se já existe uma conta de e-mail com o mesmo email e provider
         $existingEmailAccount = $this->emailAccountModel->getByEmailAndProvider($data['email'], $data['provider_id']);
         if ($existingEmailAccount) {
-            return ['status' => false, 'message' => 'Email account already exists for this provider'];
+            return null; // Retorna null se o email já estiver associado a esse provider
         }
     
         // Criptografa a senha
@@ -78,18 +81,15 @@ class EmailAccountService {
             $data['is_basic'] ?? true
         );
     
+        // Se a criação for bem-sucedida, retorna os dados da conta de e-mail criada
         if ($emailAccountId) {
-            $createdEmailAccount = $this->emailAccountModel->getById($emailAccountId);
-    
-            return [
-                'status' => true,
-                'message' => 'Email account created successfully.',
-                'data' => $createdEmailAccount // Retorna os dados do email recém-criado
-            ];
+            // Busca os dados da conta de e-mail recém-criada
+            return $this->emailAccountModel->getById($emailAccountId);
         }
     
-        return ['status' => false, 'message' => 'Failed to create email account'];
+        return null; // Retorna null se a criação falhar
     }
+    
     
     
     
