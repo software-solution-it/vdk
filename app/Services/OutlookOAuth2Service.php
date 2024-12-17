@@ -404,9 +404,6 @@ class OutlookOAuth2Service {
                         $fromName = $emailData['from']['emailAddress']['name'] ?? '';
                         $subject = $emailData['subject'] ?? '(Sem Assunto)';
                         $date_received = $emailData['receivedDateTime'] ?? null;
-                        if ($date_received) {
-                            $date_received = str_replace(['T', 'Z'], [' ', ''], $date_received);
-                        }
                         $isRead = $emailData['isRead'] ?? false;
                         $toRecipients = implode(', ', array_map(function($recipient) {
                             return $recipient['emailAddress']['address'];
@@ -470,24 +467,7 @@ class OutlookOAuth2Service {
                                 $needsUpdate = true;
                             }
                             if ($needsUpdate) {
-                                $this->emailModel->updateEmail(
-                                    $existingEmail['id'],
-                                    $user_id,
-                                    $messageId,
-                                    $subject,
-                                    $fromAddress,
-                                    $toRecipients,
-                                    $bodyContent,
-                                    $body_text,
-                                    $date_received,
-                                    $references,
-                                    $inReplyTo,
-                                    $isRead,
-                                    $folderDbId,
-                                    $ccRecipients,
-                                    $conversationId,
-  
-                                );
+                                $this->emailModel->deleteEmail($messageId);
                             }
                             continue;
                         } else {
