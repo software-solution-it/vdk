@@ -336,67 +336,72 @@ class EmailService {
     }
     
     
-    public function listEmails($folder_id = null, $folder_name = null, $limit, $offset)
-    {
-        $baseQuery = "
-            SELECT 
-                e.id,
-                e.body_text,
-                e.from,
-                e.subject,
-                e.date_received,
-                COUNT(a.id) AS attachment_count
-            FROM 
-                emails e
-            LEFT JOIN 
-                email_attachments a
-            ON 
-                e.id = a.email_id
-        ";
-    
-        $filterQuery = "";
-        $params = [
-            ':limit' => $limit,
-            ':offset' => $offset,
-        ];
-    
-        if (!is_null($folder_id)) {
-            $filterQuery = "WHERE e.folder_id = :folder_id";
-            $params[':folder_id'] = $folder_id;
-        } else if (!is_null($folder_name)) {
-            $baseQuery .= "INNER JOIN email_folders ef ON e.folder_id = ef.id ";
-            $filterQuery = "WHERE UPPER(ef.folder_name) LIKE UPPER(:folder_name)";
-            $params[':folder_name'] = '%' . $folder_name . '%'; 
-        }
-    
-        $query = $baseQuery . $filterQuery . "
-            GROUP BY 
-                e.id, e.body_text, e.from, e.subject, e.date_received
-            ORDER BY 
-                e.date_received DESC
-            LIMIT 
-                :limit OFFSET :offset";
-    
-        $stmt = $this->db->prepare($query);
-    
-        foreach ($params as $param => $value) {
-            if ($param === ':limit' || $param === ':offset') {
-                $stmt->bindValue($param, (int)$value, PDO::PARAM_INT); 
-            } else {
-                $stmt->bindValue($param, $value);
-            }
-        }
-    
-        $stmt->execute();
-        $emails = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-        $countStmt = count($emails);
-    
-        return [
-            'total' => $countStmt,
-            'emails' => $emails
-        ];
+    public function listEmails($folder_id = null, $folder_name = null, $limit, $offset, $order = 'DESC')
+{
+    if (!in_array(strtoupper($order), ['ASC', 'DESC'])) {
+        throw new Exception('Invalid order value. It must be ASC or DESC.');
     }
+
+    $baseQuery = "
+        SELECT 
+            e.id,
+            e.body_text,
+            e.from,
+            e.subject,
+            e.date_received,
+            COUNT(a.id) AS attachment_count
+        FROM 
+            emails e
+        LEFT JOIN 
+            email_attachments a
+        ON 
+            e.id = a.email_id
+    ";
+
+    $filterQuery = "";
+    $params = [
+        ':limit' => $limit,
+        ':offset' => $offset,
+    ];
+
+    if (!is_null($folder_id)) {
+        $filterQuery = "WHERE e.folder_id = :folder_id";
+        $params[':folder_id'] = $folder_id;
+    } else if (!is_null($folder_name)) {
+        $baseQuery .= "INNER JOIN email_folders ef ON e.folder_id = ef.id ";
+        $filterQuery = "WHERE UPPER(ef.folder_name) LIKE UPPER(:folder_name)";
+        $params[':folder_name'] = '%' . $folder_name . '%'; 
+    }
+
+    $query = $baseQuery . $filterQuery . "
+        GROUP BY 
+            e.id, e.body_text, e.from, e.subject, e.date_received
+        ORDER BY 
+            e.date_received " . strtoupper($order) . "
+        LIMIT 
+            :limit OFFSET :offset";
+
+    $stmt = $this->db->prepare($query);
+
+    foreach ($params as $param => $value) {
+        if ($param === ':limit' || $param === ':offset') {
+            $stmt->bindValue($param, (int)$value, PDO::PARAM_INT); 
+        } else {
+            $stmt->bindValue($param, $value);
+        }
+    }
+
+    $stmt->execute();
+    $emails = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $countStmt = count($emails);
+
+    return [
+        'total' => $countStmt,
+        'emails' => $emails
+    ];
+}
+
     
 
     

@@ -350,6 +350,16 @@ class EmailController {
         $folder_name = isset($_GET['folder_name']) ? $_GET['folder_name'] : null;
         $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 20; 
         $page = isset($_GET['page']) ? (int)$_GET['page'] : 1; 
+        $order = isset($_GET['order']) ? strtoupper($_GET['order']) : 'DESC'; 
+        
+        if (!in_array($order, ['ASC', 'DESC'])) {
+            http_response_code(400);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'O parâmetro "order" deve ser "ASC" ou "DESC".'
+            ]);
+            return;
+        }
     
         $offset = ($page - 1) * $limit;
     
@@ -381,11 +391,11 @@ class EmailController {
         }
     
         try {
-            $emails = $this->emailService->listEmails($folder_id, $folder_name, $limit, $offset);
+            $emails = $this->emailService->listEmails($folder_id, $folder_name, $limit, $offset, $order);
             
             http_response_code(200);
             echo json_encode([
-                'Status' => 'Success',
+                'Status' => 'Success', 
                 'Message' => 'Emails retrieved successfully.',
                 'Data' => $emails
             ]);
@@ -399,6 +409,7 @@ class EmailController {
             ]);
         }
     }
+    
     
 
     public function getAttachmentById($attachment_id) {
