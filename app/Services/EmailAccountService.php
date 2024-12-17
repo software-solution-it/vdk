@@ -153,11 +153,12 @@ class EmailAccountService {
         if (!$user) {
             return [
                 'status' => false,
-                'message' => 'Invalid user_id: user does not exist',
+                'message' => 'User does not exist',
                 'data' => null,
                 'http_code' => 400
-            ];
+            ]; 
         }
+    
     
         $encryptedPassword = isset($data['password']) && $data['password'] !== '' 
             ? EncryptionHelper::encrypt($data['password']) 
