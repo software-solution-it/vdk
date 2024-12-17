@@ -387,26 +387,27 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                             foreach ($attachments as $attachment) {
                                 try {
                                     $filename = $attachment->getFilename();
+                        
                                     if (is_null($filename) || empty($filename)) {
                                         error_log("Anexo ignorado: o nome do arquivo está nulo.");
                                         continue;
-                                    } 
-                            
+                                    }
+                        
                                     if ($this->attachmentExists($emailId, $filename)) {
                                         error_log("Anexo '$filename' já existe para este e-mail. Ignorando...");
-                                        continue;  // Ignora o anexo se já existir
+                                        continue;
                                     }
-                            
-                                    $mimeTypeName = $attachment->getType();
-                                    $subtype = $attachment->getSubtype();
-                                    $fullMimeType = $mimeTypeName . '/' . $subtype;
+                        
                                     $contentBytes = $attachment->getDecodedContent();
-                            
                                     if ($contentBytes === false) {
                                         error_log("Falha ao obter o conteúdo do anexo: $filename");
                                         continue;
                                     }
-                            
+                        
+                                    $mimeTypeName = $attachment->getType();
+                                    $subtype = $attachment->getSubtype();
+                                    $fullMimeType = $mimeTypeName . '/' . $subtype;
+                        
                                     $this->emailModel->saveAttachment(
                                         $emailId,
                                         $filename,
@@ -414,15 +415,19 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                                         strlen($contentBytes),
                                         $contentBytes
                                     );
-                            
+                        
                                     if (strpos($body_html, 'cid:') !== false) {
                                         $body_html = $this->replaceCidWithBase64($body_html, $attachment);
                                     }
                                 } catch (Exception $e) {
-                                    $this->errorLogController->logError("Erro ao salvar e substituir anexo: " . $e->getMessage(), __FILE__, __LINE__, $user_id);
+                                    $this->errorLogController->logError(
+                                        "Erro ao salvar anexo e substituir CID: " . $e->getMessage(),
+                                        __FILE__,
+                                        __LINE__,
+                                        $user_id
+                                    );
                                 }
                             }
-                            
                         }
                         
                 
