@@ -320,8 +320,7 @@ class EmailService {
             $mail->Body = $htmlBody;
     
             if ($inReplyTo) {
-                $mail->addCustomHeader('In-Reply-To', "<5KKGjRWSmzguhcYgUMoVkyaoyy4IXTdwZKdsWSdxGk@localhost>");
-                $mail->addCustomHeader('References', "<CAMbb+tcuzi4Ya52-+8vczN6MEQMVk0WD5wxD7dU0npbauPVicA@mail.gmail.com> <5KKGjRWSmzguhcYgUMoVkyaoyy4IXTdwZKdsWSdxGk@localhost>");
+                $mail->addCustomHeader('In-Reply-To', $inReplyTo);
             }
     
             if ($mail->send()) { 
@@ -349,7 +348,6 @@ class EmailService {
             e.body_text,
             e.from,
             e.subject,
-            e.email_id,
             e.date_received,
             COUNT(a.id) AS attachment_count
         FROM 
