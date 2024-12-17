@@ -98,7 +98,7 @@ class EmailSyncService
 
             try {
 
-                if($task['is_basic']){
+                if($task['is_basic'] == 1){
 
                 $this->syncEmails(
                     $task['user_id'],
