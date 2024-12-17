@@ -86,6 +86,8 @@ class Email {
         if (is_null($email_id) || is_null($sender)) {
             return false; 
         }
+
+        $isRead = ($isRead === null || $isRead === '') ? 0 : (int) $isRead;
     
         $subject = $subject ?? 'Sem Assunto';
         $body_html = $body_html ?? null;
