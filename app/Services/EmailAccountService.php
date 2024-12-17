@@ -143,10 +143,10 @@ class EmailAccountService {
         if (!$provider) {
             return [
                 'status' => false,
-                'message' => 'Invalid provider_id: provider does not exist',
+                'message' => 'Provider does not exist',
                 'data' => null,
                 'http_code' => 400
-            ];
+            ]; 
         }
     
         $user = $this->userModel->getUserById($data['user_id']);
