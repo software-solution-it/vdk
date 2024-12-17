@@ -125,7 +125,7 @@ class EmailAccountService {
             ];
         }
     
-        $requiredFields = ['email', 'provider_id', 'oauth_token', 'refresh_token', 'client_id', 'client_secret', 'is_basic'];
+        $requiredFields = ['email', 'provider_id', 'is_basic'];
         $missingFields = array_filter($requiredFields, function ($field) use ($data) {
             return !isset($data[$field]) || $data[$field] === '';
         });
