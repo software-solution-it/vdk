@@ -109,10 +109,10 @@ class EmailSyncService
                     $task['imap_port'],
                     $task['password']
                 );
-            }   else if($task['provider_id'] == 3){ 
+            }   else if($task['provider_id'] == 1){ 
                 $this->outlookOAuth2Service->syncEmailsOutlook($task['user_id'],$task['email_account_id']);
 
-            }   else if ($task['provider_id'] == 1){
+            }   else if ($task['provider_id'] == 2){
                 $this->gmailOauth2Service->syncEmailsGmail($task['user_id'],$task['email_account_id'], $task['provider_id']);
             }
 

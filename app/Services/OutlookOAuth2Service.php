@@ -108,13 +108,10 @@ class OutlookOAuth2Service {
                 throw new Exception("Email account not found for user ID: $user_id and email ID: $email_id");
             }
     
-            // Verifica se o refresh_token já existe
             if ($emailAccount['refresh_token']) {
-                // Chama o método de refresh para renovar o token
                 return $this->refreshAccessToken($user_id, $email_id);
             }
     
-            // Se não tiver refresh_token, tenta obter um novo access_token com o código de autorização
             $this->initializeOAuthParameters($emailAccount, $user_id, $email_id);
     
             $response = $this->httpClient->post('https://login.microsoftonline.com/common/oauth2/v2.0/token', [
@@ -213,7 +210,6 @@ class OutlookOAuth2Service {
 
     public function syncEmailsOutlook($user_id, $email_account_id) {
         try {
-            // Passo 1: Obter a conta de e-mail e o token de acesso
             $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $email_account_id);
     
             if (!$emailAccount) {
@@ -222,7 +218,6 @@ class OutlookOAuth2Service {
     
             $accessToken = $emailAccount['oauth_token'];
     
-            // Passo 2: Recuperar as associações de pastas de e-mail do banco de dados
             $associationsResponse = $this->folderAssociationModel->getAssociationsByEmailAccount($email_account_id);
     
             if ($associationsResponse['Status'] === 'Success') {
@@ -234,12 +229,10 @@ class OutlookOAuth2Service {
                     __LINE__,
                     $user_id
                 );
-                $associations = []; // Define como um array vazio para evitar erros posteriores
+                $associations = [];
             }
     
-            // Passo 3: Processar as associações de pastas
             foreach (['INBOX', 'SPAM', 'TRASH'] as $folderType) {
-                // Filtrar associações pelo tipo de pasta
                 $filteredAssociations = array_filter($associations, function ($assoc) use ($folderType) {
                     return $assoc['folder_type'] === $folderType;
                 });
@@ -250,7 +243,6 @@ class OutlookOAuth2Service {
                     $originalFolderName = $association['folder_name'];
                     $associatedFolderName = $association['associated_folder_name'];
     
-                    // Obter o ID da pasta original
                     $originalFolderId = $this->getFolderIdByName($originalFolderName, $accessToken);
                     if (!$originalFolderId) {
                         $this->errorLogController->logError(
