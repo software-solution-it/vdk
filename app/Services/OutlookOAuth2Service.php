@@ -231,6 +231,36 @@ class OutlookOAuth2Service {
                 );
                 $associations = [];
             }
+
+            $folders = ['INBOX_PROCESSED', 'SPAM_PROCESSED', 'TRASH_PROCESSED'];
+
+            foreach ($folders as $folderName) {
+                $url = 'https://graph.microsoft.com/v1.0/me/mailFolders';
+        
+                $body = [
+                    "displayName" => $folderName
+                ];
+        
+                try {
+                    $response = $this->httpClient->post($url, [
+                        'headers' => [
+                            'Authorization' => 'Bearer ' . $accessToken,
+                            'Content-Type' => 'application/json',
+                        ],
+                        'json' => $body
+                    ]);
+        
+                    $responseBody = json_decode($response->getBody(), true);
+        
+                    if (isset($responseBody['id'])) {
+                        $this->errorLogController->logError("Pasta '$folderName' criada com sucesso.", __FILE__, __LINE__);
+                    } else {
+                        $this->errorLogController->logError("Falha ao criar a pasta '$folderName'.", __FILE__, __LINE__);
+                    }
+                } catch (Exception $e) {
+                    $this->errorLogController->logError("Erro ao criar a pasta '$folderName': " . $e->getMessage(), __FILE__, __LINE__);
+                }
+            }
     
             foreach (['INBOX', 'SPAM', 'TRASH'] as $folderType) {
                 $filteredAssociations = array_filter($associations, function ($assoc) use ($folderType) {
@@ -254,7 +284,6 @@ class OutlookOAuth2Service {
                         continue;
                     }
     
-                    // Obter ou criar o ID da pasta associada
                     $associatedFolderId = $this->getFolderIdByName($associatedFolderName, $accessToken);
                     if (!$associatedFolderId) {
                         $associatedFolderId = $this->createFolder($associatedFolderName, $accessToken);
@@ -477,7 +506,6 @@ class OutlookOAuth2Service {
                             }
                             continue;
                         } else {
-                            // Salvar e-mail no banco de dados
                             $emailId = $this->emailModel->saveEmail(
                                 $user_id,
                                 $email_account_id,
@@ -499,10 +527,8 @@ class OutlookOAuth2Service {
                                 $fromName
                             );
     
-                            // Processar imagens embutidas no conteúdo
                             if ($emailData['hasAttachments']) {
                                 try {
-                                    // Obter anexos da mensagem
                                     $attachmentsResponse = $this->httpClient->get("https://graph.microsoft.com/v1.0/me/messages/{$emailData['id']}/attachments", [
                                         'headers' => [
                                             'Authorization' => 'Bearer ' . $accessToken,
