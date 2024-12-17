@@ -30,13 +30,14 @@ class EmailAccountService {
         $missingFields = [];
     
         foreach ($requiredFields as $field) {
-            if (!array_key_exists($field, $data) || is_null($data[$field])) {
+            if (!array_key_exists($field, $data)) {
                 $missingFields[] = $field;
             }
         }
     
         return $missingFields;
     }
+    
 
     public function createEmailAccount($data) {
         $requiredFields = ['user_id', 'email', 'provider_id', 'password', 'oauth_token', 'refresh_token', 'client_id', 'client_secret', 'is_basic'];
