@@ -404,7 +404,13 @@ class OutlookOAuth2Service {
                         $fromName = $emailData['from']['emailAddress']['name'] ?? '';
                         $subject = $emailData['subject'] ?? '(Sem Assunto)';
                         $date_received = $emailData['receivedDateTime'] ?? null;
-                        $isRead = $emailData['isRead'] ?? false;
+                        if ($date_received) {
+                            // Converte o formato de data para o timezone de São Paulo
+                            $date = new \DateTime($date_received, new \DateTimeZone('UTC'));  // Assume que a data está em UTC
+                            $date->setTimezone(new \DateTimeZone('America/Sao_Paulo'));  // Ajusta para o timezone de São Paulo
+                            $date_received = $date->format('Y-m-d H:i:s');  // Formata para o formato desejado
+                        } 
+                        $isRead = isset($emailData['isRead']) ? (int) $emailData['isRead'] : 0;
                         $toRecipients = implode(', ', array_map(function($recipient) {
                             return $recipient['emailAddress']['address'];
                         }, $emailData['toRecipients'] ?? []));
