@@ -91,7 +91,7 @@ class UserController {
             
             $response = $this->userService->updateUser($data->id, $data->name, $data->email, $data->role_id, $password);
 
-            
+
             http_response_code($response['status'] ? 200 : 500);
             echo json_encode([
                 'Status' => $response['status'] ? 'Success' : 'Error',
