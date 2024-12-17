@@ -116,7 +116,12 @@ class EmailAccountService {
     public function updateEmailAccount($id, $data) {
         $existingEmailAccount = $this->emailAccountModel->getById($id);
         if (!$existingEmailAccount) {
-            return ['status' => false, 'message' => 'Email account not found', 'data' => null, 'http_code' => 400];
+            return [
+                'status' => false,
+                'message' => 'Email account not found',
+                'data' => null,
+                'http_code' => 400
+            ];
         }
     
         $requiredFields = ['email', 'provider_id', 'oauth_token', 'refresh_token', 'client_id', 'client_secret', 'is_basic'];
@@ -125,7 +130,12 @@ class EmailAccountService {
         });
     
         if (!empty($missingFields)) {
-            return ['status' => false, 'message' => 'Missing fields: ' . implode(', ', $missingFields), 'data' => null, 'http_code' => 400];
+            return [
+                'status' => false,
+                'message' => 'Missing fields: ' . implode(', ', $missingFields),
+                'data' => null,
+                'http_code' => 400
+            ];
         }
     
         $encryptedPassword = isset($data['password']) && $data['password'] !== '' 
@@ -147,10 +157,20 @@ class EmailAccountService {
         );
     
         if ($updated) {
-            return $this->emailAccountModel->getById($id);
+            return [
+                'status' => true,
+                'message' => 'Email account updated successfully.',
+                'data' => $this->emailAccountModel->getById($id),
+                'http_code' => 200
+            ];
         }
     
-        return ['status' => false, 'message' => 'Failed to update email account', 'data' => null, 'http_code' => 400];
+        return [
+            'status' => false,
+            'message' => 'Failed to update email account',
+            'data' => null,
+            'http_code' => 400
+        ];
     }
     
     public function deleteEmailAccount($id) {

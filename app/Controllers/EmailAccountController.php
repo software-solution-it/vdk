@@ -43,14 +43,15 @@ class EmailAccountController {
     public function updateEmailAccount($id) {
         header('Content-Type: application/json');
         $data = json_decode(file_get_contents("php://input"), true);
-
+    
         try {
             $result = $this->emailAccountService->updateEmailAccount($id, $data);
-            http_response_code(200);
+            
+            http_response_code($result['http_code']);
             echo json_encode([
-                'Status' => 'Success',
-                'Message' => 'Email account updated successfully.',
-                'Data' => $result
+                'Status' => $result['status'] ? 'Success' : 'Error',
+                'Message' => $result['message'],
+                'Data' => $result['data']
             ]);
         } catch (\Exception $e) {
             $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
@@ -59,7 +60,7 @@ class EmailAccountController {
                 'Status' => 'Error',
                 'Message' => 'Error updating email account: ' . $e->getMessage(),
                 'Data' => null
-            ]);
+            ]); 
         }
     }
 
