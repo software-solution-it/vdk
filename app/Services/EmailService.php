@@ -349,6 +349,7 @@ class EmailService {
             e.body_text,
             e.from,
             e.subject,
+            e.email_id,
             e.date_received,
             COUNT(a.id) AS attachment_count
         FROM 
