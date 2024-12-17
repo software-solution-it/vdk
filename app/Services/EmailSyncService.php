@@ -381,13 +381,21 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                 
                         $conversation_id = $references ? explode(', ', $references)[0] : $messageId;
 
+                        $body_html = $this->replaceCidsInHtml($body_html, $message);
+
+                        // 2. Verificar se o e-mail tem anexos
                         if ($message->hasAttachments()) {
                             $attachments = $message->getAttachments();
-                        
+                            
+                            // Iterar sobre os anexos para substituir os CIDs que temos no corpo do e-mail
                             foreach ($attachments as $attachment) {
                                 try {
-                                    $filename = $attachment->getFilename();
                         
+                                    // Se o anexo tiver um Content-ID e ele for referenciado no corpo, substituímos
+                                    $body_html = $this->replaceCidWithBase64($body_html, $attachment);
+                        
+                                    // Processa o anexo normalmente (salvar no banco de dados, etc.)
+                                    $filename = $attachment->getFilename();
                                     if (is_null($filename) || empty($filename)) {
                                         error_log("Anexo ignorado: o nome do arquivo está nulo.");
                                         continue;
@@ -398,16 +406,19 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                                         continue;
                                     }
                         
+                                    // Obtém o conteúdo do anexo
                                     $contentBytes = $attachment->getDecodedContent();
                                     if ($contentBytes === false) {
                                         error_log("Falha ao obter o conteúdo do anexo: $filename");
                                         continue;
                                     }
                         
+                                    // Obtenção do tipo MIME do anexo
                                     $mimeTypeName = $attachment->getType();
                                     $subtype = $attachment->getSubtype();
                                     $fullMimeType = $mimeTypeName . '/' . $subtype;
                         
+                                    // Salva o anexo no banco de dados
                                     $this->emailModel->saveAttachment(
                                         $emailId,
                                         $filename,
@@ -416,7 +427,6 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                                         $contentBytes
                                     );
                         
-                                    $body_html = $this->replaceCidWithBase64($body_html, $attachment);
                                 } catch (Exception $e) {
                                     $this->errorLogController->logError(
                                         "Erro ao salvar anexo e substituir CID: " . $e->getMessage(),
@@ -427,6 +437,9 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                                 }
                             }
                         }
+                        
+
+           
                         
                 
     
@@ -538,6 +551,26 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
     private function attachmentExists($emailId, $filename) {
         $existingAttachment = $this->emailModel->attachmentExists($emailId, $filename);
         return $existingAttachment !== null; 
+    }
+
+    private function replaceCidsInHtml($body_html, $message) {
+        preg_match_all('/cid:([^"\']+)/', $body_html, $matches);
+    
+        // Substituir os CIDs no corpo do e-mail com base64
+        if (!empty($matches[1])) {
+            foreach ($matches[1] as $cid) {
+                // Procurar anexo que corresponda ao CID e substituir no corpo HTML
+                foreach ($message->getAttachments() as $attachment) {
+                    $contentId = $attachment->getContentId(); 
+                    if ($contentId == $cid) {
+                        $body_html = $this->replaceCidWithBase64($body_html, $attachment);
+                        break; // Se já encontrou o CID, não precisa procurar mais
+                    }
+                }
+            }
+        }
+    
+        return $body_html;
     }
 
     private function replaceCidWithBase64($body_html, $attachment) {
