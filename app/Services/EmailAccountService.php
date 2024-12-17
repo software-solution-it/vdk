@@ -37,7 +37,7 @@ class EmailAccountService {
         return $missingFields;
     }
     
-    
+     
 
     public function createEmailAccount($data) {
         $requiredFields = ['user_id', 'email', 'provider_id', 'password', 'oauth_token', 'refresh_token', 'client_id', 'client_secret', 'is_basic'];
@@ -113,7 +113,6 @@ class EmailAccountService {
             'http_code' => 400
         ];
     }
-
     public function updateEmailAccount($id, $data) {
         $existingEmailAccount = $this->emailAccountModel->getById($id);
         if (!$existingEmailAccount) {
@@ -125,7 +124,7 @@ class EmailAccountService {
             ];
         }
     
-        $requiredFields = ['email', 'provider_id', 'oauth_token', 'refresh_token', 'client_id', 'client_secret', 'is_basic'];
+        $requiredFields = ['email', 'provider_id', 'oauth_token', 'refresh_token', 'client_id', 'client_secret', 'is_basic', 'tenant_id', 'auth_code'];
         $missingFields = array_filter($requiredFields, function ($field) use ($data) {
             return !array_key_exists($field, $data) || ($data[$field] === '' && !is_null($data[$field]));
         });
@@ -159,7 +158,6 @@ class EmailAccountService {
             ]; 
         }
     
-    
         $encryptedPassword = isset($data['password']) && $data['password'] !== '' 
             ? EncryptionHelper::encrypt($data['password']) 
             : $existingEmailAccount['password'];
@@ -175,7 +173,9 @@ class EmailAccountService {
             $data['refresh_token'] ?? $existingEmailAccount['refresh_token'],
             $data['client_id'] ?? $existingEmailAccount['client_id'],
             $data['client_secret'] ?? $existingEmailAccount['client_secret'],
-            $is_basic
+            $is_basic,
+            $data['tenant_id'],
+            $data['auth_code']  
         );
     
         if ($updated) {
@@ -187,13 +187,14 @@ class EmailAccountService {
             ];
         }
     
-        return [
+        return [ 
             'status' => false,
             'message' => 'Failed to update email account',
             'data' => null,
             'http_code' => 400
         ];
     }
+    
     
     
     public function deleteEmailAccount($id) {

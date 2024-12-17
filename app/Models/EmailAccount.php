@@ -116,18 +116,27 @@ class EmailAccount {
         }
     }
 
-    public function update($id, $email, $provider_id, $password, $oauth_token, $refresh_token, $client_id, $client_secret, $is_basic = null) {
+    public function update($id, $email, $provider_id, $password, $oauth_token, $refresh_token, $client_id, $client_secret, $is_basic = null, $tenant_id = null, $auth_code = null) {
         $query = "UPDATE " . $this->table . " SET email = :email, provider_id = :provider_id, 
                   password = :password, oauth_token = :oauth_token, refresh_token = :refresh_token, 
                   client_id = :client_id, client_secret = :client_secret";
         
         if ($is_basic !== null) {
             $query .= ", is_basic = :is_basic";
+        } 
+    
+        if ($tenant_id !== null) {
+            $query .= ", tenant_id = :tenant_id";
+        }
+    
+        if ($auth_code !== null) {
+            $query .= ", auth_code = :auth_code";
         }
     
         $query .= " WHERE id = :id";
         
         $stmt = $this->conn->prepare($query);
+        
         $stmt->bindParam(':id', $id);
         $stmt->bindParam(':email', $email);
         $stmt->bindParam(':provider_id', $provider_id);
@@ -141,8 +150,17 @@ class EmailAccount {
             $stmt->bindParam(':is_basic', $is_basic);
         }
     
+        if ($tenant_id !== null) {
+            $stmt->bindParam(':tenant_id', $tenant_id);
+        }
+    
+        if ($auth_code !== null) {
+            $stmt->bindParam(':auth_code', $auth_code);
+        }
+    
         return $stmt->execute();
     }
+    
 
     public function getEmailAccountByUserId($userId) {
         $query = "SELECT * FROM email_accounts WHERE user_id = :user_id";
