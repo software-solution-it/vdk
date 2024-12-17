@@ -384,7 +384,7 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                         if ($message->hasAttachments()) {
                             $attachments = $message->getAttachments();
                         
-                            foreach ($attachments as $attachment) {
+                            foreach ($attachments as $attachment) { 
                                 try {
                                     $filename = $attachment->getFilename();
                         
@@ -477,10 +477,10 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                                                     $decodedContent
                                                 );
                                                 $processedCids[] = $attachmentCid; // Marca como processado
-                                                error_log("Imagem inline salva: $filename.");
+                                                $this->errorLogController->logError('anexo Inline: ', __FILE__, __LINE__);
                                             }
                                         } catch (Exception $e) {
-                                            error_log("Erro ao salvar imagem inline: " . $e->getMessage());
+                                            $this->errorLogController->logError('Erro ao salvar o anexo inline: ' . $e->getMessage(), __FILE__, __LINE__);
                                         }
                                     }
                                 }
