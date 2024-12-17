@@ -452,21 +452,20 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                         );
     
                         if ($body_html) {
-                            // 1. Captura todas as imagens referenciadas no HTML (src="cid:...")
+                            // Encontrar todas as imagens referenciadas no HTML
                             preg_match_all('/<img[^>]+src="cid:([^"]+)"/i', $body_html, $matches, PREG_SET_ORDER);
                         
                             $attachments = $message->getAttachments();
-                            $processedCids = []; // Para evitar duplicação de anexos
                         
-                            // 2. Processar anexos inline referenciados no HTML
                             foreach ($matches as $match) {
-                                $cid = $match[1]; // CID sem "cid:"
+                                $cid = $match[1]; // Pega o CID sem "cid:"
                         
                                 foreach ($attachments as $attachment) {
                                     $attachmentCid = $this->getContentIdFromAttachment($attachment);
                         
                                     if ($attachmentCid === $cid) {
-                                        try {
+                                        try { 
+                                            // Salvar o anexo correspondente ao CID
                                             $filename = uniqid("inline_img_") . '.' . pathinfo($attachment->getFilename(), PATHINFO_EXTENSION);
                                             $decodedContent = $attachment->getDecodedContent();
                         
@@ -478,17 +477,20 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                                                     strlen($decodedContent),
                                                     $decodedContent
                                                 );
-                                                $processedCids[] = $attachmentCid; // Marca como processado
-                                                error_log("Imagem inline salva: $filename.");
+                                                error_log("Imagem embutida $filename salva com sucesso.");
                                             }
                                         } catch (Exception $e) {
-                                            error_log("Erro ao salvar imagem inline: " . $e->getMessage());
+                                            $this->errorLogController->logError(
+                                                "Erro ao salvar imagem inline: " . $e->getMessage(),
+                                                __FILE__,
+                                                __LINE__,
+                                                $user_id
+                                            );
                                         }
                                     }
                                 }
                             }
-                        
-                            // 3. Processar anexos normais (sem CID ou não referenciados no HTML)
+
                             foreach ($attachments as $attachment) {
                                 $attachmentCid = $this->getContentIdFromAttachment($attachment);
                         
