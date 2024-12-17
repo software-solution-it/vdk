@@ -15,33 +15,13 @@ class ProviderController {
         $database = new Database();
         $db = $database->getConnection(); 
         $this->providerService = new ProviderService($db);
-        $this->errorLogController = new ErrorLogController();
+        $this->errorLogController = new ErrorLogController(); 
     }
 
     public function createProvider() {
         header('Content-Type: application/json');
         $data = json_decode(file_get_contents('php://input'), true);
     
-        $requiredFields = ['name', 'smtp_host', 'smtp_port', 'imap_host', 'imap_port', 'encryption'];
-        $missingFields = [];
-    
-        foreach ($requiredFields as $field) {
-            if (empty($data[$field])) {
-                $missingFields[] = $field;
-            }
-        }
-    
-        if (!empty($missingFields)) {
-            http_response_code(400);
-            echo json_encode([
-                'Status' => 'Error',
-                'Message' => 'Missing fields: ' . implode(', ', $missingFields),
-                'Data' => null
-            ]);
-            return;
-        }
-    
-
         $response = $this->providerService->createProvider($data);
     
         http_response_code($response['status'] ? 201 : 500);
@@ -52,7 +32,6 @@ class ProviderController {
         ]);
     }
     
-
     public function updateProvider($id) {
         header('Content-Type: application/json');
         $data = json_decode(file_get_contents('php://input'), true);
@@ -69,17 +48,7 @@ class ProviderController {
 
         $response = $this->providerService->updateProvider($id, $data);
 
-        if ($response['message'] === 'Provider not found') {
-            http_response_code(404);
-            echo json_encode([
-                'Status' => 'Error',
-                'Message' => 'Provider not found',
-                'Data' => null
-            ]);
-            return;
-        }
-
-        http_response_code($response['status'] ? 200 : 500);
+        http_response_code($response['http_code']);
         echo json_encode([
             'Status' => $response['status'] ? 'Success' : 'Error',
             'Message' => $response['message'],
@@ -102,17 +71,7 @@ class ProviderController {
 
         $response = $this->providerService->deleteProvider($id);
 
-        if ($response['message'] === 'Provider not found') {
-            http_response_code(404);
-            echo json_encode([
-                'Status' => 'Error',
-                'Message' => 'Provider not found',
-                'Data' => null
-            ]);
-            return;
-        }
-
-        http_response_code($response['status'] ? 200 : 500);
+        http_response_code($response['http_code']);
         echo json_encode([
             'Status' => $response['status'] ? 'Success' : 'Error',
             'Message' => $response['message'],

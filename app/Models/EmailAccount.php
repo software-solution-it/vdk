@@ -48,6 +48,16 @@ class EmailAccount {
     
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
+
+    public function getByProvider($provider_id) {
+        $query = "SELECT id, email, user_id, provider_id, is_basic FROM " . $this->table . " WHERE provider_id = :provider_id";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(':provider_id', $provider_id);
+        $stmt->execute();
+    
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+    
     
 
     public function updateTokens($id, $oauth_token, $refresh_token) {
