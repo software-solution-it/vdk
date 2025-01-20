@@ -655,6 +655,20 @@ class EmailService {
                            getenv('AWS_SECRET_ACCESS_KEY') && 
                            getenv('AWS_BUCKET');
 
+            // Adicionar log para debug
+            $this->errorLogController->logError(
+                "AWS Config Status: " . json_encode([
+                    'hasConfig' => $hasAwsConfig,
+                    'region' => getenv('AWS_REGION'),
+                    'key_exists' => !empty(getenv('AWS_ACCESS_KEY_ID')),
+                    'secret_exists' => !empty(getenv('AWS_SECRET_ACCESS_KEY')),
+                    'bucket' => getenv('AWS_BUCKET'),
+                    'sample_attachment' => !empty($attachments) ? $attachments[0] : null
+                ]),
+                __FILE__,
+                __LINE__
+            );
+
             foreach ($attachments as &$attachment) {
                 if (isset($attachment['s3_key']) && 
                     !empty($attachment['s3_key']) && 
