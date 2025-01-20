@@ -388,67 +388,54 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                             
                             error_log("Processando " . count($attachments) . " anexos");
                         
-                            foreach ($attachments as $attachment) {
-                                try {
-                                    $filename = $attachment->getFilename();
-                                    if (is_null($filename) || empty($filename)) {
-                                        error_log("Anexo sem nome de arquivo, pulando...");
-                                        continue;
-                                    }
-
-                                    $contentBytes = $attachment->getDecodedContent();
+                            // Primeiro identifica todos os CIDs no HTML
+                            if (preg_match_all('/src=["\']cid:([^"\']+)["\']/i', $body_html, $matches)) {
+                                $cidsToFind = $matches[1];
+                                error_log("CIDs para procurar: " . implode(', ', $cidsToFind));
+                                
+                                // Busca apenas os anexos que correspondem aos CIDs encontrados
+                                foreach ($attachments as $attachment) {
                                     $contentId = $attachment->getParameters()->get('content-id');
                                     if ($contentId) {
                                         $contentId = trim($contentId, '<>');
-                                    }
-                                    
-                                    error_log("Processando anexo: $filename" . ($contentId ? " (CID: $contentId)" : ""));
-                                    
-                                    if ($contentId) {
-                                        $mimeTypeName = $attachment->getType();
-                                        $subtype = $attachment->getSubtype();
-                                        $fullMimeType = $mimeTypeName . '/' . $subtype;
-                                        $base64Content = base64_encode($contentBytes);
                                         
-                                        $cidMap[$contentId] = "data:$fullMimeType;base64,$base64Content";
-                                        error_log("CID mapeado: $contentId");
+                                        if (in_array($contentId, $cidsToFind)) {
+                                            $mimeTypeName = $attachment->getType();
+                                            $subtype = $attachment->getSubtype();
+                                            $fullMimeType = $mimeTypeName . '/' . $subtype;
+                                            $base64Content = base64_encode($attachment->getDecodedContent());
+                                            
+                                            $cidMap[$contentId] = "data:$fullMimeType;base64,$base64Content";
+                                            error_log("Encontrado anexo correspondente para CID: $contentId");
+                                        }
                                     }
-                                } catch (Exception $e) {
-                                    $this->errorLogController->logError(
-                                        "Erro ao processar anexo: " . $e->getMessage(),
-                                        __FILE__,
-                                        __LINE__,
-                                        $user_id
-                                    );
                                 }
                             }
 
-                            // Substitui todos os CIDs encontrados no corpo do email
+                            // Substitui os CIDs encontrados
                             if (!empty($cidMap)) {
                                 error_log("Substituindo " . count($cidMap) . " CIDs no corpo do email");
                                 foreach ($cidMap as $cid => $base64Data) {
                                     $pattern = '/src=["\']cid:' . preg_quote($cid, '/') . '["\']|cid:' . preg_quote($cid, '/') . '/i';
                                     $replacement = 'src="' . $base64Data . '"';
                                     $body_html = preg_replace($pattern, $replacement, $body_html);
-                                    error_log("Substituindo CID: $cid");
-                                    error_log("Pattern usado: " . $pattern);
-                                    error_log("Base64 data (primeiros 100 chars): " . substr($base64Data, 0, 100));
+                                    error_log("CID substituído: $cid");
                                 }
                                 error_log("Body HTML após substituição: " . substr($body_html, 0, 200) . "...");
                             }
 
                             // Agora salva os anexos
                             foreach ($attachments as $attachment) {
-                                if ($this->attachmentExists($email_account_id, $filename)) {
+                                if ($this->attachmentExists($email_account_id, $attachment->getFilename())) {
                                     continue;
                                 }
 
                                 $this->emailModel->saveAttachment(
                                     $email_account_id,
-                                    $filename,
-                                    $fullMimeType,
-                                    strlen($contentBytes),
-                                    $contentBytes
+                                    $attachment->getFilename(),
+                                    $attachment->getType(),
+                                    strlen($attachment->getDecodedContent()),
+                                    $attachment->getDecodedContent()
                                 );
                             }
                         }
