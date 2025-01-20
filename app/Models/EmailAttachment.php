@@ -30,7 +30,7 @@ class EmailAttachment {
     public function getAttachmentsByEmailId($email_id) {
         try {
             $query = "
-                SELECT id, filename, content_type, size, s3_key, content
+                SELECT id, filename, content_type, size, s3_key
                 FROM " . $this->table . "
                 WHERE email_id = :email_id
             ";
