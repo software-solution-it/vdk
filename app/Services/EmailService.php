@@ -652,27 +652,27 @@ class EmailService {
             
             foreach ($attachments as &$attachment) {
                 if (isset($attachment['s3_key']) && !empty($attachment['s3_key'])) {
+                    // Verifica se todas as variáveis de ambiente necessárias estão definidas
+                    if (!getenv('AWS_REGION') || !getenv('AWS_ACCESS_KEY_ID') || !getenv('AWS_SECRET_ACCESS_KEY') || !getenv('AWS_BUCKET')) {
+                        throw new Exception("Configurações AWS incompletas");
+                    }
+
                     $s3Client = new \Aws\S3\S3Client([
-                        'version' => 'latest',
-                        'region'  => $_ENV['AWS_REGION'],
+                        'version'     => 'latest',
+                        'region'      => getenv('AWS_REGION'),
                         'credentials' => [
-                            'key'    => $_ENV['AWS_ACCESS_KEY_ID'],
-                            'secret' => $_ENV['AWS_SECRET_ACCESS_KEY'],
+                            'key'    => getenv('AWS_ACCESS_KEY_ID'),
+                            'secret' => getenv('AWS_SECRET_ACCESS_KEY'),
                         ]
                     ]);
 
                     $command = $s3Client->getCommand('GetObject', [
-                        'Bucket' => $_ENV['AWS_BUCKET'],
+                        'Bucket' => getenv('AWS_BUCKET'),
                         'Key'    => $attachment['s3_key']
                     ]);
 
                     $request = $s3Client->createPresignedRequest($command, '+1 hour');
                     $attachment['presigned_url'] = (string) $request->getUri();
-                }
-
-                if (isset($attachment['content'])) {
-                    $attachment['content_base64'] = base64_encode($attachment['content']);
-                    unset($attachment['content']); // Remove o conteúdo binário da resposta
                 }
             }
             
