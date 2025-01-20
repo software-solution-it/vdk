@@ -357,16 +357,28 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                                 $parameters = (array)$attachment->getParameters();
                                 $this->logDebug("Verificando anexo com parâmetros: " . json_encode($parameters));
                                 
-                                // Busca em todos os parâmetros por qualquer chave que contenha 'content-id' (case insensitive)
+                                // Busca em todos os parâmetros e seus valores por qualquer ocorrência de content-id
                                 $contentId = null;
                                 foreach ($parameters as $key => $value) {
+                                    // Verifica na chave
                                     if (stripos($key, 'content-id') !== false) {
                                         $contentId = trim($value, '<>');
+                                        $this->logDebug("Content-ID encontrado na chave '$key': $contentId");
                                         break;
+                                    }
+                                    
+                                    // Verifica no valor se for string
+                                    if (is_string($value) && stripos($value, 'content-id') !== false) {
+                                        preg_match('/content-id[:\s]*([^;\s]+)/i', $value, $matches);
+                                        if (!empty($matches[1])) {
+                                            $contentId = trim($matches[1], '<>');
+                                            $this->logDebug("Content-ID encontrado no valor de '$key': $contentId");
+                                            break;
+                                        }
                                     }
                                 }
                                 
-                                $this->logDebug("Content-ID do anexo: " . ($contentId ?? 'null'));
+                                $this->logDebug("Content-ID final do anexo: " . ($contentId ?? 'null'));
                             }
                         } else {
                             $this->logDebug("Nenhum CID encontrado no HTML com regex"); 
