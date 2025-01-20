@@ -428,4 +428,15 @@ switch ($request_uri[0]) {
         $emailController->toggleFavorite();
         break;
 
+    case '/api/email/attachments':
+        $emailController = new EmailController();
+        $email_id = $_GET['email_id'] ?? null;
+        if ($email_id) {
+            $emailController->getAttachmentsByEmailId($email_id);
+        } else {
+            http_response_code(400);
+            echo json_encode(['message' => 'email_id is required']);
+        }
+        break;
+
 }

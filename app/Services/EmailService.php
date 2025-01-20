@@ -645,4 +645,41 @@ class EmailService {
             throw $e;
         }
     }
+
+    public function getAttachmentsByEmailId($email_id) {
+        try {
+            $attachments = $this->emailModel->getAttachmentsByEmailId($email_id);
+            
+            foreach ($attachments as &$attachment) {
+                if (isset($attachment['s3_key']) && !empty($attachment['s3_key'])) {
+                    $s3Client = new \Aws\S3\S3Client([
+                        'version' => 'latest',
+                        'region'  => $_ENV['AWS_REGION'],
+                        'credentials' => [
+                            'key'    => $_ENV['AWS_ACCESS_KEY_ID'],
+                            'secret' => $_ENV['AWS_SECRET_ACCESS_KEY'],
+                        ]
+                    ]);
+
+                    $command = $s3Client->getCommand('GetObject', [
+                        'Bucket' => $_ENV['AWS_BUCKET'],
+                        'Key'    => $attachment['s3_key']
+                    ]);
+
+                    $request = $s3Client->createPresignedRequest($command, '+1 hour');
+                    $attachment['presigned_url'] = (string) $request->getUri();
+                }
+
+                if (isset($attachment['content'])) {
+                    $attachment['content_base64'] = base64_encode($attachment['content']);
+                    unset($attachment['content']); // Remove o conteúdo binário da resposta
+                }
+            }
+            
+            return $attachments;
+        } catch (Exception $e) {
+            $this->errorLogController->logError("Erro ao buscar anexos: " . $e->getMessage(), __FILE__, __LINE__, null);
+            throw new Exception("Erro ao buscar anexos: " . $e->getMessage());
+        }
+    }
 }

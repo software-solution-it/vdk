@@ -715,5 +715,29 @@ class Email {
             throw $e;
         }
     }
+
+    public function getAttachmentsByEmailId($email_id) {
+        try {
+            $query = "
+                SELECT a.id, a.filename, a.content_type as mime_type, a.size, a.s3_key, a.content
+                FROM mail.email_attachments a
+                INNER JOIN mail.emails e ON e.id = a.email_id
+                WHERE e.id = :email_id
+            ";
+            
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':email_id', $email_id, PDO::PARAM_INT);
+            $stmt->execute();
+            
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            $this->errorLogController->logError(
+                "Erro ao buscar anexos do email: " . $e->getMessage(),
+                __FILE__,
+                __LINE__
+            );
+            throw $e;
+        }
+    }
 };
 
