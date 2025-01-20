@@ -13,6 +13,9 @@ use App\Services\RabbitMQService;
 use App\Services\WebhookService;
 use App\Controllers\ErrorLogController;
 use Exception;
+use Aws\S3\S3Client;
+use Aws\Exception\AwsException;
+
 class EmailSyncService
 {
     private $emailModel;
@@ -32,6 +35,9 @@ class EmailSyncService
 
     private $isGeneratingToken = false; 
 
+    private $s3Client;
+    private $bucketName = 'vdkmail';
+
     public function __construct($db)
     {
         $this->db = $db;
@@ -44,6 +50,17 @@ class EmailSyncService
         $this->gmailOauth2Service = new GmailOAuth2Service();
         $this->emailFolderModel = new EmailFolder($db);
         $this->folderAssociationModel = new FolderAssociation($db);
+        
+        // Initialize S3 client
+        $this->s3Client = new S3Client([
+            'version' => 'latest',
+            'region'  => getenv('AWS_DEFAULT_REGION'),
+            'credentials' => [
+                'key'    => getenv('AWS_ACCESS_KEY_ID'),
+                'secret' => getenv('AWS_SECRET_ACCESS_KEY'),
+            ],
+            'endpoint' => getenv('AWS_ENDPOINT')
+        ]); 
     }
 
     
@@ -433,13 +450,17 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                                         $contentId = trim($contentId, '<>');
                                         
                                         if (in_array($contentId, $cidsToFind)) {
-                                            $mimeTypeName = $attachment->getType();
-                                            $subtype = $attachment->getSubtype();
-                                            $fullMimeType = $mimeTypeName . '/' . $subtype;
-                                            $base64Content = base64_encode($attachment->getDecodedContent());
-                                            
-                                            $cidMap[$contentId] = "data:$fullMimeType;base64,$base64Content";
-                                            error_log("Encontrado anexo correspondente para CID: $contentId");
+                                            try {
+                                                $result = $this->processCidImage($attachment, $email_account_id, $contentId);
+                                                $cidMap[$contentId] = $result['url'];
+                                                error_log("Encontrado anexo correspondente para CID: $contentId");
+                                            } catch (Exception $e) {
+                                                $this->errorLogController->logError(
+                                                    "Erro ao processar imagem CID: " . $e->getMessage(),
+                                                    __FILE__,
+                                                    __LINE__
+                                                );
+                                            }
                                         }
                                     }
                                 }
@@ -448,35 +469,41 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                             // Substitui os CIDs encontrados
                             if (!empty($cidMap)) {
                                 error_log("Substituindo " . count($cidMap) . " CIDs no corpo do email");
-                                foreach ($cidMap as $cid => $base64Data) {
+                                foreach ($cidMap as $cid => $url) {
                                     $pattern = '/src=["\']cid:' . preg_quote($cid, '/') . '["\']|cid:' . preg_quote($cid, '/') . '/i';
-                                    $replacement = 'src="' . $base64Data . '"';
+                                    $replacement = 'src="' . $url . '"';
                                     $body_html = preg_replace($pattern, $replacement, $body_html);
                                     error_log("CID substituído: $cid");
                                 }
-                                error_log("Body HTML após substituição: " . substr($body_html, 0, 200) . "...");
                             }
 
-                            // Agora salva os anexos
+                            // Processa anexos regulares
                             foreach ($attachments as $attachment) {
-                                if ($this->attachmentExists($email_account_id, $attachment->getFilename())) {
+                                $filename = $attachment->getFilename();
+                                
+                                // Verifica se é um anexo CID que já foi processado
+                                $contentId = $attachment->getParameters()->get('content-id');
+                                if ($contentId && isset($cidMap[trim($contentId, '<>')])) {
                                     continue;
                                 }
 
-                                $this->emailModel->saveAttachment(
-                                    $email_account_id,
-                                    $attachment->getFilename(),
-                                    $attachment->getType(),
-                                    strlen($attachment->getDecodedContent()),
-                                    $attachment->getDecodedContent()
-                                );
+                                try {
+                                    $result = $this->processAttachment($attachment, $email_account_id);
+                                    $this->logDebug("Anexo processado com sucesso: " . $filename);
+                                } catch (Exception $e) {
+                                    $this->errorLogController->logError(
+                                        "Erro ao processar anexo {$filename}: " . $e->getMessage(),
+                                        __FILE__,
+                                        __LINE__
+                                    );
+                                }
                             }
                         }
                         
                 
     
                         $emailId = $this->emailModel->saveEmail(
-                            $user_id,
+                            $user_id, 
                             $email_account_id,
                             $messageId,
                             $subject,
@@ -507,15 +534,19 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                                     $decodedContent = base64_decode($base64Data);
     
                                     if ($decodedContent !== false) {
+                                        $contentHash = hash('sha256', $decodedContent);
                                         $filename = uniqid("inline_img_") . '.' . $imageType;
                                         $fullMimeType = 'image/' . $imageType;
+    
+                                        $s3Key = "attachments/" . $contentHash . "/" . $filename;
     
                                         $this->emailModel->saveAttachment(
                                             $emailId,
                                             $filename,
                                             $fullMimeType,
                                             strlen($decodedContent),
-                                            $decodedContent
+                                            $s3Key,
+                                            $contentHash
                                         );
                                     }
                                 } catch (Exception $e) {
@@ -593,16 +624,19 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
         $fullMimeType = $mimeTypeName . '/' . $subtype;
 
         $contentId = trim($attachment->getContentId(), '<>');
+        $contentHash = hash('sha256', $contentBytes);
+        $filename = 'cid_' . $contentId . '.' . strtolower($subtype);
+        $s3Key = "inline-images/{$contentHash}/{$filename}";
 
         // Save the CID image as an attachment
         try {
-            $filename = 'cid_' . $contentId . '.' . strtolower($subtype);
             $this->emailModel->saveAttachment(
                 $emailId,
                 $filename,
                 $fullMimeType,
                 strlen($contentBytes),
-                $contentBytes,
+                $s3Key,
+                $contentHash
             );
         } catch (Exception $e) {
             $this->errorLogController->logError(
@@ -634,6 +668,142 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
             file_put_contents($logPath, $logMessage, FILE_APPEND);
         } catch (Exception $e) {
             error_log("Erro ao escrever no arquivo de log: " . $e->getMessage());
+        }
+    }
+
+    private function processAttachment($attachment, $email_account_id)
+    {
+        try {
+            $content = $attachment->getDecodedContent();
+            $filename = $attachment->getFilename();
+            $contentType = $attachment->getType() . '/' . $attachment->getSubtype();
+            
+            // Generate hash of file content
+            $contentHash = hash('sha256', $content);
+            
+            // Check if this hash already exists in database
+            $existingAttachment = $this->emailModel->getAttachmentByHash($contentHash);
+            
+            if ($existingAttachment) {
+                // Return existing S3 reference
+                return [
+                    's3_key' => $existingAttachment['s3_key'],
+                    'content_hash' => $contentHash
+                ];
+            }
+            
+            // Generate S3 key using hash to ensure uniqueness
+            $s3Key = "attachments/{$contentHash}/{$filename}";
+            
+            // Upload to S3
+            $result = $this->s3Client->putObject([
+                'Bucket' => $this->bucketName,
+                'Key'    => $s3Key,
+                'Body'   => $content,
+                'ContentType' => $contentType,
+                'Metadata' => [
+                    'content_hash' => $contentHash,
+                    'original_filename' => $filename
+                ]
+            ]);
+            
+            // Save attachment in database
+            $this->emailModel->saveAttachment( 
+                $email_account_id,
+                $filename,
+                $contentType,
+                strlen($content),
+                $s3Key,
+                $contentHash
+            );
+            
+            return [
+                's3_key' => $s3Key,
+                'content_hash' => $contentHash
+            ];
+            
+        } catch (Exception $e) {
+            $this->errorLogController->logError(
+                "Error processing attachment: " . $e->getMessage(),
+                __FILE__,
+                __LINE__
+            );
+            throw $e;
+        }
+    }
+
+    private function processCidImage($attachment, $email_account_id, $contentId)
+    {
+        try {
+            $content = $attachment->getDecodedContent();
+            $contentType = $attachment->getType() . '/' . $attachment->getSubtype();
+            
+            // Generate hash of image content
+            $contentHash = hash('sha256', $content);
+            
+            // Check if this image already exists
+            $existingImage = $this->emailModel->getAttachmentByHash($contentHash);
+            
+            if ($existingImage) {
+                // Generate presigned URL for existing image
+                $command = $this->s3Client->getCommand('GetObject', [
+                    'Bucket' => $this->bucketName,
+                    'Key'    => $existingImage['s3_key']
+                ]);
+                
+                $presignedUrl = $this->s3Client->createPresignedRequest($command, '+1 hour')->getUri();
+                return [
+                    'url' => (string)$presignedUrl,
+                    'content_hash' => $contentHash
+                ];
+            }
+            
+            // Generate S3 key for new image
+            $extension = strtolower($attachment->getSubtype());
+            $s3Key = "inline-images/{$contentHash}/cid_{$contentId}.{$extension}";
+            
+            // Upload to S3
+            $this->s3Client->putObject([
+                'Bucket' => $this->bucketName,
+                'Key'    => $s3Key,
+                'Body'   => $content,
+                'ContentType' => $contentType,
+                'Metadata' => [
+                    'content_hash' => $contentHash,
+                    'content_id' => $contentId
+                ]
+            ]);
+            
+            // Save in database
+            $this->emailModel->saveAttachment(
+                $email_account_id,
+                "cid_{$contentId}.{$extension}",
+                $contentType,
+                strlen($content),
+                $s3Key,
+                $contentHash
+            );
+            
+            // Generate presigned URL
+            $command = $this->s3Client->getCommand('GetObject', [
+                'Bucket' => $this->bucketName,
+                'Key'    => $s3Key
+            ]);
+            
+            $presignedUrl = $this->s3Client->createPresignedRequest($command, '+1 hour')->getUri();
+            
+            return [
+                'url' => (string)$presignedUrl,
+                'content_hash' => $contentHash
+            ];
+            
+        } catch (Exception $e) {
+            $this->errorLogController->logError(
+                "Error processing CID image: " . $e->getMessage(),
+                __FILE__,
+                __LINE__
+            );
+            throw $e;
         }
     }
 }

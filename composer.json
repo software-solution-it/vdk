@@ -11,7 +11,8 @@
         "guzzlehttp/guzzle": "^7.9",
         "spatie/async": "^1.6",
         "php-amqplib/php-amqplib": "^3.7",
-        "league/oauth2-client": "^2.7"
+        "league/oauth2-client": "^2.7",
+        "aws/aws-sdk-php": "^3.337"
     },
     "autoload": {
         "psr-4": {

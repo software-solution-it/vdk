@@ -49,20 +49,25 @@ class Email {
         }
     }
 
-    public function attachmentExists($emailId, $filename) {
+    public function attachmentExists($email_account_id, $filename) {
         try {
-            $query = "SELECT COUNT(*) FROM " . $this->attachmentsTable . " WHERE email_id = :email_id AND filename = :filename";
+            $query = "SELECT COUNT(*) FROM {$this->attachmentsTable} 
+                      WHERE email_account_id = :email_account_id 
+                      AND filename = :filename";
+                      
             $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(':email_id', $emailId, PDO::PARAM_INT);
-            $stmt->bindParam(':filename', $filename, PDO::PARAM_STR);
+            $stmt->bindParam(':email_account_id', $email_account_id);
+            $stmt->bindParam(':filename', $filename);
             $stmt->execute();
 
-            $count = $stmt->fetchColumn();
-
-            return $count > 0;
+            return $stmt->fetchColumn() > 0;
         } catch (Exception $e) {
-            $this->errorLogController->logError("Erro ao verificar existência de anexo: " . $e->getMessage(), __FILE__, __LINE__, null);
-            throw new Exception("Erro ao verificar existência de anexo: " . $e->getMessage());
+            $this->errorLogController->logError(
+                "Erro ao verificar existência de anexo: " . $e->getMessage(),
+                __FILE__,
+                __LINE__
+            );
+            throw $e;
         }
     }
 
@@ -167,25 +172,38 @@ class Email {
     
     
 
-    public function saveAttachment($email_id, $filename, $mimeType, $size, $content) {
+    public function saveAttachment($email_account_id, $filename, $contentType, $size, $s3Key, $contentHash)
+    {
         try {
-            $query = "INSERT INTO " . $this->attachmentsTable . " 
-                      (email_id, filename, mime_type, size, content) 
+            $query = "INSERT INTO {$this->attachmentsTable} 
+                      (email_account_id, filename, content_type, size, s3_key, content_hash) 
                       VALUES 
-                      (:email_id, :filename, :mime_type, :size, :content)";
-    
+                      (:email_account_id, :filename, :content_type, :size, :s3_key, :content_hash)
+                      ON DUPLICATE KEY UPDATE
+                      email_account_id = :email_account_id,
+                      filename = :filename,
+                      content_type = :content_type,
+                      size = :size,
+                      s3_key = :s3_key";
+
             $stmt = $this->conn->prepare($query);
-    
-            $stmt->bindParam(':email_id', $email_id);
+            
+            $stmt->bindParam(':email_account_id', $email_account_id);
             $stmt->bindParam(':filename', $filename);
-            $stmt->bindParam(':mime_type', $mimeType);
+            $stmt->bindParam(':content_type', $contentType);
             $stmt->bindParam(':size', $size);
-            $stmt->bindParam(':content', $content, PDO::PARAM_LOB);
-    
-            return $stmt->execute();
+            $stmt->bindParam(':s3_key', $s3Key);
+            $stmt->bindParam(':content_hash', $contentHash);
+
+            $stmt->execute();
+            return $this->conn->lastInsertId();
         } catch (Exception $e) {
-            $this->errorLogController->logError('Erro ao salvar o anexo: ' . $e->getMessage(), __FILE__, __LINE__);
-            throw new Exception('Erro ao salvar o anexo: ' . $e->getMessage());
+            $this->errorLogController->logError(
+                "Erro ao salvar anexo: " . $e->getMessage(),
+                __FILE__,
+                __LINE__
+            );
+            throw $e;
         }
     }
 
@@ -636,4 +654,23 @@ class Email {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
     
-}
+    public function getAttachmentByHash($contentHash)
+    {
+        try {
+            $query = "SELECT * FROM {$this->attachmentsTable} WHERE content_hash = :content_hash";
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':content_hash', $contentHash);
+            $stmt->execute();
+            
+            return $stmt->fetch(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            $this->errorLogController->logError(
+                "Erro ao buscar anexo por hash: " . $e->getMessage(),
+                __FILE__,
+                __LINE__
+            );
+            throw $e;
+        }
+    }
+};
+
