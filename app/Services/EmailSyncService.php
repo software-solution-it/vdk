@@ -354,9 +354,18 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                             $this->logDebug("Matches completo: " . json_encode($matches));
                             
                             foreach ($message->getAttachments() as $attachment) {
-                                $parameters = $attachment->getParameters();
-                                $this->logDebug("Verificando anexo com parâmetros: " . json_encode((array)$parameters));
-                                $contentId = $attachment->getParameters()->get('content-id');
+                                $parameters = (array)$attachment->getParameters();
+                                $this->logDebug("Verificando anexo com parâmetros: " . json_encode($parameters));
+                                
+                                // Busca em todos os parâmetros por qualquer chave que contenha 'content-id' (case insensitive)
+                                $contentId = null;
+                                foreach ($parameters as $key => $value) {
+                                    if (stripos($key, 'content-id') !== false) {
+                                        $contentId = trim($value, '<>');
+                                        break;
+                                    }
+                                }
+                                
                                 $this->logDebug("Content-ID do anexo: " . ($contentId ?? 'null'));
                             }
                         } else {
