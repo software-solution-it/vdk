@@ -604,9 +604,20 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
     }
     
     private function logDebug($message) {
-        $logPath = __DIR__ . '/../../storage/logs/email_sync.log';
-        $timestamp = date('Y-m-d H:i:s');
-        $logMessage = "[{$timestamp}] {$message}" . PHP_EOL;
-        file_put_contents($logPath, $logMessage, FILE_APPEND);
+        try {
+            $logDir = __DIR__ . '/../../logs';
+            $logPath = $logDir . '/email_sync.log';
+            
+            // Cria o diretório de logs se não existir
+            if (!is_dir($logDir)) {
+                mkdir($logDir, 0777, true);
+            }
+            
+            $timestamp = date('Y-m-d H:i:s');
+            $logMessage = "[{$timestamp}] {$message}" . PHP_EOL;
+            file_put_contents($logPath, $logMessage, FILE_APPEND);
+        } catch (Exception $e) {
+            error_log("Erro ao escrever no arquivo de log: " . $e->getMessage());
+        }
     }
 }
