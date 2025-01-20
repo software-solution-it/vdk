@@ -648,7 +648,7 @@ class EmailService {
 
     public function getAttachmentsByEmailId($email_id) {
         try {
-            $attachments = $this->emailModel->getAttachmentsByEmailId($email_id);
+            $attachments = $this->emailAttachmentModel->getAttachmentsByEmailId($email_id);
             
             foreach ($attachments as &$attachment) {
                 if (isset($attachment['s3_key']) && !empty($attachment['s3_key'])) {

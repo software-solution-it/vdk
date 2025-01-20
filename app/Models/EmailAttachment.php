@@ -1,6 +1,8 @@
 <?php
 namespace App\Models;
 use PDO;
+use Exception;
+
 class EmailAttachment {
     
     private $conn;
@@ -26,12 +28,21 @@ class EmailAttachment {
 
 
     public function getAttachmentsByEmailId($email_id) {
-        $query = "SELECT * FROM " . $this->table . " WHERE email_id = :email_id";
-        $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(':email_id', $email_id);
-        $stmt->execute();
-
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        try {
+            $query = "
+                SELECT id, filename, mime_type, size, s3_key, content
+                FROM " . $this->table . "
+                WHERE email_id = :email_id
+            ";
+            
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':email_id', $email_id, PDO::PARAM_INT);
+            $stmt->execute();
+            
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            throw new Exception("Erro ao buscar anexos: " . $e->getMessage());
+        }
     }
 
     public function deleteAttachmentsByEmailId($email_id) {
