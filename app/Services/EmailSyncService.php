@@ -354,12 +354,13 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                             $this->logDebug("Matches completo: " . json_encode($matches));
                             
                             foreach ($message->getAttachments() as $attachment) {
-                                $this->logDebug("Verificando anexo com parâmetros: " . json_encode($attachment->getParameters()->getAll()));
+                                $parameters = $attachment->getParameters();
+                                $this->logDebug("Verificando anexo com parâmetros: " . json_encode((array)$parameters));
                                 $contentId = $attachment->getParameters()->get('content-id');
                                 $this->logDebug("Content-ID do anexo: " . ($contentId ?? 'null'));
                             }
                         } else {
-                            $this->logDebug("Nenhum CID encontrado no HTML com regex");
+                            $this->logDebug("Nenhum CID encontrado no HTML com regex"); 
                         }
 
                         $bcc = $message->getBcc();
