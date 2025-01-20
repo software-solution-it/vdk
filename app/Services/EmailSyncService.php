@@ -340,11 +340,11 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                         $subject = mb_convert_encoding($subject, 'UTF-8', 'auto');
                         $date_received = $message->getDate()->setTimezone(new \DateTimeZone('America/Sao_Paulo'))->format('Y-m-d H:i:s');
                         $isRead = $message->isSeen() ? 1 : 0;
-                        $body_html = $message->getBodyHtml();
-
                         
+                        // Obtém o body_html antes do processamento de anexos
+                        $body_html = $message->getBodyHtml();
                         $body_text = $message->getBodyText();
-    
+
                         $bcc = $message->getBcc();
                         if ($bcc && count($bcc) > 0) {
                             error_log("E-mail contém CCO (BCC). Ignorando o processamento.");
@@ -381,6 +381,7 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                 
                         $conversation_id = $references ? explode(', ', $references)[0] : $messageId;
 
+                        // Processa anexos e CIDs antes de salvar
                         if ($message->hasAttachments()) {
                             $attachments = $message->getAttachments();
                             $cidMap = [];
@@ -412,24 +413,6 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                                         $cidMap[$contentId] = "data:$fullMimeType;base64,$base64Content";
                                         error_log("CID mapeado: $contentId");
                                     }
-
-                                    // Continua salvando o anexo normalmente
-                                    if ($this->attachmentExists($email_account_id, $filename)) {
-                                        continue;
-                                    }
-
-                                    if ($this->attachmentExists($email_account_id, $filename)) {
-                                        error_log("Anexo '$filename' já existe para este e-mail. Ignorando...");
-                                        continue;
-                                    }
-                        
-                                    $this->emailModel->saveAttachment(
-                                        $email_account_id,
-                                        $filename,
-                                        $fullMimeType,
-                                        strlen($contentBytes),
-                                        $contentBytes
-                                    );
                                 } catch (Exception $e) {
                                     $this->errorLogController->logError(
                                         "Erro ao processar anexo: " . $e->getMessage(),
@@ -442,13 +425,31 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
 
                             // Substitui todos os CIDs encontrados no corpo do email
                             if (!empty($cidMap)) {
+                                error_log("Substituindo " . count($cidMap) . " CIDs no corpo do email");
                                 foreach ($cidMap as $cid => $base64Data) {
-                                    $body_html = preg_replace(
-                                        '/src="cid:' . preg_quote($cid, '/') . '"/',
-                                        'src="' . $base64Data . '"',
-                                        $body_html
-                                    );
+                                    $pattern = '/src=["\']cid:' . preg_quote($cid, '/') . '["\']|cid:' . preg_quote($cid, '/') . '/i';
+                                    $replacement = 'src="' . $base64Data . '"';
+                                    $body_html = preg_replace($pattern, $replacement, $body_html);
+                                    error_log("Substituindo CID: $cid");
+                                    error_log("Pattern usado: " . $pattern);
+                                    error_log("Base64 data (primeiros 100 chars): " . substr($base64Data, 0, 100));
                                 }
+                                error_log("Body HTML após substituição: " . substr($body_html, 0, 200) . "...");
+                            }
+
+                            // Agora salva os anexos
+                            foreach ($attachments as $attachment) {
+                                if ($this->attachmentExists($email_account_id, $filename)) {
+                                    continue;
+                                }
+
+                                $this->emailModel->saveAttachment(
+                                    $email_account_id,
+                                    $filename,
+                                    $fullMimeType,
+                                    strlen($contentBytes),
+                                    $contentBytes
+                                );
                             }
                         }
                         
