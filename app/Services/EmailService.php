@@ -650,29 +650,45 @@ class EmailService {
         try {
             $attachments = $this->emailAttachmentModel->getAttachmentsByEmailId($email_id);
             
+            $hasAwsConfig = getenv('AWS_REGION') && 
+                           getenv('AWS_ACCESS_KEY_ID') && 
+                           getenv('AWS_SECRET_ACCESS_KEY') && 
+                           getenv('AWS_BUCKET');
+
             foreach ($attachments as &$attachment) {
-                if (isset($attachment['s3_key']) && !empty($attachment['s3_key'])) {
-                    // Verifica se todas as variáveis de ambiente necessárias estão definidas
-                    if (!getenv('AWS_REGION') || !getenv('AWS_ACCESS_KEY_ID') || !getenv('AWS_SECRET_ACCESS_KEY') || !getenv('AWS_BUCKET')) {
-                        throw new Exception("Configurações AWS incompletas");
+                if (isset($attachment['s3_key']) && 
+                    !empty($attachment['s3_key']) && 
+                    $hasAwsConfig) {
+                    try {
+                        $s3Client = new \Aws\S3\S3Client([
+                            'version'     => 'latest',
+                            'region'      => getenv('AWS_REGION'),
+                            'credentials' => [
+                                'key'    => getenv('AWS_ACCESS_KEY_ID'),
+                                'secret' => getenv('AWS_SECRET_ACCESS_KEY'),
+                            ]
+                        ]);
+
+                        $command = $s3Client->getCommand('GetObject', [
+                            'Bucket' => getenv('AWS_BUCKET'),
+                            'Key'    => $attachment['s3_key']
+                        ]);
+
+                        $request = $s3Client->createPresignedRequest($command, '+1 hour');
+                        $attachment['presigned_url'] = (string) $request->getUri();
+                    } catch (Exception $e) {
+                        // Log o erro mas não interrompe o processo
+                        $this->errorLogController->logError(
+                            "Erro ao gerar URL pré-assinada: " . $e->getMessage(), 
+                            __FILE__, 
+                            __LINE__, 
+                            null
+                        );
+                        // Adiciona uma URL vazia ou mensagem de erro
+                        $attachment['presigned_url'] = null;
                     }
-
-                    $s3Client = new \Aws\S3\S3Client([
-                        'version'     => 'latest',
-                        'region'      => getenv('AWS_REGION'),
-                        'credentials' => [
-                            'key'    => getenv('AWS_ACCESS_KEY_ID'),
-                            'secret' => getenv('AWS_SECRET_ACCESS_KEY'),
-                        ]
-                    ]);
-
-                    $command = $s3Client->getCommand('GetObject', [
-                        'Bucket' => getenv('AWS_BUCKET'),
-                        'Key'    => $attachment['s3_key']
-                    ]);
-
-                    $request = $s3Client->createPresignedRequest($command, '+1 hour');
-                    $attachment['presigned_url'] = (string) $request->getUri();
+                } else {
+                    $attachment['presigned_url'] = null;
                 }
             }
             
