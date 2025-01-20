@@ -631,18 +631,16 @@ class EmailService {
         }
     }
 
-    public function toggleFavorite($email_id, $user_id) {
+    public function toggleFavorite($email_id, $email_account_id) {
         try {
-            $result = $this->emailModel->toggleFavorite($email_id, $user_id);
-
+            $result = $this->emailModel->toggleFavorite($email_id, $email_account_id);
             return $result;
-
         } catch (Exception $e) {
             $this->errorLogController->logError(
                 "Erro ao alternar favorito do email: " . $e->getMessage(),
                 __FILE__,
                 __LINE__,
-                $user_id
+                $email_account_id
             );
             throw $e;
         }

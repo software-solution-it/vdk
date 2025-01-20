@@ -51,16 +51,39 @@ class EmailSyncService
         $this->emailFolderModel = new EmailFolder($db);
         $this->folderAssociationModel = new FolderAssociation($db);
         
-        // Initialize S3 client
-        $this->s3Client = new S3Client([
+        // Debug das variáveis de ambiente
+        error_log("AWS Environment Variables:");
+        error_log("AWS_ACCESS_KEY_ID: " . (getenv('AWS_ACCESS_KEY_ID') ? 'SET' : 'NOT SET'));
+        error_log("AWS_SECRET_ACCESS_KEY: " . (getenv('AWS_SECRET_ACCESS_KEY') ? 'SET' : 'NOT SET'));
+        error_log("AWS_DEFAULT_REGION: " . (getenv('AWS_DEFAULT_REGION') ?: 'NOT SET'));
+        error_log("AWS_ENDPOINT: " . (getenv('AWS_ENDPOINT') ?: 'NOT SET'));
+
+        // Initialize S3 client with fallback values
+        $s3Config = [
             'version' => 'latest',
-            'region'  => getenv('AWS_DEFAULT_REGION'),
+            'region'  => getenv('AWS_DEFAULT_REGION') ?: 'us-east-1',
             'credentials' => [
-                'key'    => getenv('AWS_ACCESS_KEY_ID'),
-                'secret' => getenv('AWS_SECRET_ACCESS_KEY'),
-            ],
-            'endpoint' => getenv('AWS_ENDPOINT')
-        ]); 
+                'key'    => getenv('AWS_ACCESS_KEY_ID') ?: '',
+                'secret' => getenv('AWS_SECRET_ACCESS_KEY') ?: '',
+            ]
+        ];
+
+        // Tenta carregar o endpoint se existir
+        $endpoint = getenv('AWS_ENDPOINT');
+        if ($endpoint && is_string($endpoint) && !empty(trim($endpoint))) {
+            error_log("Using custom S3 endpoint: " . $endpoint);
+            $s3Config['endpoint'] = $endpoint;
+        } else {
+            error_log("No custom S3 endpoint configured, using default AWS endpoints");
+        }
+
+        try {
+            $this->s3Client = new S3Client($s3Config);
+            error_log("S3 client initialized successfully");
+        } catch (Exception $e) {
+            error_log("Error initializing S3 client: " . $e->getMessage());
+            throw $e;
+        }
     }
 
     
