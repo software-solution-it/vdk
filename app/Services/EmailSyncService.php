@@ -345,6 +345,23 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                         $body_html = $message->getBodyHtml();
                         $body_text = $message->getBodyText();
 
+                        $this->logDebug("Body HTML original: " . $body_html);
+                        
+                        // Primeiro identifica todos os CIDs no HTML
+                        if (preg_match_all('/src=["\']cid:([^"\']+)["\']/i', $body_html, $matches)) {
+                            $cidsToFind = $matches[1];
+                            $this->logDebug("CIDs encontrados no HTML: " . json_encode($cidsToFind));
+                            $this->logDebug("Matches completo: " . json_encode($matches));
+                            
+                            foreach ($message->getAttachments() as $attachment) {
+                                $this->logDebug("Verificando anexo com parâmetros: " . json_encode($attachment->getParameters()->getAll()));
+                                $contentId = $attachment->getParameters()->get('content-id');
+                                $this->logDebug("Content-ID do anexo: " . ($contentId ?? 'null'));
+                            }
+                        } else {
+                            $this->logDebug("Nenhum CID encontrado no HTML com regex");
+                        }
+
                         $bcc = $message->getBcc();
                         if ($bcc && count($bcc) > 0) {
                             error_log("E-mail contém CCO (BCC). Ignorando o processamento.");
@@ -586,7 +603,10 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
         return preg_replace($pattern, $replacement, $body_html);
     }
     
-    
-    
-    
+    private function logDebug($message) {
+        $logPath = __DIR__ . '/../../storage/logs/email_sync.log';
+        $timestamp = date('Y-m-d H:i:s');
+        $logMessage = "[{$timestamp}] {$message}" . PHP_EOL;
+        file_put_contents($logPath, $logMessage, FILE_APPEND);
+    }
 }
