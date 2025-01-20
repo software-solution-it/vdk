@@ -670,20 +670,29 @@ class EmailController {
     public function getAttachmentsByEmailId($email_id) {
         try {
             $attachments = $this->emailService->getAttachmentsByEmailId($email_id);
+            
+            // Define o cabeçalho como JSON
+            header('Content-Type: application/json');
+            
             http_response_code(200);
             echo json_encode([
-                'Status' => 'Success',
-                'Message' => 'Anexos recuperados com sucesso.',
-                'Data' => $attachments
-            ]);
+                'status' => true,
+                'message' => 'Anexos recuperados com sucesso',
+                'data' => [
+                    'total' => count($attachments),
+                    'attachments' => $attachments
+                ]
+            ], JSON_UNESCAPED_UNICODE);
+            
         } catch (Exception $e) {
             $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
+            
             http_response_code(500);
             echo json_encode([
-                'Status' => 'Error',
-                'Message' => 'Erro ao buscar anexos: ' . $e->getMessage(),
-                'Data' => null
-            ]);
+                'status' => false,
+                'message' => 'Erro ao buscar anexos: ' . $e->getMessage(),
+                'data' => null
+            ], JSON_UNESCAPED_UNICODE);
         }
     }
 }
