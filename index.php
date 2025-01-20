@@ -423,4 +423,9 @@ switch ($request_uri[0]) {
             break;
     
 
+    case '/api/email/favorite':
+        $emailController = new EmailController();
+        $emailController->toggleFavorite();
+        break;
+
 }

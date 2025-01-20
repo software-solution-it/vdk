@@ -637,4 +637,32 @@ class EmailController {
     }
     
     
+    public function toggleFavorite() {
+        try {
+            $data = json_decode(file_get_contents('php://input'), true);
+            
+            if (!isset($data['email_id']) || !isset($data['user_id'])) {
+                http_response_code(400);
+                echo json_encode([
+                    'status' => false,
+                    'message' => 'email_id e user_id são obrigatórios'
+                ]);
+                return;
+            }
+
+            $result = $this->emailService->toggleFavorite(
+                $data['email_id'],
+                $data['user_id']
+            );
+
+            echo json_encode($result);
+
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode([
+                'status' => false,
+                'message' => 'Erro ao favoritar email: ' . $e->getMessage()
+            ]);
+        }
+    }
 }

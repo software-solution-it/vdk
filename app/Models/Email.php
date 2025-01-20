@@ -672,5 +672,44 @@ class Email {
             throw $e;
         }
     }
+
+    public function toggleFavorite($email_id, $user_id) {
+        try {
+            // Primeiro, verifica o estado atual
+            $query = "SELECT is_favorite FROM " . $this->table . " 
+                     WHERE email_id = :email_id AND user_id = :user_id";
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':email_id', $email_id);
+            $stmt->bindParam(':user_id', $user_id);
+            $stmt->execute();
+            $current = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            // Toggle o valor
+            $newValue = isset($current['is_favorite']) ? !$current['is_favorite'] : true;
+
+            // Atualiza o valor
+            $query = "UPDATE " . $this->table . " 
+                     SET is_favorite = :is_favorite 
+                     WHERE email_id = :email_id AND user_id = :user_id";
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':is_favorite', $newValue, PDO::PARAM_BOOL);
+            $stmt->bindParam(':email_id', $email_id);
+            $stmt->bindParam(':user_id', $user_id);
+            
+            if ($stmt->execute()) {
+                return ['status' => true, 'is_favorite' => $newValue];
+            }
+            return ['status' => false, 'message' => 'Falha ao atualizar favorito'];
+
+        } catch (Exception $e) {
+            $this->errorLogController->logError(
+                "Erro ao alternar favorito: " . $e->getMessage(),
+                __FILE__,
+                __LINE__,
+                $user_id
+            );
+            throw $e;
+        }
+    }
 };
 

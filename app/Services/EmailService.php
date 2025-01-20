@@ -630,4 +630,21 @@ class EmailService {
             ];
         }
     }
+
+    public function toggleFavorite($email_id, $user_id) {
+        try {
+            $result = $this->emailModel->toggleFavorite($email_id, $user_id);
+
+            return $result;
+
+        } catch (Exception $e) {
+            $this->errorLogController->logError(
+                "Erro ao alternar favorito do email: " . $e->getMessage(),
+                __FILE__,
+                __LINE__,
+                $user_id
+            );
+            throw $e;
+        }
+    }
 }
