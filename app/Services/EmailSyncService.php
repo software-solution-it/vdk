@@ -383,26 +383,34 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
 
                         if ($message->hasAttachments()) {
                             $attachments = $message->getAttachments();
-                            $cidMap = [];  // Mapa para armazenar CIDs e seus dados base64
+                            $cidMap = [];
+                            
+                            error_log("Processando " . count($attachments) . " anexos");
                         
                             foreach ($attachments as $attachment) {
                                 try {
                                     $filename = $attachment->getFilename();
                                     if (is_null($filename) || empty($filename)) {
+                                        error_log("Anexo sem nome de arquivo, pulando...");
                                         continue;
                                     }
 
                                     $contentBytes = $attachment->getDecodedContent();
-                                    $contentId = trim($attachment->getContentId(), '<>');
+                                    $contentId = $attachment->getParameters()->get('content-id');
+                                    if ($contentId) {
+                                        $contentId = trim($contentId, '<>');
+                                    }
                                     
-                                    if ($contentId) {  // Se tem contentId, é uma imagem inline
+                                    error_log("Processando anexo: $filename" . ($contentId ? " (CID: $contentId)" : ""));
+                                    
+                                    if ($contentId) {
                                         $mimeTypeName = $attachment->getType();
                                         $subtype = $attachment->getSubtype();
                                         $fullMimeType = $mimeTypeName . '/' . $subtype;
                                         $base64Content = base64_encode($contentBytes);
                                         
-                                        // Armazena no mapa para substituição posterior
                                         $cidMap[$contentId] = "data:$fullMimeType;base64,$base64Content";
+                                        error_log("CID mapeado: $contentId");
                                     }
 
                                     // Continua salvando o anexo normalmente
