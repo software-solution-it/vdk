@@ -357,25 +357,64 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                                 $parameters = (array)$attachment->getParameters();
                                 $this->logDebug("Verificando anexo com parâmetros: " . json_encode($parameters));
                                 
-                                // Busca em todos os parâmetros e seus valores por qualquer ocorrência de content-id
+                                // Tenta obter o Content-ID de várias formas
                                 $contentId = null;
+                                
+                                // 1. Tenta pelo método getContentId() se existir
+                                if (method_exists($attachment, 'getContentId')) {
+                                    $contentId = trim($attachment->getContentId(), '<>');
+                                    if ($contentId) {
+                                        $this->logDebug("Content-ID encontrado via getContentId(): $contentId");
+                                        continue;
+                                    }
+                                }
+                                
+                                // 2. Tenta pelo método getId() se existir
+                                if (method_exists($attachment, 'getId')) {
+                                    $contentId = trim($attachment->getId(), '<>');
+                                    if ($contentId) {
+                                        $this->logDebug("Content-ID encontrado via getId(): $contentId");
+                                        continue;
+                                    }
+                                }
+                                
+                                // 3. Busca em todos os parâmetros e seus valores
                                 foreach ($parameters as $key => $value) {
                                     // Verifica na chave
-                                    if (stripos($key, 'content-id') !== false) {
+                                    if (stripos($key, 'content-id') !== false || stripos($key, 'id') !== false) {
                                         $contentId = trim($value, '<>');
                                         $this->logDebug("Content-ID encontrado na chave '$key': $contentId");
                                         break;
                                     }
                                     
                                     // Verifica no valor se for string
-                                    if (is_string($value) && stripos($value, 'content-id') !== false) {
-                                        preg_match('/content-id[:\s]*([^;\s]+)/i', $value, $matches);
+                                    if (is_string($value) && (stripos($value, 'content-id') !== false || stripos($value, 'cid:') !== false)) {
+                                        preg_match('/(?:content-id|cid)[:\s]*([^;\s]+)/i', $value, $matches);
                                         if (!empty($matches[1])) {
                                             $contentId = trim($matches[1], '<>');
                                             $this->logDebug("Content-ID encontrado no valor de '$key': $contentId");
                                             break;
                                         }
                                     }
+                                }
+                                
+                                // 4. Tenta acessar propriedades protegidas/privadas via Reflection
+                                try {
+                                    $reflection = new \ReflectionObject($attachment);
+                                    foreach ($reflection->getProperties() as $property) {
+                                        $property->setAccessible(true);
+                                        $value = $property->getValue($attachment);
+                                        if (is_string($value) && (stripos($value, 'content-id') !== false || stripos($value, 'cid:') !== false)) {
+                                            preg_match('/(?:content-id|cid)[:\s]*([^;\s]+)/i', $value, $matches);
+                                            if (!empty($matches[1])) {
+                                                $contentId = trim($matches[1], '<>');
+                                                $this->logDebug("Content-ID encontrado via reflection em '{$property->getName()}': $contentId");
+                                                break;
+                                            }
+                                        }
+                                    }
+                                } catch (\Exception $e) {
+                                    $this->logDebug("Erro ao tentar reflection: " . $e->getMessage());
                                 }
                                 
                                 $this->logDebug("Content-ID final do anexo: " . ($contentId ?? 'null'));
