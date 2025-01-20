@@ -30,7 +30,7 @@ class EmailAttachment {
     public function getAttachmentsByEmailId($email_id) {
         try {
             $query = "
-                SELECT id, filename, mime_type, size, s3_key, content
+                SELECT id, filename, content_type, size, s3_key, content
                 FROM " . $this->table . "
                 WHERE email_id = :email_id
             ";
@@ -39,7 +39,15 @@ class EmailAttachment {
             $stmt->bindParam(':email_id', $email_id, PDO::PARAM_INT);
             $stmt->execute();
             
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $attachments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Renomeia content_type para mime_type na resposta
+            foreach ($attachments as &$attachment) {
+                $attachment['mime_type'] = $attachment['content_type'];
+                unset($attachment['content_type']);
+            }
+            
+            return $attachments;
         } catch (Exception $e) {
             throw new Exception("Erro ao buscar anexos: " . $e->getMessage());
         }
