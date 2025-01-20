@@ -59,9 +59,9 @@ class EmailSyncService
     }
 
     public function reconnectRabbitMQ() {
-        if (!$this->db || !$this->db->isConnected()) {
+        if (!$this->db || !$this->db->ping()) {
             $this->rabbitMQService->connect();
-        }
+        } 
     }
 
     public function updateTokens($emailAccountId, $access_token, $refresh_token = null)
@@ -383,48 +383,62 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
 
                         if ($message->hasAttachments()) {
                             $attachments = $message->getAttachments();
+                            $cidMap = [];  // Mapa para armazenar CIDs e seus dados base64
                         
                             foreach ($attachments as $attachment) {
                                 try {
                                     $filename = $attachment->getFilename();
-                        
                                     if (is_null($filename) || empty($filename)) {
-                                        error_log("Anexo ignorado: o nome do arquivo está nulo.");
                                         continue;
                                     }
-                        
-                                    if ($this->attachmentExists($emailId, $filename)) {
+
+                                    $contentBytes = $attachment->getDecodedContent();
+                                    $contentId = trim($attachment->getContentId(), '<>');
+                                    
+                                    if ($contentId) {  // Se tem contentId, é uma imagem inline
+                                        $mimeTypeName = $attachment->getType();
+                                        $subtype = $attachment->getSubtype();
+                                        $fullMimeType = $mimeTypeName . '/' . $subtype;
+                                        $base64Content = base64_encode($contentBytes);
+                                        
+                                        // Armazena no mapa para substituição posterior
+                                        $cidMap[$contentId] = "data:$fullMimeType;base64,$base64Content";
+                                    }
+
+                                    // Continua salvando o anexo normalmente
+                                    if ($this->attachmentExists($email_account_id, $filename)) {
+                                        continue;
+                                    }
+
+                                    if ($this->attachmentExists($email_account_id, $filename)) {
                                         error_log("Anexo '$filename' já existe para este e-mail. Ignorando...");
                                         continue;
                                     }
                         
-                                    $contentBytes = $attachment->getDecodedContent();
-                                    if ($contentBytes === false) {
-                                        error_log("Falha ao obter o conteúdo do anexo: $filename");
-                                        continue;
-                                    }
-                        
-                                    $mimeTypeName = $attachment->getType();
-                                    $subtype = $attachment->getSubtype();
-                                    $fullMimeType = $mimeTypeName . '/' . $subtype;
-                        
                                     $this->emailModel->saveAttachment(
-                                        $emailId,
+                                        $email_account_id,
                                         $filename,
                                         $fullMimeType,
                                         strlen($contentBytes),
                                         $contentBytes
                                     );
-                        
-                                    if (strpos($body_html, 'cid:') !== false) {
-                                        $body_html = $this->replaceCidWithBase64($body_html, $attachment);
-                                    }
                                 } catch (Exception $e) {
                                     $this->errorLogController->logError(
-                                        "Erro ao salvar anexo e substituir CID: " . $e->getMessage(),
+                                        "Erro ao processar anexo: " . $e->getMessage(),
                                         __FILE__,
                                         __LINE__,
                                         $user_id
+                                    );
+                                }
+                            }
+
+                            // Substitui todos os CIDs encontrados no corpo do email
+                            if (!empty($cidMap)) {
+                                foreach ($cidMap as $cid => $base64Data) {
+                                    $body_html = preg_replace(
+                                        '/src="cid:' . preg_quote($cid, '/') . '"/',
+                                        'src="' . $base64Data . '"',
+                                        $body_html
                                     );
                                 }
                             }
@@ -536,21 +550,40 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
         return;
     }
 
-    private function attachmentExists($emailId, $filename) {
-        $existingAttachment = $this->emailModel->attachmentExists($emailId, $filename);
+    private function attachmentExists($email_account_id, $filename) {
+        $existingAttachment = $this->emailModel->attachmentExists($email_account_id, $filename);
         return $existingAttachment !== null; 
     }
 
-    private function replaceCidWithBase64($body_html, $attachment) {
+    private function replaceCidWithBase64($body_html, $attachment, $emailId) {
         $contentBytes = $attachment->getDecodedContent();
         $base64Content = base64_encode($contentBytes);
         
         $mimeTypeName = $attachment->getType();
         $subtype = $attachment->getSubtype();
         $fullMimeType = $mimeTypeName . '/' . $subtype;
-    
+
         $contentId = trim($attachment->getContentId(), '<>');
-    
+
+        // Save the CID image as an attachment
+        try {
+            $filename = 'cid_' . $contentId . '.' . strtolower($subtype);
+            $this->emailModel->saveAttachment(
+                $emailId,
+                $filename,
+                $fullMimeType,
+                strlen($contentBytes),
+                $contentBytes,
+            );
+        } catch (Exception $e) {
+            $this->errorLogController->logError(
+                "Erro ao salvar imagem CID como anexo: " . $e->getMessage(),
+                __FILE__,
+                __LINE__
+            );
+        }
+
+        // Replace CID reference with base64 in the HTML body
         $pattern = '/<img[^>]+src="cid:' . preg_quote($contentId, '/') . '"/';
         $replacement = '<img src="data:' . $fullMimeType . ';base64,' . $base64Content . '"';
         

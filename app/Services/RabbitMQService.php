@@ -19,7 +19,7 @@ class RabbitMQService {
         $this->connect(); 
     }
 
-    private function connect() {
+    public function connect() {
         if (!$this->connection || !$this->channel) {
             try {
                 $this->connection = new AMQPStreamConnection('localhost', 5672, 'guest', 'guest');
