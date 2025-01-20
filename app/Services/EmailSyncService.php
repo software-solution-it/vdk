@@ -597,8 +597,8 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
         }
 
         // Replace CID reference with base64 in the HTML body
-        $pattern = '/<img[^>]+src="cid:' . preg_quote($contentId, '/') . '"/';
-        $replacement = '<img src="data:' . $fullMimeType . ';base64,' . $base64Content . '"';
+        $pattern = '/src="cid:([^"]+)"/i';  // Modificado para capturar qualquer CID entre cid: e "
+        $replacement = 'src="data:' . $fullMimeType . ';base64,' . $base64Content . '"';
         
         return preg_replace($pattern, $replacement, $body_html);
     }
