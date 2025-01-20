@@ -350,15 +350,27 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                         // Primeiro identifica todos os CIDs no HTML
                         if (preg_match_all('/src=["\']cid:([^"\']+)["\']/i', $body_html, $matches)) {
                             $cidsToFind = $matches[1];
-                            $this->logDebug("CIDs encontrados no HTML: " . json_encode($cidsToFind));
-                            $this->logDebug("Matches completo: " . json_encode($matches));
+                            $this->logDebug("CIDs para encontrar: " . json_encode($cidsToFind));
                             
                             foreach ($message->getAttachments() as $attachment) {
-                                $parameters = (array)$attachment->getParameters();
-                                $this->logDebug("Verificando anexo com parâmetros: " . json_encode($parameters));
-                                
                                 $structure = $attachment->getStructure();
-                                $this->logDebug("Estrutura do anexo: " . print_r($structure, true));
+                                $contentId = isset($structure->id) ? trim($structure->id, '<>') : null;
+                                
+                                if ($contentId && in_array($contentId, $cidsToFind)) {
+                                    $this->logDebug("Encontrado anexo para CID: " . $contentId);
+                                    
+                                    // Pega o conteúdo do anexo e converte para base64
+                                    $content = $attachment->getDecodedContent();
+                                    $base64Content = base64_encode($content);
+                                    
+                                    // Determina o tipo MIME
+                                    $mimeType = "image/" . strtolower($structure->subtype);
+                                    
+                                    // Substitui o CID pelo base64 no HTML
+                                    $pattern = '/src=["\']cid:' . preg_quote($contentId, '/') . '["\']/i';
+                                    $replacement = 'src="data:' . $mimeType . ';base64,' . $base64Content . '"';
+                                    $body_html = preg_replace($pattern, $replacement, $body_html);
+                                }
                             }
                         } else {
                             $this->logDebug("Nenhum CID encontrado no HTML com regex"); 
