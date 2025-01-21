@@ -358,7 +358,7 @@ class EmailController {
                         'total' => 0,
                         'emails' => []
                     ]
-                ]);
+                ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
                 return;
             }
             
@@ -366,7 +366,8 @@ class EmailController {
             if (!empty($result['emails'])) {
                 foreach ($result['emails'] as &$email) {
                     // Remover espaços em branco excessivos
-                    $email['body_html'] = preg_replace('/\s+/', ' ', $email['body_html']);
+                    $email['body_html'] = trim(preg_replace('/\s+/', ' ', $email['body_html']));
+                    $email['body_text'] = trim(preg_replace('/\s+/', ' ', $email['body_text']));
                     
                     // Limitar tamanho se necessário
                     if (strlen($email['body_html']) > 10000) {
@@ -383,7 +384,7 @@ class EmailController {
                     'total' => $result['total'] ?? 0,
                     'emails' => $result['emails'] ?? []
                 ]
-            ]);
+            ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
             
         } catch (Exception $e) {
             error_log("Error in listEmails: " . $e->getMessage());
@@ -392,7 +393,7 @@ class EmailController {
                 'Status' => 'Error',
                 'Message' => 'Error retrieving emails: ' . $e->getMessage(),
                 'Data' => null
-            ]);
+            ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
         }
     }
     
