@@ -74,11 +74,21 @@ class EmailSyncService
             error_log("No custom S3 endpoint configured, using default AWS endpoints");
         }
 
+        error_log("Configuração S3:");
+        error_log("Region: " . ($_ENV['AWS_DEFAULT_REGION'] ?? 'não definido'));
+        error_log("Endpoint: " . ($_ENV['AWS_ENDPOINT'] ?? 'não definido'));
+        error_log("Access Key definida: " . (isset($_ENV['AWS_ACCESS_KEY_ID']) ? 'sim' : 'não'));
+        error_log("Secret Key definida: " . (isset($_ENV['AWS_SECRET_ACCESS_KEY']) ? 'sim' : 'não'));
+
         try {
             $this->s3Client = new S3Client($s3Config);
-            error_log("S3 client initialized successfully");
+            error_log("Cliente S3 inicializado com sucesso");
+            
+            // Testa a conexão
+            $this->s3Client->listBuckets();
+            error_log("Conexão S3 testada com sucesso");
         } catch (Exception $e) {
-            error_log("Error initializing S3 client: " . $e->getMessage());
+            error_log("Erro ao inicializar S3: " . $e->getMessage());
             throw $e;
         }
     }
@@ -947,67 +957,44 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
     private function processCidImage($attachment, $email_account_id, $contentId)
     {
         try {
+            error_log("Iniciando processamento de imagem CID: " . $contentId);
+            
             $content = $attachment->getDecodedContent();
-            $contentType = $attachment->getType() . '/' . $attachment->getSubtype();
-            
             $contentHash = hash('sha256', $content);
+            $filename = 'cid_' . $contentId . '.' . strtolower($attachment->getSubtype());
+            $s3Key = "attachments/{$contentHash}/{$filename}";
             
-            $existingImage = $this->emailModel->getAttachmentByHash($contentHash);
+            error_log("Tentando upload para S3: " . $s3Key);
             
-            if ($existingImage) {
-                $command = $this->s3Client->getCommand('GetObject', [
+            try {
+                $result = $this->s3Client->putObject([
                     'Bucket' => $this->bucketName,
-                    'Key'    => $existingImage['s3_key']
+                    'Key'    => $s3Key,
+                    'Body'   => $content,
+                    'ContentType' => $attachment->getType() . '/' . $attachment->getSubtype(),
+                    'Metadata' => [
+                        'content_hash' => $contentHash,
+                        'original_filename' => $filename
+                    ]
                 ]);
                 
-                $presignedUrl = $this->s3Client->createPresignedRequest($command, '+1 hour')->getUri();
+                error_log("Upload S3 bem sucedido: " . json_encode($result));
+                
                 return [
-                    'url' => (string)$presignedUrl,
-                    'content_hash' => $contentHash
+                    'url' => $result['ObjectURL'],
+                    'key' => $s3Key
                 ];
+                
+            } catch (AwsException $e) {
+                error_log("Erro AWS: " . $e->getMessage());
+                error_log("AWS Error Code: " . $e->getAwsErrorCode());
+                error_log("AWS Error Type: " . $e->getAwsErrorType());
+                error_log("AWS Request ID: " . $e->getAwsRequestId());
+                throw $e;
             }
             
-            $extension = strtolower($attachment->getSubtype());
-            $s3Key = "inline-images/{$contentHash}/cid_{$contentId}.{$extension}";
-            
-            $this->s3Client->putObject([
-                'Bucket' => $this->bucketName,
-                'Key'    => $s3Key,
-                'Body'   => $content,
-                'ContentType' => $contentType,
-                'Metadata' => [
-                    'content_hash' => $contentHash,
-                    'content_id' => $contentId
-                ]
-            ]);
-            
-            $this->emailModel->saveAttachment(
-                $email_account_id,
-                "cid_{$contentId}.{$extension}",
-                $contentType,
-                strlen($content),
-                $s3Key,
-                $contentHash
-            );
-            
-            $command = $this->s3Client->getCommand('GetObject', [
-                'Bucket' => $this->bucketName,
-                'Key'    => $s3Key
-            ]);
-            
-            $presignedUrl = $this->s3Client->createPresignedRequest($command, '+1 hour')->getUri();
-            
-            return [
-                'url' => (string)$presignedUrl,
-                'content_hash' => $contentHash
-            ];
-            
         } catch (Exception $e) {
-            $this->errorLogController->logError(
-                "Error processing CID image: " . $e->getMessage(),
-                __FILE__,
-                __LINE__
-            );
+            error_log("Erro ao processar imagem CID: " . $e->getMessage());
             throw $e;
         }
     }
