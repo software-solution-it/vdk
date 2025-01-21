@@ -149,90 +149,89 @@ class EmailSyncService
             ]
         );
 
-        $callback = function ($msg) use ($user_id, $provider_id, $queue_name) {
-            $this->errorLogController->logError(
-                "Recebida mensagem do RabbitMQ",
-                __FILE__,
-                __LINE__,
-                $user_id,
-                ['message' => $msg->body]
-            );
-
-            $task = json_decode($msg->body, true);
-            if (!$task) {
-                $this->errorLogController->logError(
-                    "Erro ao decodificar mensagem",
-                    __FILE__,
-                    __LINE__,
-                    $user_id,
-                    ['raw_message' => $msg->body]
-                );
-                $msg->nack(false, true);
-                return;
-            }
-
-            try {
-                if($task['is_basic'] == 1) {
-                    $this->errorLogController->logError(
-                        "Iniciando sincronização básica",
-                        __FILE__,
-                        __LINE__,
-                        $user_id,
-                        $task
-                    );
-                    
-                    $this->syncEmails(
-                        $task['user_id'],
-                        $task['email_account_id'],
-                        $task['provider_id'],
-                        $task['email'],
-                        $task['imap_host'],
-                        $task['imap_port'],
-                        $task['password']
-                    );
-                }   else if($task['provider_id'] == 1){ 
-                    $this->outlookOAuth2Service->syncEmailsOutlook($task['user_id'],$task['email_account_id']);
-
-                }   else if ($task['provider_id'] == 2){
-                    $this->gmailOauth2Service->syncEmailsGmail($task['user_id'],$task['email_account_id'], $task['provider_id']);
-                }
-
-                $msg->ack();
-                error_log("Sincronização concluída para a mensagem na fila.");
-
-                if ($this->rabbitMQService->markJobAsExecuted($queue_name)) {
-                    error_log("Job marcado como executado com sucesso.");
-                } else {
-                    error_log("Erro ao marcar o job como executado.");
-                }
-
-                $this->syncEmailsByUserIdAndProviderId($task['user_id'], $task['email_account_id']);
-
-            } catch (Exception $e) {
-                $this->errorLogController->logError(
-                    "Erro no processamento da mensagem",
-                    __FILE__,
-                    __LINE__,
-                    $user_id,
-                    [
-                        'error' => $e->getMessage(),
-                        'stack_trace' => $e->getTraceAsString()
-                    ]
-                );
-                throw $e;
-            }
-        };
-
         try {
+            // Verifica se a fila existe
             $this->errorLogController->logError(
-                "Aguardando mensagens na fila",
+                "Verificando existência da fila",
                 __FILE__,
                 __LINE__,
                 $user_id,
                 ['queue_name' => $queue_name]
             );
-            
+
+            $callback = function ($msg) use ($user_id, $provider_id, $queue_name) {
+                $this->errorLogController->logError(
+                    "Callback iniciado para mensagem",
+                    __FILE__,
+                    __LINE__,
+                    $user_id,
+                    ['message_body' => $msg->body]
+                );
+
+                try {
+                    $task = json_decode($msg->body, true);
+                    
+                    $this->errorLogController->logError(
+                        "Mensagem decodificada",
+                        __FILE__,
+                        __LINE__,
+                        $user_id,
+                        ['task' => $task]
+                    );
+
+                    if($task['is_basic'] == 1) {
+                        $this->errorLogController->logError(
+                            "Iniciando sincronização básica",
+                            __FILE__,
+                            __LINE__,
+                            $user_id,
+                            $task
+                        );
+                        
+                        $this->syncEmails(
+                            $task['user_id'],
+                            $task['email_account_id'],
+                            $task['provider_id'],
+                            $task['email'],
+                            $task['imap_host'],
+                            $task['imap_port'],
+                            $task['password']
+                        );
+                    }   else if($task['provider_id'] == 1){ 
+                        $this->outlookOAuth2Service->syncEmailsOutlook($task['user_id'],$task['email_account_id']);
+
+                    }   else if ($task['provider_id'] == 2){
+                        $this->gmailOauth2Service->syncEmailsGmail($task['user_id'],$task['email_account_id'], $task['provider_id']);
+                    }
+
+                    $msg->ack();
+                    error_log("Sincronização concluída para a mensagem na fila.");
+
+                    if ($this->rabbitMQService->markJobAsExecuted($queue_name)) {
+                        error_log("Job marcado como executado com sucesso.");
+                    } else {
+                        error_log("Erro ao marcar o job como executado.");
+                    }
+
+                    $this->syncEmailsByUserIdAndProviderId($task['user_id'], $task['email_account_id']);
+
+                } catch (Exception $e) {
+                    $this->errorLogController->logError(
+                        "Erro no callback",
+                        __FILE__,
+                        __LINE__,
+                        $user_id,
+                        [
+                            'error' => $e->getMessage(),
+                            'stack_trace' => $e->getTraceAsString()
+                        ]
+                    );
+                    $msg->nack(false, false);
+                }
+            };
+
             $this->rabbitMQService->consumeQueue($queue_name, $callback);
+            
         } catch (Exception $e) {
             $this->errorLogController->logError(
                 "Erro ao consumir fila",
@@ -241,7 +240,8 @@ class EmailSyncService
                 $user_id,
                 [
                     'error' => $e->getMessage(),
-                    'stack_trace' => $e->getTraceAsString()
+                    'stack_trace' => $e->getTraceAsString(),
+                    'queue_name' => $queue_name
                 ]
             );
             throw $e;
