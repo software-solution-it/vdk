@@ -773,25 +773,7 @@ class EmailService {
     public function getAttachmentsByEmailId($email_id) {
         try {
             $attachments = $this->emailAttachmentModel->getAttachmentsByEmailId($email_id);
-            
-            foreach ($attachments as &$attachment) {
-                if (isset($attachment['s3_key']) && !empty($attachment['s3_key'])) {
-                    try {
-                        $attachment['presigned_url'] = $this->s3Service->generatePresignedUrl($attachment['s3_key']);
-                    } catch (Exception $e) {
-                        $this->errorLogController->logError(
-                            "Erro ao gerar URL pré-assinada: " . $e->getMessage(),
-                            __FILE__,
-                            __LINE__
-                        );
-                        $attachment['presigned_url'] = null;
-                    }
-                } else {
-                    $attachment['presigned_url'] = null;
-                }
-            }
-            
-            return $attachments;
+            return $this->processAttachments($attachments);
         } catch (Exception $e) {
             $this->errorLogController->logError("Erro ao buscar anexos: " . $e->getMessage(), __FILE__, __LINE__, null);
             throw new Exception("Erro ao buscar anexos: " . $e->getMessage());
