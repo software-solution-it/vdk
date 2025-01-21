@@ -716,28 +716,177 @@ class Email {
         }
     }
 
-    public function getAttachmentsByEmailId($email_id) {
+    public function getAttachmentById($attachment_id) {
         try {
             $query = "
-                SELECT a.id, a.filename, a.content_type as mime_type, a.size, a.s3_key, a.content
-                FROM mail.email_attachments a
-                INNER JOIN mail.emails e ON e.id = a.email_id
-                WHERE e.id = :email_id
+                SELECT 
+                    id, 
+                    content_type as mime_type,
+                    filename,
+                    content,
+                    s3_key,
+                    content_hash,
+                    size
+                FROM email_attachments
+                WHERE id = :attachment_id
             ";
-            
             $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(':email_id', $email_id, PDO::PARAM_INT);
+            $stmt->bindParam(':attachment_id', $attachment_id, PDO::PARAM_INT);
             $stmt->execute();
-            
-            return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+            $attachment = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+            if (!$attachment) {
+                throw new Exception("Anexo não encontrado.");
+            }
+
+            // Se tiver s3_key, gera URL pré-assinada
+            if (!empty($attachment['s3_key'])) {
+                try {
+                    $s3Client = new \Aws\S3\S3Client([
+                        'version' => 'latest',
+                        'region'  => getenv('AWS_REGION') ?: 'us-east-1',
+                        'credentials' => [
+                            'key'    => getenv('AWS_ACCESS_KEY_ID'),
+                            'secret' => getenv('AWS_SECRET_ACCESS_KEY'),
+                        ]
+                    ]);
+
+                    $command = $s3Client->getCommand('GetObject', [
+                        'Bucket' => getenv('AWS_BUCKET') ?: 'vdkmail',
+                        'Key'    => $attachment['s3_key']
+                    ]);
+
+                    $request = $s3Client->createPresignedRequest($command, '+1 hour');
+                    $attachment['presigned_url'] = (string) $request->getUri();
+                    unset($attachment['content']);
+                } catch (Exception $e) {
+                    $this->errorLogController->logError(
+                        "Erro ao gerar URL pré-assinada: " . $e->getMessage(),
+                        __FILE__,
+                        __LINE__
+                    );
+                    throw new Exception("Erro ao gerar URL pré-assinada: " . $e->getMessage());
+                }
+            } else if ($attachment['content']) {
+                // Se não tiver s3_key mas tiver conteúdo, converte para base64
+                $attachment['content_base64'] = base64_encode($attachment['content']);
+                unset($attachment['content']);
+            }
+    
+            return $attachment;
         } catch (Exception $e) {
             $this->errorLogController->logError(
-                "Erro ao buscar anexos do email: " . $e->getMessage(),
+                "Erro ao buscar o anexo: " . $e->getMessage(), 
+                __FILE__, 
+                __LINE__, 
+                null
+            );
+            throw new Exception("Erro ao buscar o anexo: " . $e->getMessage());
+        }
+    }
+
+    public function getEmailsByFolderId($folder_id, $limit = 10, $page = 1, $order = 'DESC') {
+        try {
+            $offset = ($page - 1) * $limit;
+            
+            $query = "
+                SELECT 
+                    e.*,
+                    GROUP_CONCAT(
+                        JSON_OBJECT(
+                            'id', a.id,
+                            'filename', a.filename,
+                            'content_type', a.content_type,
+                            'size', a.size,
+                            's3_key', a.s3_key,
+                            'content_hash', a.content_hash
+                        )
+                    ) as attachments
+                FROM " . $this->table . " e
+                LEFT JOIN email_attachments a ON e.id = a.email_id
+                WHERE e.folder_id = :folder_id
+                GROUP BY e.id
+                ORDER BY e.date_received " . $order . "
+                LIMIT :limit OFFSET :offset
+            ";
+
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':folder_id', $folder_id, PDO::PARAM_INT);
+            $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
+            $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
+            $stmt->execute();
+
+            $emails = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Processar anexos e adicionar URLs pré-assinadas
+            foreach ($emails as &$email) {
+                if (!empty($email['attachments'])) {
+                    $attachments = array_map(function($attachment) {
+                        $attachment = json_decode($attachment, true);
+                        
+                        if (!empty($attachment['s3_key'])) {
+                            try {
+                                $s3Client = new \Aws\S3\S3Client([
+                                    'version' => 'latest',
+                                    'region'  => getenv('AWS_REGION') ?: 'us-east-1',
+                                    'credentials' => [
+                                        'key'    => getenv('AWS_ACCESS_KEY_ID'),
+                                        'secret' => getenv('AWS_SECRET_ACCESS_KEY'),
+                                    ]
+                                ]);
+
+                                $command = $s3Client->getCommand('GetObject', [
+                                    'Bucket' => getenv('AWS_BUCKET') ?: 'vdkmail',
+                                    'Key'    => $attachment['s3_key']
+                                ]);
+
+                                $request = $s3Client->createPresignedRequest($command, '+1 hour');
+                                $attachment['presigned_url'] = (string) $request->getUri();
+                            } catch (Exception $e) {
+                                $this->errorLogController->logError(
+                                    "Erro ao gerar URL pré-assinada: " . $e->getMessage(),
+                                    __FILE__,
+                                    __LINE__
+                                );
+                            }
+                        }
+                        
+                        return $attachment;
+                    }, explode(',', $email['attachments']));
+                    
+                    $email['attachments'] = $attachments;
+                } else {
+                    $email['attachments'] = [];
+                }
+            }
+
+            // Obter contagem total para paginação
+            $countQuery = "SELECT COUNT(*) as total FROM " . $this->table . " WHERE folder_id = :folder_id";
+            $countStmt = $this->conn->prepare($countQuery);
+            $countStmt->bindParam(':folder_id', $folder_id, PDO::PARAM_INT);
+            $countStmt->execute();
+            $totalCount = $countStmt->fetch(PDO::FETCH_ASSOC)['total'];
+
+            return [
+                'emails' => $emails,
+                'pagination' => [
+                    'total' => (int)$totalCount,
+                    'page' => (int)$page,
+                    'limit' => (int)$limit,
+                    'total_pages' => ceil($totalCount / $limit)
+                ]
+            ];
+
+        } catch (Exception $e) {
+            $this->errorLogController->logError(
+                "Erro ao buscar e-mails por pasta: " . $e->getMessage(),
                 __FILE__,
                 __LINE__
             );
-            throw $e;
+            throw new Exception("Erro ao buscar e-mails por pasta: " . $e->getMessage());
         }
     }
+
 };
 

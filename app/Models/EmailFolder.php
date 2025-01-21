@@ -93,7 +93,20 @@ class EmailFolder {
 
     public function getFoldersNameByEmailAccountId($email_id) {
         try {
-            $query = "SELECT folder_name, id FROM " . $this->table . " WHERE email_id = :email_id";
+            $query = "
+                SELECT 
+                    f.folder_name, 
+                    f.id,
+                    COUNT(DISTINCT e.id) as email_count,
+                    COUNT(DISTINCT a.id) as attachment_count,
+                    SUM(CASE WHEN a.s3_key IS NOT NULL THEN 1 ELSE 0 END) as s3_attachment_count
+                FROM " . $this->table . " f
+                LEFT JOIN emails e ON e.folder_id = f.id
+                LEFT JOIN email_attachments a ON a.email_id = e.id
+                WHERE f.email_id = :email_id
+                GROUP BY f.id, f.folder_name
+            ";
+
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':email_id', $email_id, PDO::PARAM_INT);
             $stmt->execute();

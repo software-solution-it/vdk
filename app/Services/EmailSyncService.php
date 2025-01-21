@@ -51,14 +51,12 @@ class EmailSyncService
         $this->emailFolderModel = new EmailFolder($db);
         $this->folderAssociationModel = new FolderAssociation($db);
         
-        // Debug das variáveis de ambiente
         error_log("AWS Environment Variables:");
         error_log("AWS_ACCESS_KEY_ID: " . (getenv('AWS_ACCESS_KEY_ID') ? 'SET' : 'NOT SET'));
         error_log("AWS_SECRET_ACCESS_KEY: " . (getenv('AWS_SECRET_ACCESS_KEY') ? 'SET' : 'NOT SET'));
         error_log("AWS_DEFAULT_REGION: " . (getenv('AWS_DEFAULT_REGION') ?: 'NOT SET'));
         error_log("AWS_ENDPOINT: " . (getenv('AWS_ENDPOINT') ?: 'NOT SET'));
 
-        // Initialize S3 client with fallback values
         $s3Config = [
             'version' => 'latest',
             'region'  => getenv('AWS_DEFAULT_REGION') ?: 'us-east-1',
@@ -68,7 +66,6 @@ class EmailSyncService
             ]
         ];
 
-        // Tenta carregar o endpoint se existir
         $endpoint = getenv('AWS_ENDPOINT');
         if ($endpoint && is_string($endpoint) && !empty(trim($endpoint))) {
             error_log("Using custom S3 endpoint: " . $endpoint);
@@ -381,13 +378,11 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                         $date_received = $message->getDate()->setTimezone(new \DateTimeZone('America/Sao_Paulo'))->format('Y-m-d H:i:s');
                         $isRead = $message->isSeen() ? 1 : 0;
                         
-                        // Obtém o body_html antes do processamento de anexos
                         $body_html = $message->getBodyHtml();
                         $body_text = $message->getBodyText();
 
                         $this->logDebug("Body HTML original: " . $body_html);
                         
-                        // Primeiro identifica todos os CIDs no HTML
                         if (preg_match_all('/src=["\']cid:([^"\']+)["\']/i', $body_html, $matches)) {
                             $cidsToFind = $matches[1];
                             $this->logDebug("CIDs para encontrar: " . json_encode($cidsToFind));
@@ -399,14 +394,11 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                                 if ($contentId && in_array($contentId, $cidsToFind)) {
                                     $this->logDebug("Encontrado anexo para CID: " . $contentId);
                                     
-                                    // Pega o conteúdo do anexo e converte para base64
                                     $content = $attachment->getDecodedContent();
                                     $base64Content = base64_encode($content);
                                     
-                                    // Determina o tipo MIME
                                     $mimeType = "image/" . strtolower($structure->subtype);
                                     
-                                    // Substitui o CID pelo base64 no HTML
                                     $pattern = '/src=["\']cid:' . preg_quote($contentId, '/') . '["\']/i';
                                     $replacement = 'src="data:' . $mimeType . ';base64,' . $base64Content . '"';
                                     $body_html = preg_replace($pattern, $replacement, $body_html);
@@ -452,14 +444,12 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                 
                         $conversation_id = $references ? explode(', ', $references)[0] : $messageId;
 
-                        // Processa anexos e CIDs antes de salvar
                         if ($message->hasAttachments()) {
                             $attachments = $message->getAttachments();
                             $cidMap = [];
                             
                             error_log("Processando " . count($attachments) . " anexos");
                         
-                            // Primeiro identifica todos os CIDs no HTML
                             if (preg_match_all('/src=["\']cid:([^"\']+)["\']/i', $body_html, $matches)) {
                                 $cidsToFind = $matches[1];
                                 error_log("CIDs para procurar: " . implode(', ', $cidsToFind));
@@ -489,7 +479,6 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                                 }
                             }
 
-                            // Substitui os CIDs encontrados
                             if (!empty($cidMap)) {
                                 error_log("Substituindo " . count($cidMap) . " CIDs no corpo do email");
                                 foreach ($cidMap as $cid => $url) {
@@ -500,11 +489,9 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                                 }
                             }
 
-                            // Processa anexos regulares
                             foreach ($attachments as $attachment) {
                                 $filename = $attachment->getFilename();
                                 
-                                // Verifica se é um anexo CID que já foi processado
                                 $contentId = $attachment->getParameters()->get('content-id');
                                 if ($contentId && isset($cidMap[trim($contentId, '<>')])) {
                                     continue;
@@ -651,7 +638,6 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
         $filename = 'cid_' . $contentId . '.' . strtolower($subtype);
         $s3Key = "inline-images/{$contentHash}/{$filename}";
 
-        // Save the CID image as an attachment
         try {
             $this->emailModel->saveAttachment(
                 $emailId,
@@ -669,8 +655,7 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
             );
         }
 
-        // Replace CID reference with base64 in the HTML body
-        $pattern = '/src="cid:([^"]+)"/i';  // Modificado para capturar qualquer CID entre cid: e "
+        $pattern = '/src="cid:([^"]+)"/i';  
         $replacement = 'src="data:' . $fullMimeType . ';base64,' . $base64Content . '"';
         
         return preg_replace($pattern, $replacement, $body_html);
@@ -681,7 +666,6 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
             $logDir = __DIR__ . '/../../logs';
             $logPath = $logDir . '/email_sync.log';
             
-            // Cria o diretório de logs se não existir
             if (!is_dir($logDir)) {
                 mkdir($logDir, 0777, true);
             }
@@ -701,24 +685,19 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
             $filename = $attachment->getFilename();
             $contentType = $attachment->getType() . '/' . $attachment->getSubtype();
             
-            // Generate hash of file content
             $contentHash = hash('sha256', $content);
             
-            // Check if this hash already exists in database
             $existingAttachment = $this->emailModel->getAttachmentByHash($contentHash);
             
             if ($existingAttachment) {
-                // Return existing S3 reference
                 return [
                     's3_key' => $existingAttachment['s3_key'],
                     'content_hash' => $contentHash
                 ];
             }
             
-            // Generate S3 key using hash to ensure uniqueness
             $s3Key = "attachments/{$contentHash}/{$filename}";
             
-            // Upload to S3
             $result = $this->s3Client->putObject([
                 'Bucket' => $this->bucketName,
                 'Key'    => $s3Key,
@@ -730,7 +709,6 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                 ]
             ]);
             
-            // Save attachment in database
             $this->emailModel->saveAttachment( 
                 $email_account_id,
                 $filename,
@@ -761,14 +739,11 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
             $content = $attachment->getDecodedContent();
             $contentType = $attachment->getType() . '/' . $attachment->getSubtype();
             
-            // Generate hash of image content
             $contentHash = hash('sha256', $content);
             
-            // Check if this image already exists
             $existingImage = $this->emailModel->getAttachmentByHash($contentHash);
             
             if ($existingImage) {
-                // Generate presigned URL for existing image
                 $command = $this->s3Client->getCommand('GetObject', [
                     'Bucket' => $this->bucketName,
                     'Key'    => $existingImage['s3_key']
@@ -781,11 +756,9 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                 ];
             }
             
-            // Generate S3 key for new image
             $extension = strtolower($attachment->getSubtype());
             $s3Key = "inline-images/{$contentHash}/cid_{$contentId}.{$extension}";
             
-            // Upload to S3
             $this->s3Client->putObject([
                 'Bucket' => $this->bucketName,
                 'Key'    => $s3Key,
@@ -797,7 +770,6 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                 ]
             ]);
             
-            // Save in database
             $this->emailModel->saveAttachment(
                 $email_account_id,
                 "cid_{$contentId}.{$extension}",
@@ -807,7 +779,6 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                 $contentHash
             );
             
-            // Generate presigned URL
             $command = $this->s3Client->getCommand('GetObject', [
                 'Bucket' => $this->bucketName,
                 'Key'    => $s3Key

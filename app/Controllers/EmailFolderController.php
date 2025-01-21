@@ -29,23 +29,36 @@ class EmailFolderController {
                 'Message' => 'email_id is required.',
                 'Data' => null
             ], JSON_UNESCAPED_UNICODE);
-            return; 
+            return;
         }
 
         try {
             $folders = $this->emailFolderService->getFoldersByEmailId($email_id);
+            
+            // Adiciona informações sobre configuração do S3
+            $s3Config = [
+                'enabled' => !empty(getenv('AWS_ACCESS_KEY_ID')) && 
+                           !empty(getenv('AWS_SECRET_ACCESS_KEY')) && 
+                           !empty(getenv('AWS_REGION')),
+                'region' => getenv('AWS_REGION') ?: null,
+                'bucket' => getenv('AWS_BUCKET') ?: 'vdkmail'
+            ];
+
             http_response_code(200);
             echo json_encode([
                 'Status' => 'Success',
                 'Message' => 'Folders retrieved successfully.',
-                'Data' => $folders
+                'Data' => [
+                    'folders' => $folders,
+                    's3_config' => $s3Config
+                ]
             ], JSON_UNESCAPED_UNICODE);
         } catch (Exception $e) {
             $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
             http_response_code(500);
             echo json_encode([
                 'Status' => 'Error',
-                'Message' => 'Failed to retrieve folders.',
+                'Message' => 'Failed to retrieve folders: ' . $e->getMessage(),
                 'Data' => null
             ], JSON_UNESCAPED_UNICODE);
         }

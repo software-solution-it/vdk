@@ -486,16 +486,53 @@ class EmailService {
             foreach ($thread as &$email) {
                 $email_id = $email['id'];
                 $query = "
-                    SELECT id, mime_type, filename
+                    SELECT 
+                        id, 
+                        content_type as mime_type, 
+                        filename,
+                        s3_key,
+                        content_hash,
+                        size
                     FROM mail.email_attachments
                     WHERE email_id = :email_id
                 ";
                 $stmt = $this->db->prepare($query);
                 $stmt->bindParam(':email_id', $email_id, PDO::PARAM_INT);
                 $stmt->execute();
-    
+
                 $attachments = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
+
+                // Adicionar URLs pré-assinadas para anexos do S3
+                foreach ($attachments as &$attachment) {
+                    if (!empty($attachment['s3_key'])) {
+                        try {
+                            $s3Client = new \Aws\S3\S3Client([
+                                'version' => 'latest',
+                                'region'  => getenv('AWS_REGION') ?: 'us-east-1',
+                                'credentials' => [
+                                    'key'    => getenv('AWS_ACCESS_KEY_ID'),
+                                    'secret' => getenv('AWS_SECRET_ACCESS_KEY'),
+                                ]
+                            ]);
+
+                            $command = $s3Client->getCommand('GetObject', [
+                                'Bucket' => getenv('AWS_BUCKET') ?: 'vdkmail',
+                                'Key'    => $attachment['s3_key']
+                            ]);
+
+                            $request = $s3Client->createPresignedRequest($command, '+1 hour');
+                            $attachment['presigned_url'] = (string) $request->getUri();
+                        } catch (Exception $e) {
+                            $this->errorLogController->logError(
+                                "Erro ao gerar URL pré-assinada: " . $e->getMessage(),
+                                __FILE__,
+                                __LINE__
+                            );
+                            $attachment['presigned_url'] = null;
+                        }
+                    }
+                }
+
                 if (!empty($attachments)) {
                     $allAttachments = array_merge($allAttachments, $attachments);
                 }
@@ -516,24 +553,60 @@ class EmailService {
     public function getAttachmentById($attachment_id) {
         try {
             $query = "
-                SELECT id, mime_type, filename, content
+                SELECT 
+                    id, 
+                    content_type as mime_type, 
+                    filename, 
+                    content,
+                    s3_key,
+                    content_hash,
+                    size
                 FROM mail.email_attachments
                 WHERE id = :attachment_id
             ";
             $stmt = $this->db->prepare($query);
             $stmt->bindParam(':attachment_id', $attachment_id, PDO::PARAM_INT);
             $stmt->execute();
-    
+
             $attachment = $stmt->fetch(PDO::FETCH_ASSOC);
-    
+
             if (!$attachment) {
                 throw new Exception("Anexo não encontrado.");
             }
-    
-            $attachment['content_base64'] = base64_encode($attachment['content']);
-    
-            unset($attachment['content']);
-    
+
+            // Se tiver s3_key, gera URL pré-assinada
+            if (!empty($attachment['s3_key'])) {
+                try {
+                    $s3Client = new \Aws\S3\S3Client([
+                        'version' => 'latest',
+                        'region'  => getenv('AWS_REGION') ?: 'us-east-1',
+                        'credentials' => [
+                            'key'    => getenv('AWS_ACCESS_KEY_ID'),
+                            'secret' => getenv('AWS_SECRET_ACCESS_KEY'),
+                        ]
+                    ]);
+
+                    $command = $s3Client->getCommand('GetObject', [
+                        'Bucket' => getenv('AWS_BUCKET') ?: 'vdkmail',
+                        'Key'    => $attachment['s3_key']
+                    ]);
+
+                    $request = $s3Client->createPresignedRequest($command, '+1 hour');
+                    $attachment['presigned_url'] = (string) $request->getUri();
+                    unset($attachment['content']);
+                } catch (Exception $e) {
+                    $this->errorLogController->logError(
+                        "Erro ao gerar URL pré-assinada: " . $e->getMessage(),
+                        __FILE__,
+                        __LINE__
+                    );
+                    throw new Exception("Erro ao gerar URL pré-assinada: " . $e->getMessage());
+                }
+            } else if ($attachment['content']) {
+                $attachment['content_base64'] = base64_encode($attachment['content']);
+                unset($attachment['content']);
+            }
+
             return $attachment;
         } catch (Exception $e) {
             $this->errorLogController->logError("Erro ao buscar o anexo: " . $e->getMessage(), __FILE__, __LINE__, null);
