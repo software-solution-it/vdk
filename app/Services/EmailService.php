@@ -14,12 +14,13 @@ use App\Services\UserService;
 use Ddeboer\Imap\Server;
 use App\Services\WebhookService;
 use Ddeboer\Imap\Search\Text\Text;
-use Ddeboer\Imap\Message;
+use Ddeboer\Imap\Message; 
 use App\Controllers\ErrorLogController;
 use App\Models\EmailAttachment;  
     
            
 use PDO;
+use App\Services\S3Service;
 
 class EmailService {
     private $emailAccountModel;
@@ -32,6 +33,7 @@ class EmailService {
     private $rabbitMQService;
     private $masterHostModel;
     private $errorLogController;
+    private $s3Service;
 
     public function __construct($db) {
         $this->db = $db;
@@ -44,6 +46,7 @@ class EmailService {
         $this->masterHostModel = new MasterHost($this->db);
         $this->emailAttachmentModel = new EmailAttachment($db);
         $this->errorLogController = new ErrorLogController();
+        $this->s3Service = new S3Service();
     }
 
     public function sendEmail($user_id, $email_account_id, $recipientEmails, $subject, $htmlBody, $plainBody = '', $priority = null, $attachments = [], $ccEmails = [], $bccEmails = [], $inReplyTo = null) {
@@ -662,7 +665,7 @@ class EmailService {
         }
     }
     
-    
+     
     
 
     public function getEmailThread($conversation_Id) {
@@ -771,55 +774,16 @@ class EmailService {
         try {
             $attachments = $this->emailAttachmentModel->getAttachmentsByEmailId($email_id);
             
-            $hasAwsConfig = getenv('AWS_DEFAULT_REGION') && 
-                           getenv('AWS_ACCESS_KEY_ID') && 
-                           getenv('AWS_SECRET_ACCESS_KEY') && 
-                           getenv('AWS_BUCKET');
-
-            // Adicionar log para debug
-            $this->errorLogController->logError(
-                "AWS Config Status: " . json_encode([
-                    'hasConfig' => $hasAwsConfig,
-                    'region' => getenv('AWS_DEFAULT_REGION'),
-                    'key_exists' => !empty(getenv('AWS_ACCESS_KEY_ID')),
-                    'secret_exists' => !empty(getenv('AWS_SECRET_ACCESS_KEY')),
-                    'bucket' => getenv('AWS_BUCKET'),
-                    'sample_attachment' => !empty($attachments) ? $attachments[0] : null
-                ]),
-                __FILE__,
-                __LINE__
-            );
-
             foreach ($attachments as &$attachment) {
-                if (isset($attachment['s3_key']) && 
-                    !empty($attachment['s3_key']) && 
-                    $hasAwsConfig) {
+                if (isset($attachment['s3_key']) && !empty($attachment['s3_key'])) {
                     try {
-                        $s3Client = new \Aws\S3\S3Client([
-                            'version'     => 'latest',
-                            'region'      => getenv('AWS_DEFAULT_REGION'),
-                            'credentials' => [
-                                'key'    => getenv('AWS_ACCESS_KEY_ID'),
-                                'secret' => getenv('AWS_SECRET_ACCESS_KEY'),
-                            ]
-                        ]);
-
-                        $command = $s3Client->getCommand('GetObject', [
-                            'Bucket' => getenv('AWS_BUCKET'),
-                            'Key'    => $attachment['s3_key']
-                        ]);
-
-                        $request = $s3Client->createPresignedRequest($command, '+1 hour');
-                        $attachment['presigned_url'] = (string) $request->getUri();
+                        $attachment['presigned_url'] = $this->s3Service->generatePresignedUrl($attachment['s3_key']);
                     } catch (Exception $e) {
-                        // Log o erro mas não interrompe o processo
                         $this->errorLogController->logError(
-                            "Erro ao gerar URL pré-assinada: " . $e->getMessage(), 
-                            __FILE__, 
-                            __LINE__, 
-                            null
+                            "Erro ao gerar URL pré-assinada: " . $e->getMessage(),
+                            __FILE__,
+                            __LINE__
                         );
-                        // Adiciona uma URL vazia ou mensagem de erro
                         $attachment['presigned_url'] = null;
                     }
                 } else {
@@ -834,3 +798,4 @@ class EmailService {
         }
     }
 }
+ 
