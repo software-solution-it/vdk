@@ -705,7 +705,7 @@ class Email {
             $query = "
                 SELECT 
                     id, 
-                    content_type as mime_type,
+                    mime_type,
                     filename,
                     content,
                     s3_key,
@@ -724,20 +724,27 @@ class Email {
                 throw new Exception("Anexo não encontrado.");
             }
 
-            // Se tiver s3_key, gera URL pré-assinada
+            // Se tiver s3_key, gera URL pré-assinada usando o AwsCredential
             if (!empty($attachment['s3_key'])) {
                 try {
+                    $awsCredential = new AwsCredential($this->conn);
+                    $credentials = $awsCredential->getCredentials();
+                    
+                    if (!$credentials) {
+                        throw new Exception("Credenciais AWS não encontradas");
+                    }
+
                     $s3Client = new \Aws\S3\S3Client([
                         'version' => 'latest',
-                        'region'  => getenv('AWS_REGION') ?: 'us-east-1',
+                        'region'  => $credentials['region'],
                         'credentials' => [
-                            'key'    => getenv('AWS_ACCESS_KEY_ID'),
-                            'secret' => getenv('AWS_SECRET_ACCESS_KEY'),
+                            'key'    => $credentials['access_key_id'],
+                            'secret' => $credentials['secret_access_key'],
                         ]
                     ]);
 
                     $command = $s3Client->getCommand('GetObject', [
-                        'Bucket' => getenv('AWS_BUCKET') ?: 'vdkmail',
+                        'Bucket' => $credentials['bucket'],
                         'Key'    => $attachment['s3_key']
                     ]);
 
@@ -752,10 +759,6 @@ class Email {
                     );
                     throw new Exception("Erro ao gerar URL pré-assinada: " . $e->getMessage());
                 }
-            } else if ($attachment['content']) {
-                // Se não tiver s3_key mas tiver conteúdo, converte para base64
-                $attachment['content_base64'] = base64_encode($attachment['content']);
-                unset($attachment['content']);
             }
     
             return $attachment;
@@ -782,7 +785,7 @@ class Email {
                             JSON_OBJECT(
                                 'id', a.id,
                                 'filename', a.filename,
-                                'content_type', a.content_type,
+                                'mime_type', a.mime_type,
                                 'size', a.size,
                                 's3_key', a.s3_key,
                                 'content_hash', a.content_hash

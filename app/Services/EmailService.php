@@ -376,7 +376,7 @@ class EmailService {
                             JSON_OBJECT(
                                 'id', a.id,
                                 'filename', a.filename,
-                                'content_type', a.content_type,
+                                'mime_type', a.mime_type,
                                 'size', a.size,
                                 's3_key', a.s3_key,
                                 'content_hash', a.content_hash
