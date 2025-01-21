@@ -659,9 +659,9 @@ class Email {
 
     public function toggleFavorite($email_id, $email_account_id) {
         try {
-            // First, check if email exists
+            // Primeiro, verifica se o email existe
             $query = "SELECT is_favorite, user_id FROM " . $this->table . " 
-                     WHERE email_id = :email_id AND email_account_id = :email_account_id";
+                     WHERE id = :email_id AND email_account_id = :email_account_id";
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':email_id', $email_id);
             $stmt->bindParam(':email_account_id', $email_account_id);
@@ -678,24 +678,31 @@ class Email {
             // Update the value
             $query = "UPDATE " . $this->table . " 
                      SET is_favorite = :is_favorite 
-                     WHERE email_id = :email_id AND email_account_id = :email_account_id";
+                     WHERE id = :email_id AND email_account_id = :email_account_id";
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':is_favorite', $newValue, PDO::PARAM_BOOL);
             $stmt->bindParam(':email_id', $email_id);
             $stmt->bindParam(':email_account_id', $email_account_id);
             
             if ($stmt->execute()) {
-                return ['status' => true, 'is_favorite' => $newValue];
+                return [
+                    'status' => true, 
+                    'is_favorite' => $newValue,
+                    'message' => 'Status de favorito atualizado com sucesso'
+                ];
             }
 
-            return ['status' => false, 'message' => 'Falha ao atualizar favorito'];
+            return [
+                'status' => false, 
+                'message' => 'Falha ao atualizar favorito'
+            ];
 
         } catch (Exception $e) {
             $this->errorLogController->logError(
                 "Erro ao alternar favorito: " . $e->getMessage(),
                 __FILE__,
                 __LINE__,
-                $current['user_id'] ?? null // Usando o user_id do email ou null se não existir
+                $current['user_id'] ?? null
             );
             throw $e;
         }
