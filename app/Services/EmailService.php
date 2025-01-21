@@ -429,7 +429,16 @@ class EmailService {
 
                 // Limpar texto plano
                 if (isset($email['body_text'])) {
-                    $email['body_text'] = trim(preg_replace('/\s+/', ' ', $email['body_text']));
+                    // Remove quebras de linha extras e espaços
+                    $text = preg_replace('/\s+/', ' ', $email['body_text']);
+                    $text = trim($text);
+                    
+                    // Limita a 300 caracteres
+                    if (mb_strlen($text) > 300) {
+                        $text = mb_substr($text, 0, 300) . '...';
+                    }
+                    
+                    $email['body_text'] = $text;
                 }
 
                 // Processar anexos
