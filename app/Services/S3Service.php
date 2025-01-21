@@ -65,12 +65,22 @@ class S3Service {
                     'Key'    => $cleanKey
                 ]);
                 
-                // Aumenta o tempo de expiração para 7 dias e permite acesso público
-                $request = $this->s3Client->createPresignedRequest($cmd, '+7 days');
-                $url = (string) $request->getUri();
+                // Configuração específica para a URL pré-assinada
+                $presignedRequest = new \Aws\S3\S3Client([
+                    'version' => 'latest',
+                    'region'  => 'sa-east-1',
+                    'signature_version' => 'v4',
+                    'credentials' => [
+                        'key'    => $this->s3Client->getCredentials()->wait()->getAccessKeyId(),
+                        'secret' => $this->s3Client->getCredentials()->wait()->getSecretKey(),
+                    ]
+                ]);
                 
-                // Opcionalmente, você pode customizar a URL base aqui
-                // $url = str_replace('s3.sa-east-1.amazonaws.com/vdkmail', 'seu.dominio.com', $url);
+                // Gera a URL pré-assinada com 7 dias de validade
+                $url = $presignedRequest->createPresignedRequest(
+                    $cmd,
+                    '+7 days'
+                )->getUri()->__toString();
                 
                 error_log("URL pré-assinada gerada com sucesso: " . $url);
                 return $url;
