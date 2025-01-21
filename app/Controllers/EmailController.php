@@ -358,20 +358,20 @@ class EmailController {
                         'total' => 0,
                         'emails' => []
                     ]
-                ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+                ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
                 return;
             }
             
             // Sanitize HTML content before returning
             if (!empty($result['emails'])) {
                 foreach ($result['emails'] as &$email) {
-                    // Remover espaços em branco excessivos
-                    $email['body_html'] = trim(preg_replace('/\s+/', ' ', $email['body_html']));
-                    $email['body_text'] = trim(preg_replace('/\s+/', ' ', $email['body_text']));
+                    // Converter HTML para base64 para evitar problemas de escape
+                    if (isset($email['body_html'])) {
+                        $email['body_html'] = base64_encode($email['body_html']);
+                    }
                     
-                    // Limitar tamanho se necessário
-                    if (strlen($email['body_html']) > 10000) {
-                        $email['body_html'] = substr($email['body_html'], 0, 10000) . '...';
+                    if (isset($email['body_text'])) {
+                        $email['body_text'] = trim(preg_replace('/\s+/', ' ', $email['body_text']));
                     }
                 }
             }
@@ -384,7 +384,7 @@ class EmailController {
                     'total' => $result['total'] ?? 0,
                     'emails' => $result['emails'] ?? []
                 ]
-            ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+            ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
             
         } catch (Exception $e) {
             error_log("Error in listEmails: " . $e->getMessage());
@@ -393,7 +393,7 @@ class EmailController {
                 'Status' => 'Error',
                 'Message' => 'Error retrieving emails: ' . $e->getMessage(),
                 'Data' => null
-            ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+            ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         }
     }
     
