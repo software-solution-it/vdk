@@ -172,37 +172,27 @@ class Email {
     
     
 
-    public function saveAttachment($email_account_id, $filename, $contentType, $size, $s3Key, $contentHash)
+    public function saveAttachment($emailId, $filename, $mimeType, $size, $s3Key, $contentHash)
     {
         try {
-            $query = "INSERT INTO {$this->attachmentsTable} 
-                      (email_account_id, filename, content_type, size, s3_key, content_hash) 
-                      VALUES 
-                      (:email_account_id, :filename, :content_type, :size, :s3_key, :content_hash)
-                      ON DUPLICATE KEY UPDATE
-                      email_account_id = :email_account_id,
-                      filename = :filename,
-                      content_type = :content_type,
-                      size = :size,
-                      s3_key = :s3_key";
-
-            $stmt = $this->conn->prepare($query);
+            $query = "INSERT INTO email_attachments 
+                        (email_id, filename, mime_type, size, s3_key, content_hash) 
+                     VALUES 
+                        (:email_id, :filename, :mime_type, :size, :s3_key, :content_hash)";
             
-            $stmt->bindParam(':email_account_id', $email_account_id);
-            $stmt->bindParam(':filename', $filename);
-            $stmt->bindParam(':content_type', $contentType);
-            $stmt->bindParam(':size', $size);
-            $stmt->bindParam(':s3_key', $s3Key);
-            $stmt->bindParam(':content_hash', $contentHash);
-
-            $stmt->execute();
+            $stmt = $this->conn->prepare($query);
+            $stmt->execute([
+                ':email_id' => $emailId,
+                ':filename' => $filename,
+                ':mime_type' => $mimeType,
+                ':size' => $size,
+                ':s3_key' => $s3Key,
+                ':content_hash' => $contentHash
+            ]);
+            
             return $this->conn->lastInsertId();
-        } catch (Exception $e) {
-            $this->errorLogController->logError(
-                "Erro ao salvar anexo: " . $e->getMessage(),
-                __FILE__,
-                __LINE__
-            );
+        } catch (\Exception $e) {
+            error_log("Erro ao salvar anexo: " . $e->getMessage());
             throw $e;
         }
     }
@@ -657,19 +647,13 @@ class Email {
     public function getAttachmentByHash($contentHash)
     {
         try {
-            $query = "SELECT * FROM {$this->attachmentsTable} WHERE content_hash = :content_hash";
+            $query = "SELECT * FROM email_attachments WHERE content_hash = :content_hash LIMIT 1";
             $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(':content_hash', $contentHash);
-            $stmt->execute();
-            
-            return $stmt->fetch(PDO::FETCH_ASSOC);
-        } catch (Exception $e) {
-            $this->errorLogController->logError(
-                "Erro ao buscar anexo por hash: " . $e->getMessage(),
-                __FILE__,
-                __LINE__
-            );
-            throw $e;
+            $stmt->execute([':content_hash' => $contentHash]);
+            return $stmt->fetch(\PDO::FETCH_ASSOC);
+        } catch (\Exception $e) {
+            error_log("Erro ao buscar anexo por hash: " . $e->getMessage());
+            return null;
         }
     }
 
