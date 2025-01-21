@@ -245,7 +245,7 @@ switch ($request_uri[0]) {
             
             $result = $emailController->listEmails($folder_id, null, $limit, $offset);
             
-            if ($result['status'] === 'success') {
+            if ($result['Status'] === 'Success') {
                 http_response_code(200);
             } else {
                 http_response_code(500);
@@ -256,9 +256,9 @@ switch ($request_uri[0]) {
         } catch (Exception $e) {
             http_response_code(500);
             echo json_encode([
-                'status' => 'error',
-                'message' => $e->getMessage(),
-                'data' => null
+                'Status' => 'Error',
+                'Message' => $e->getMessage(),
+                'Data' => null
             ]);
         }
         break;
