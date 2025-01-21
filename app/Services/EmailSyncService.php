@@ -52,21 +52,21 @@ class EmailSyncService
         $this->folderAssociationModel = new FolderAssociation($db);
         
         error_log("AWS Environment Variables:");
-        error_log("AWS_ACCESS_KEY_ID: " . (getenv('AWS_ACCESS_KEY_ID') ? 'SET' : 'NOT SET'));
-        error_log("AWS_SECRET_ACCESS_KEY: " . (getenv('AWS_SECRET_ACCESS_KEY') ? 'SET' : 'NOT SET'));
-        error_log("AWS_DEFAULT_REGION: " . (getenv('AWS_DEFAULT_REGION') ?: 'NOT SET'));
-        error_log("AWS_ENDPOINT: " . (getenv('AWS_ENDPOINT') ?: 'NOT SET'));
+        error_log("AWS_ACCESS_KEY_ID: " . (isset($_ENV['AWS_ACCESS_KEY_ID']) ? 'SET' : 'NOT SET'));
+        error_log("AWS_SECRET_ACCESS_KEY: " . (isset($_ENV['AWS_SECRET_ACCESS_KEY']) ? 'SET' : 'NOT SET'));
+        error_log("AWS_DEFAULT_REGION: " . ($_ENV['AWS_DEFAULT_REGION'] ?? 'NOT SET'));
+        error_log("AWS_ENDPOINT: " . ($_ENV['AWS_ENDPOINT'] ?? 'NOT SET'));
 
         $s3Config = [
             'version' => 'latest',
-            'region'  => getenv('AWS_DEFAULT_REGION') ?: 'us-east-1',
+            'region'  => $_ENV['AWS_DEFAULT_REGION'] ?? 'us-east-1',
             'credentials' => [
-                'key'    => getenv('AWS_ACCESS_KEY_ID') ?: '',
-                'secret' => getenv('AWS_SECRET_ACCESS_KEY') ?: '',
+                'key'    => $_ENV['AWS_ACCESS_KEY_ID'] ?? '',
+                'secret' => $_ENV['AWS_SECRET_ACCESS_KEY'] ?? '',
             ]
         ];
 
-        $endpoint = getenv('AWS_ENDPOINT');
+        $endpoint = $_ENV['AWS_ENDPOINT'] ?? null;
         if ($endpoint && is_string($endpoint) && !empty(trim($endpoint))) {
             error_log("Using custom S3 endpoint: " . $endpoint);
             $s3Config['endpoint'] = $endpoint;
