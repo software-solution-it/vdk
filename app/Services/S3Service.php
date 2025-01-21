@@ -59,52 +59,48 @@ class S3Service {
             $cleanKey = $this->normalizeS3Key($key);
             error_log("Tentando gerar URL pré-assinada para chave: " . $cleanKey);
 
-            // Verifica se o objeto existe
+            // Tenta gerar a URL diretamente sem verificar existência
             try {
-                $exists = $this->s3Client->doesObjectExist($this->bucketName, $cleanKey);
-                error_log("Objeto existe no caminho original? " . ($exists ? "Sim" : "Não"));
+                $cmd = $this->s3Client->getCommand('GetObject', [
+                    'Bucket' => $this->bucketName,
+                    'Key'    => $cleanKey
+                ]);
                 
-                if ($exists) {
-                    return $this->createPresignedUrl($cleanKey);
-                }
+                $request = $this->s3Client->createPresignedRequest($cmd, '+1 hour');
+                $url = (string) $request->getUri();
+                error_log("URL pré-assinada gerada com sucesso: " . $url);
+                return $url;
 
-                // Se não existe, tenta outras variações do caminho
+            } catch (Exception $e) {
+                error_log("Erro ao gerar URL pré-assinada: " . $e->getMessage());
+                
+                // Se falhou, tenta com caminhos alternativos
                 $variations = [
-                    $cleanKey,
                     "inline-images/" . basename(dirname($cleanKey)) . "/" . basename($cleanKey),
                     str_replace("attachments/", "", $cleanKey),
                     str_replace("inline-images/", "", $cleanKey)
                 ];
 
                 foreach ($variations as $path) {
-                    error_log("Tentando caminho alternativo: " . $path);
-                    if ($this->s3Client->doesObjectExist($this->bucketName, $path)) {
-                        error_log("Objeto encontrado em: " . $path);
-                        return $this->createPresignedUrl($path);
+                    try {
+                        error_log("Tentando caminho alternativo: " . $path);
+                        $cmd = $this->s3Client->getCommand('GetObject', [
+                            'Bucket' => $this->bucketName,
+                            'Key'    => $path
+                        ]);
+                        
+                        $request = $this->s3Client->createPresignedRequest($cmd, '+1 hour');
+                        $url = (string) $request->getUri();
+                        error_log("URL pré-assinada gerada com sucesso para caminho alternativo: " . $url);
+                        return $url;
+                    } catch (Exception $e) {
+                        error_log("Erro ao tentar caminho alternativo: " . $e->getMessage());
+                        continue;
                     }
                 }
-
-                // Se ainda não encontrou, tenta listar objetos com o mesmo hash
-                $prefix = basename(dirname($cleanKey));
-                $result = $this->s3Client->listObjects([
-                    'Bucket' => $this->bucketName,
-                    'Prefix' => $prefix
-                ]);
-
-                error_log("Objetos encontrados com prefix {$prefix}:");
-                if (isset($result['Contents'])) {
-                    foreach ($result['Contents'] as $object) {
-                        error_log("- " . $object['Key']);
-                    }
-                }
-
-                error_log("Nenhum objeto encontrado para a chave: " . $cleanKey);
-                return null;
-
-            } catch (Exception $e) {
-                error_log("Erro ao verificar existência do objeto: " . $e->getMessage());
-                throw $e;
             }
+
+            return null;
 
         } catch (Exception $e) {
             error_log("S3 Error: " . $e->getMessage());
