@@ -415,7 +415,7 @@ class EmailService {
 
             // Adiciona ordenação baseada no parâmetro orderBy
             if (strtolower($orderBy) == 'favorite') {
-                $query .= " ORDER BY e.is_favorite DESC, e.date_received " . $order;
+                $query .= " ORDER BY e.is_favorite " . $order . ", e.date_received " . $order;
             } else {
                 $query .= " ORDER BY e.date_received " . $order;
             }
