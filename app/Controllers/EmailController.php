@@ -7,6 +7,7 @@ use App\Config\Database;
 use App\Controllers\ErrorLogController;
 use Exception;
 use App\Models\EmailFolder;
+use App\Models\Email;
 
 class EmailController {
     private $emailService;
@@ -343,70 +344,20 @@ class EmailController {
     }
 
 
-    public function listEmails() {
-        header('Content-Type: application/json');
-        
-        $folder_id = isset($_GET['folder_id']) ? $_GET['folder_id'] : null;
-        $folder_name = isset($_GET['folder_name']) ? $_GET['folder_name'] : null;
-        $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 20; 
-        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1; 
-        $order = isset($_GET['order']) ? strtoupper($_GET['order']) : 'DESC'; 
-        
-        if (!in_array($order, ['ASC', 'DESC'])) {
-            http_response_code(400);
-            echo json_encode([
-                'Status' => 'Error',
-                'Message' => 'O parâmetro "order" deve ser "ASC" ou "DESC".'
-            ]);
-            return; 
-        }
-    
-        $offset = ($page - 1) * $limit;
-    
-        if ($limit <= 0) {
-            http_response_code(400);
-            echo json_encode([
-                'Status' => 'Error',
-                'Message' => 'O parâmetro "limit" deve ser um número inteiro positivo.'
-            ]);
-            return;
-        }
-    
-        if ($page <= 0) {
-            http_response_code(400);
-            echo json_encode([
-                'Status' => 'Error',
-                'Message' => 'O parâmetro "page" deve ser um número inteiro positivo maior que zero.'
-            ]);
-            return;
-        }
-    
-        if (is_null($folder_id) && is_null($folder_name)) {
-            http_response_code(400);
-            echo json_encode([
-                'Status' => 'Error',
-                'Message' => 'É necessário informar "folder_id" ou "folder_name".'
-            ]);
-            return;
-        }
-    
+    public function listEmails($folder_id = null, $folder_name = null, $limit = 10, $offset = 0, $order = 'DESC') {
         try {
-            $emails = $this->emailService->listEmails($folder_id, $folder_name, $limit, $offset, $order);
-            
-            http_response_code(200);
-            echo json_encode([
-                'Status' => 'Success', 
-                'Message' => 'Emails retrieved successfully.',
-                'Data' => $emails
-            ]);
+            $database = new Database();
+            $db = $database->getConnection();
+            $emailModel = new Email($db);
+
+            if (!$folder_id && !$folder_name) {
+                throw new Exception("folder_id or folder_name is required");
+            }
+
+            return $emailModel->getEmailsByFolderId($folder_id, $limit, $offset, $order);
+
         } catch (Exception $e) {
-            $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
-            http_response_code(500);
-            echo json_encode([
-                'Status' => 'Error',
-                'Message' => 'Erro ao listar e-mails: ' . $e->getMessage(),
-                'Data' => null
-            ]);
+            throw new Exception($e->getMessage());
         }
     }
     

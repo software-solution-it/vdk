@@ -237,8 +237,23 @@ switch ($request_uri[0]) {
 
     case '/api/email/list':
         $emailController = new EmailController();
-        $email_id = isset($_GET['email_id']) ? $_GET['email_id'] : null;
-        $emailController->listEmails();
+        $folder_id = $_GET['folder_id'] ?? null;
+        $limit = $_GET['limit'] ?? 10;
+        $page = $_GET['page'] ?? 1;
+        $folder_name = $_GET['folder_name'] ?? null;
+        $order = $_GET['order'] ?? 'DESC'; 
+
+        if (!$folder_id) {
+            http_response_code(400);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'folder_id is required',
+                'Data' => null
+            ]);
+            break;
+        }
+
+        $emailController->listEmails($folder_id, $limit, $page, $order);
         break;
 
     case '/api/folders/associate':
