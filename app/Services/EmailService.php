@@ -367,6 +367,9 @@ class EmailService {
     
     public function listEmails($folder_id = null, $folder_name = null, $limit = 10, $offset = 0, $order = 'DESC', $orderBy = 'date') {
         try {
+            // Normaliza o parâmetro orderBy para minúsculo
+            $orderBy = strtolower($orderBy);
+            
             $query = "
                 SELECT 
                     e.id,
