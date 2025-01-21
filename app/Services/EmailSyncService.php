@@ -50,23 +50,17 @@ class EmailSyncService
         $this->gmailOauth2Service = new GmailOAuth2Service();
         $this->emailFolderModel = new EmailFolder($db);
         $this->folderAssociationModel = new FolderAssociation($db);
-        
-        error_log("AWS Environment Variables:");
-        error_log("AWS_ACCESS_KEY_ID: " . (isset($_ENV['AWS_ACCESS_KEY_ID']) ? 'SET' : 'NOT SET'));
-        error_log("AWS_SECRET_ACCESS_KEY: " . (isset($_ENV['AWS_SECRET_ACCESS_KEY']) ? 'SET' : 'NOT SET'));
-        error_log("AWS_DEFAULT_REGION: " . ($_ENV['AWS_DEFAULT_REGION'] ?? 'NOT SET'));
-        error_log("AWS_ENDPOINT: " . ($_ENV['AWS_ENDPOINT'] ?? 'NOT SET'));
 
         $s3Config = [
             'version' => 'latest',
-            'region'  => $_ENV['AWS_DEFAULT_REGION'] ?? 'us-east-1',
+            'region'  => 'sa-east-1',
             'credentials' => [
-                'key'    => $_ENV['AWS_ACCESS_KEY_ID'] ?? '',
-                'secret' => $_ENV['AWS_SECRET_ACCESS_KEY'] ?? '',
+                'key'    => getenv('AWS_ACCESS_KEY_ID'),
+                'secret' => getenv('AWS_SECRET_ACCESS_KEY'),
             ]
         ];
 
-        $endpoint = $_ENV['AWS_ENDPOINT'] ?? null;
+        $endpoint = getenv('AWS_ENDPOINT');
         if ($endpoint && is_string($endpoint) && !empty(trim($endpoint))) {
             error_log("Using custom S3 endpoint: " . $endpoint);
             $s3Config['endpoint'] = $endpoint;
@@ -75,10 +69,10 @@ class EmailSyncService
         }
 
         error_log("Configuração S3:");
-        error_log("Region: " . ($_ENV['AWS_DEFAULT_REGION'] ?? 'não definido'));
-        error_log("Endpoint: " . ($_ENV['AWS_ENDPOINT'] ?? 'não definido'));
-        error_log("Access Key definida: " . (isset($_ENV['AWS_ACCESS_KEY_ID']) ? 'sim' : 'não'));
-        error_log("Secret Key definida: " . (isset($_ENV['AWS_SECRET_ACCESS_KEY']) ? 'sim' : 'não'));
+        error_log("Region: " . (getenv('AWS_DEFAULT_REGION') ?: 'não definido'));
+        error_log("Endpoint: " . (getenv('AWS_ENDPOINT') ?: 'não definido'));
+        error_log("Access Key definida: " . (getenv('AWS_ACCESS_KEY_ID') ? 'sim' : 'não'));
+        error_log("Secret Key definida: " . (getenv('AWS_SECRET_ACCESS_KEY') ? 'sim' : 'não'));
 
         try {
             $this->s3Client = new S3Client($s3Config);
