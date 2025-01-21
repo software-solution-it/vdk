@@ -11,10 +11,10 @@ class S3Service {
     public function __construct() {
         $this->s3Client = new S3Client([
             'version'     => 'latest',
-            'region'      => getenv('AWS_DEFAULT_REGION'),
+            'region'      => getenv('AWS_DEFAULT_REGION') ?: 'us-east-1',
             'credentials' => [
-                'key'    => getenv('AWS_ACCESS_KEY_ID'),
-                'secret' => getenv('AWS_SECRET_ACCESS_KEY'),
+                'key'    => getenv('AWS_ACCESS_KEY_ID') ?: '',
+                'secret' => getenv('AWS_SECRET_ACCESS_KEY') ?: '',
             ]
         ]);
     }
@@ -22,7 +22,7 @@ class S3Service {
     public function generatePresignedUrl($key) {
         try {
             $command = $this->s3Client->getCommand('GetObject', [
-                'Bucket' => getenv('AWS_BUCKET'),
+                'Bucket' => getenv('AWS_BUCKET') ?: 'vdkmail',
                 'Key'    => $key
             ]);
 
