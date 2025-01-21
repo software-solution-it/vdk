@@ -765,10 +765,10 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
     
                                     if ($decodedContent !== false) {
                                         $contentHash = hash('sha256', $decodedContent);
-                                        $filename = uniqid("inline_img_") . '.' . $imageType;
+                                        $filename = "image.{$imageType}";
                                         $fullMimeType = 'image/' . $imageType;
     
-                                        $s3Key = "attachments/" . $contentHash . "/" . $filename;
+                                        $s3Key = "attachments/{$contentHash}/{$filename}";
     
                                         $this->emailModel->saveAttachment(
                                             $emailId,
@@ -780,7 +780,12 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                                         );
                                     }
                                 } catch (Exception $e) {
-                                    $this->errorLogController->logError("Erro ao processar imagem embutida: " . $e->getMessage(), __FILE__, __LINE__, $user_id);
+                                    $this->errorLogController->logError(
+                                        "Erro ao processar imagem embutida: " . $e->getMessage(), 
+                                        __FILE__, 
+                                        __LINE__, 
+                                        $user_id
+                                    );
                                 }
                             }
                         }
@@ -957,7 +962,7 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
             
             $content = $attachment->getDecodedContent();
             $contentHash = hash('sha256', $content);
-            $filename = 'cid_' . $contentId . '.' . strtolower($attachment->getSubtype());
+            $filename = "image." . strtolower($attachment->getSubtype());
             $s3Key = "attachments/{$contentHash}/{$filename}";
             
             error_log("Tentando upload para S3: " . $s3Key);
@@ -978,7 +983,8 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                 
                 return [
                     'url' => $result['ObjectURL'],
-                    'key' => $s3Key
+                    'content_hash' => $contentHash,
+                    's3_key' => $s3Key
                 ];
                 
             } catch (AwsException $e) {
