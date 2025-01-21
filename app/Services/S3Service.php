@@ -55,23 +55,30 @@ class S3Service {
                 return null;
             }
 
-            // Primeiro, tenta o caminho original
-            if (!$this->s3Client->doesObjectExist($this->bucketName, $key)) {
+            // Limpa o caminho removendo espaços em branco e quebras de linha
+            $key = trim($key);
+            
+            // Primeiro, tenta o caminho original limpo
+            $cleanKey = str_replace(["\n", "\r", " "], "", $key);
+            
+            if (!$this->s3Client->doesObjectExist($this->bucketName, $cleanKey)) {
                 // Se não encontrar, tenta o caminho alternativo
-                $alternativePath = 'attachments/' . basename(dirname($key)) . '/' . basename($key);
+                $hash = basename(dirname($cleanKey));
+                $filename = basename($cleanKey);
+                $alternativePath = "attachments/{$hash}/{$filename}";
                 
                 if (!$this->s3Client->doesObjectExist($this->bucketName, $alternativePath)) {
-                    error_log("S3 object does not exist in either path: {$key} or {$alternativePath}");
+                    error_log("S3 object does not exist in either path: {$cleanKey} or {$alternativePath}");
                     return null;
                 }
                 
                 // Se encontrou no caminho alternativo, usa ele
-                $key = $alternativePath;
+                $cleanKey = $alternativePath;
             }
 
             $cmd = $this->s3Client->getCommand('GetObject', [
                 'Bucket' => $this->bucketName,
-                'Key'    => $key
+                'Key'    => $cleanKey
             ]);
             
             $request = $this->s3Client->createPresignedRequest($cmd, '+1 hour');
