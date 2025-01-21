@@ -408,17 +408,33 @@ class EmailService {
                         foreach ($attachments as &$attachment) {
                             if (!empty($attachment['s3_key'])) {
                                 try {
+                                    // Definir região padrão se não estiver configurada
+                                    $region = getenv('AWS_DEFAULT_REGION');
+                                    if (!$region) {
+                                        $region = 'us-east-1'; // Região padrão
+                                    }
+
+                                    // Verificar credenciais AWS
+                                    $awsKey = getenv('AWS_ACCESS_KEY_ID');
+                                    $awsSecret = getenv('AWS_SECRET_ACCESS_KEY');
+                                    $bucket = getenv('AWS_BUCKET') ?: 'vdkmail';
+
+                                    if (!$awsKey || !$awsSecret) {
+                                        $attachment['presigned_url'] = null;
+                                        continue;
+                                    }
+
                                     $s3Client = new \Aws\S3\S3Client([
                                         'version' => 'latest',
-                                        'region'  => getenv('AWS_REGION'),
+                                        'region'  => $region,
                                         'credentials' => [
-                                            'key'    => getenv('AWS_ACCESS_KEY_ID'),
-                                            'secret' => getenv('AWS_SECRET_ACCESS_KEY'),
+                                            'key'    => $awsKey,
+                                            'secret' => $awsSecret,
                                         ]
                                     ]);
 
                                     $command = $s3Client->getCommand('GetObject', [
-                                        'Bucket' => getenv('AWS_BUCKET'),
+                                        'Bucket' => $bucket,
                                         'Key'    => $attachment['s3_key']
                                     ]);
 
@@ -540,7 +556,7 @@ class EmailService {
                         try {
                             $s3Client = new \Aws\S3\S3Client([
                                 'version' => 'latest',
-                                'region'  => getenv('AWS_REGION') ?: 'us-east-1',
+                                'region'  => getenv('AWS_DEFAULT_REGION') ?: 'us-east-1',
                                 'credentials' => [
                                     'key'    => getenv('AWS_ACCESS_KEY_ID'),
                                     'secret' => getenv('AWS_SECRET_ACCESS_KEY'),
@@ -611,7 +627,7 @@ class EmailService {
                 try {
                     $s3Client = new \Aws\S3\S3Client([
                         'version' => 'latest',
-                        'region'  => getenv('AWS_REGION') ?: 'us-east-1',
+                        'region'  => getenv('AWS_DEFAULT_REGION') ?: 'us-east-1',
                         'credentials' => [
                             'key'    => getenv('AWS_ACCESS_KEY_ID'),
                             'secret' => getenv('AWS_SECRET_ACCESS_KEY'),
@@ -755,7 +771,7 @@ class EmailService {
         try {
             $attachments = $this->emailAttachmentModel->getAttachmentsByEmailId($email_id);
             
-            $hasAwsConfig = getenv('AWS_REGION') && 
+            $hasAwsConfig = getenv('AWS_DEFAULT_REGION') && 
                            getenv('AWS_ACCESS_KEY_ID') && 
                            getenv('AWS_SECRET_ACCESS_KEY') && 
                            getenv('AWS_BUCKET');
@@ -764,7 +780,7 @@ class EmailService {
             $this->errorLogController->logError(
                 "AWS Config Status: " . json_encode([
                     'hasConfig' => $hasAwsConfig,
-                    'region' => getenv('AWS_REGION'),
+                    'region' => getenv('AWS_DEFAULT_REGION'),
                     'key_exists' => !empty(getenv('AWS_ACCESS_KEY_ID')),
                     'secret_exists' => !empty(getenv('AWS_SECRET_ACCESS_KEY')),
                     'bucket' => getenv('AWS_BUCKET'),
@@ -781,7 +797,7 @@ class EmailService {
                     try {
                         $s3Client = new \Aws\S3\S3Client([
                             'version'     => 'latest',
-                            'region'      => getenv('AWS_REGION'),
+                            'region'      => getenv('AWS_DEFAULT_REGION'),
                             'credentials' => [
                                 'key'    => getenv('AWS_ACCESS_KEY_ID'),
                                 'secret' => getenv('AWS_SECRET_ACCESS_KEY'),
