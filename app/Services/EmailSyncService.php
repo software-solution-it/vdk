@@ -15,6 +15,7 @@ use App\Controllers\ErrorLogController;
 use Exception;
 use Aws\S3\S3Client;
 use Aws\Exception\AwsException;
+use App\Models\AwsCredential;
 
 class EmailSyncService
 {
@@ -51,44 +52,31 @@ class EmailSyncService
         $this->emailFolderModel = new EmailFolder($db);
         $this->folderAssociationModel = new FolderAssociation($db);
 
-        // Debug das credenciais
-        $aws_key = getenv('AWS_ACCESS_KEY_ID');
-        $aws_secret = getenv('AWS_SECRET_ACCESS_KEY');
-        $aws_region = getenv('AWS_DEFAULT_REGION') ?: 'sa-east-1';
-        $aws_endpoint = getenv('AWS_ENDPOINT');
+        // Buscar credenciais do banco
+        $awsCredentialModel = new AwsCredential($db);
+        $credentials = $awsCredentialModel->getCredentials();
 
-        error_log("Debug AWS Credentials:");
-        error_log("Key: " . ($aws_key ? substr($aws_key, 0, 5) . '...' : 'não definida'));
-        error_log("Secret: " . ($aws_secret ? 'definida (' . strlen($aws_secret) . ' caracteres)' : 'não definida'));
-        error_log("Region: " . $aws_region);
-        error_log("Endpoint: " . $aws_endpoint);
-
-        if (!$aws_key || !$aws_secret) {
-            throw new Exception("Credenciais AWS não encontradas");
+        if (!$credentials) {
+            throw new Exception("Credenciais AWS não encontradas no banco de dados");
         }
 
         $s3Config = [
             'version' => 'latest',
-            'region'  => $aws_region,
+            'region'  => $credentials['region'],
             'credentials' => [
-                'key'    => $aws_key,
-                'secret' => $aws_secret,
+                'key'    => $credentials['access_key_id'],
+                'secret' => $credentials['secret_access_key'],
             ]
         ];
 
-        if ($aws_endpoint) {
-            $s3Config['endpoint'] = $aws_endpoint;
+        if (!empty($credentials['endpoint'])) {
+            $s3Config['endpoint'] = $credentials['endpoint'];
         }
 
         try {
-            error_log("Iniciando cliente S3 com config: " . json_encode(array_merge(
-                $s3Config,
-                ['credentials' => ['key' => '***', 'secret' => '***']]
-            )));
-
             $this->s3Client = new S3Client($s3Config);
-            error_log("Cliente S3 inicializado");
-
+            error_log("Cliente S3 inicializado com sucesso");
+            
             // Teste de conexão
             $result = $this->s3Client->listBuckets();
             error_log("Buckets disponíveis: " . json_encode($result['Buckets']));
