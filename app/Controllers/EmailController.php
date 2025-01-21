@@ -351,9 +351,9 @@ class EmailController {
             // Garantir que temos um resultado válido
             if (!$result) {
                 return [
-                    'status' => 'success',
-                    'message' => 'No emails found',
-                    'data' => [
+                    'Status' => 'Success',
+                    'Message' => 'No emails found',
+                    'Data' => [
                         'total' => 0,
                         'emails' => []
                     ]
@@ -363,16 +363,20 @@ class EmailController {
             // Sanitize HTML content before returning
             if (!empty($result['emails'])) {
                 foreach ($result['emails'] as &$email) {
-                    // Convert HTML entities and strip unnecessary whitespace
-                    $email['body_html'] = htmlspecialchars($email['body_html'], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                    // Remove apenas espaços em branco excessivos
                     $email['body_html'] = preg_replace('/\s+/', ' ', $email['body_html']);
+                    
+                    // Opcional: Limitar tamanho do conteúdo se necessário
+                    if (strlen($email['body_html']) > 10000) {
+                        $email['body_html'] = substr($email['body_html'], 0, 10000) . '...';
+                    }
                 }
             }
             
             return [
-                'status' => 'success',
-                'message' => 'Emails retrieved successfully',
-                'data' => [
+                'Status' => 'Success',
+                'Message' => 'Emails retrieved successfully',
+                'Data' => [
                     'total' => $result['total'] ?? 0,
                     'emails' => $result['emails'] ?? []
                 ]
@@ -381,9 +385,9 @@ class EmailController {
         } catch (Exception $e) {
             error_log("Error in listEmails: " . $e->getMessage());
             return [
-                'status' => 'error',
-                'message' => 'Error retrieving emails: ' . $e->getMessage(),
-                'data' => null
+                'Status' => 'Error',
+                'Message' => 'Error retrieving emails: ' . $e->getMessage(),
+                'Data' => null
             ];
         }
     }
