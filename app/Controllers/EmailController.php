@@ -360,7 +360,29 @@ class EmailController {
                 throw new Exception("No emails found"); 
             }
 
-            return $result;
+            // Sanitizar e decodificar entidades HTML nos resultados
+            foreach ($result['emails'] as &$email) {
+                if (isset($email['body_html'])) {
+                    $email['body_html'] = html_entity_decode($email['body_html'], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                    $email['body_html'] = stripslashes($email['body_html']);
+                }
+                if (isset($email['body_text'])) {
+                    $email['body_text'] = html_entity_decode($email['body_text'], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                    $email['body_text'] = stripslashes($email['body_text']);
+                }
+                if (isset($email['subject'])) {
+                    $email['subject'] = html_entity_decode($email['subject'], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                    $email['subject'] = stripslashes($email['subject']);
+                }
+            }
+
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode([
+                'Status' => 'Success',
+                'Message' => 'Emails retrieved successfully',
+                'Data' => $result
+            ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+            return;
 
         } catch (Exception $e) {
             error_log("Error in listEmails: " . $e->getMessage());
