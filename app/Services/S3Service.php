@@ -59,48 +59,26 @@ class S3Service {
             $cleanKey = $this->normalizeS3Key($key);
             error_log("Tentando gerar URL pré-assinada para chave: " . $cleanKey);
 
-            // Tenta gerar a URL diretamente sem verificar existência
             try {
                 $cmd = $this->s3Client->getCommand('GetObject', [
                     'Bucket' => $this->bucketName,
                     'Key'    => $cleanKey
                 ]);
                 
-                $request = $this->s3Client->createPresignedRequest($cmd, '+1 hour');
+                // Aumenta o tempo de expiração para 7 dias e permite acesso público
+                $request = $this->s3Client->createPresignedRequest($cmd, '+7 days');
                 $url = (string) $request->getUri();
+                
+                // Opcionalmente, você pode customizar a URL base aqui
+                // $url = str_replace('s3.sa-east-1.amazonaws.com/vdkmail', 'seu.dominio.com', $url);
+                
                 error_log("URL pré-assinada gerada com sucesso: " . $url);
                 return $url;
 
             } catch (Exception $e) {
                 error_log("Erro ao gerar URL pré-assinada: " . $e->getMessage());
-                
-                // Se falhou, tenta com caminhos alternativos
-                $variations = [
-                    "inline-images/" . basename(dirname($cleanKey)) . "/" . basename($cleanKey),
-                    str_replace("attachments/", "", $cleanKey),
-                    str_replace("inline-images/", "", $cleanKey)
-                ];
-
-                foreach ($variations as $path) {
-                    try {
-                        error_log("Tentando caminho alternativo: " . $path);
-                        $cmd = $this->s3Client->getCommand('GetObject', [
-                            'Bucket' => $this->bucketName,
-                            'Key'    => $path
-                        ]);
-                        
-                        $request = $this->s3Client->createPresignedRequest($cmd, '+1 hour');
-                        $url = (string) $request->getUri();
-                        error_log("URL pré-assinada gerada com sucesso para caminho alternativo: " . $url);
-                        return $url;
-                    } catch (Exception $e) {
-                        error_log("Erro ao tentar caminho alternativo: " . $e->getMessage());
-                        continue;
-                    }
-                }
+                return null;
             }
-
-            return null;
 
         } catch (Exception $e) {
             error_log("S3 Error: " . $e->getMessage());
@@ -118,8 +96,6 @@ class S3Service {
         
         // Remove barra inicial se existir
         $clean = ltrim($clean, '/');
-        
-        error_log("Normalizando chave: " . $key . " -> " . $clean);
         
         return $clean;
     }
