@@ -87,12 +87,29 @@ class EmailSyncService
 
     public function startConsumer($user_id, $email_id)
     {
-        try{
-        $this->syncEmailsByUserIdAndProviderId($user_id, $email_id);
-    } catch (Exception $e) {
-        $this->errorLogController->logError("Erro no startConsumer: " . $e->getMessage(), __FILE__, __LINE__, $user_id);
-        throw $e;
-    }
+        try {
+            $this->errorLogController->logError(
+                "Iniciando startConsumer",
+                __FILE__,
+                __LINE__,
+                $user_id,
+                ['email_id' => $email_id]
+            );
+            
+            $this->syncEmailsByUserIdAndProviderId($user_id, $email_id);
+        } catch (Exception $e) {
+            $this->errorLogController->logError(
+                "Erro no startConsumer",
+                __FILE__,
+                __LINE__,
+                $user_id,
+                [
+                    'error' => $e->getMessage(),
+                    'stack_trace' => $e->getTraceAsString()
+                ]
+            );
+            throw $e;
+        }
     }
 
     public function reconnectRabbitMQ() {
@@ -203,50 +220,114 @@ class EmailSyncService
 public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
 {
     try {
-    set_time_limit(0);
+        $this->errorLogController->logError(
+            "Iniciando syncEmailsByUserIdAndProviderId",
+            __FILE__,
+            __LINE__,
+            $user_id,
+            ['email_id' => $email_id]
+        );
 
-    $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $email_id);
+        set_time_limit(0);
+        
+        $emailAccount = $this->emailAccountModel->getEmailAccountByUserIdAndProviderId($user_id, $email_id);
+        
+        if (!$emailAccount) {
+            $this->errorLogController->logError(
+                "Conta de e-mail não encontrada",
+                __FILE__,
+                __LINE__,
+                $user_id,
+                [
+                    'email_id' => $email_id,
+                    'user_id' => $user_id
+                ]
+            );
+            return json_encode(['status' => false, 'message' => 'Conta de e-mail não encontrada.']);
+        }
 
-    if (!$emailAccount) {
-        error_log("Conta de e-mail não encontrada para user_id={$user_id} e email_id={$email_id}");
+        $this->errorLogController->logError(
+            "Conta de email encontrada",
+            __FILE__,
+            __LINE__,
+            $user_id,
+            [
+                'email' => $emailAccount['email'],
+                'provider_id' => $emailAccount['provider_id']
+            ]
+        );
 
-        return json_encode(['status' => false, 'message' => 'Conta de e-mail não encontrada.']);
-    }
-
-    $queue_name = $this->generateQueueName($user_id, $emailAccount['provider_id']);
-
-    error_log("Conta de e-mail encontrada: " . $emailAccount['email']);
-    error_log("Senha Descriptografada: " . EncryptionHelper::decrypt($emailAccount['password']));
-
+        // Log antes de criar a mensagem para RabbitMQ
+        $this->errorLogController->logError(
+            "Preparando mensagem para RabbitMQ",
+            __FILE__,
+            __LINE__,
+            $user_id,
+            ['email_account_id' => $emailAccount['id']]
+        );
 
         $message = [
             'user_id' => $user_id,
-            'provider_id' => $emailAccount['provider_id'],
             'email_account_id' => $emailAccount['id'],
+            'provider_id' => $emailAccount['provider_id'],
             'email' => $emailAccount['email'],
             'password' => EncryptionHelper::decrypt($emailAccount['password']),
             'oauth2_token' => $emailAccount['oauth_token'] ?? null,
             'refresh_token' => $emailAccount['refresh_token'] ?? null,
-            'client_id' => $emailAccount['client_id'] ?? null,
-            'client_secret' => $emailAccount['client_secret'] ?? null,
-            'tenant_id' => $emailAccount['tenant_id'] ?? null,
-            'auth_code' => $emailAccount['auth_code'] ?? null,
             'is_basic' => $emailAccount['is_basic'] ?? 0,
             'imap_host' => $emailAccount['imap_host'],
             'imap_port' => $emailAccount['imap_port'],
-            'created_at' => date('Y-m-d H:i:s'),
-            'updated_at' => date('Y-m-d H:i:s'),
         ];
-        $this->rabbitMQService->publishMessage($queue_name, $message, $user_id);
 
-        $this->consumeEmailSyncQueue($user_id, $emailAccount['provider_id'], $queue_name);
-
-        return json_encode(['status' => true, 'message' => 'Sincronização de e-mails iniciada com sucesso.']);
-    } catch (Exception $e) {
-        error_log("Erro ao adicionar tarefa de sincronização no RabbitMQ: " . $e->getMessage());
-        $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__, $user_id);
+        $queue_name = 'email_sync_queue_' . $user_id . '_' . $emailAccount['id'];
         
-        return json_encode(['status' => false, 'message' => 'Erro ao iniciar a sincronização de e-mails.']);
+        $this->errorLogController->logError(
+            "Tentando publicar mensagem no RabbitMQ",
+            __FILE__,
+            __LINE__,
+            $user_id,
+            [
+                'queue_name' => $queue_name,
+                'imap_host' => $emailAccount['imap_host'],
+                'imap_port' => $emailAccount['imap_port']
+            ]
+        );
+
+        try {
+            $this->rabbitMQService->publishMessage($queue_name, $message, $user_id);
+            
+            $this->errorLogController->logError(
+                "Mensagem publicada com sucesso no RabbitMQ",
+                __FILE__,
+                __LINE__,
+                $user_id,
+                ['queue_name' => $queue_name]
+            );
+            
+            $this->consumeEmailSyncQueue($user_id, $emailAccount['provider_id'], $queue_name);
+        } catch (Exception $e) {
+            $this->errorLogController->logError(
+                "Falha ao publicar mensagem no RabbitMQ",
+                __FILE__,
+                __LINE__,
+                $user_id,
+                ['queue_name' => $queue_name, 'error' => $e->getMessage()]
+            );
+        }
+
+    } catch (Exception $e) {
+        $this->errorLogController->logError(
+            "Erro fatal em syncEmailsByUserIdAndProviderId",
+            __FILE__,
+            __LINE__,
+            $user_id,
+            [
+                'error' => $e->getMessage(),
+                'stack_trace' => $e->getTraceAsString(),
+                'email_id' => $email_id
+            ]
+        );
+        throw $e;
     }
 }
 
