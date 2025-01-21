@@ -356,7 +356,7 @@ class EmailController {
             }
 
             $order = strtoupper($_GET['order'] ?? 'DESC');
-            $orderBy = strtolower($_GET['orderBy'] ?? 'date');
+            $orderBy = strtolower($_GET['orderby'] ?? 'date');
 
             if (!in_array($order, ['ASC', 'DESC'])) {
                 http_response_code(400);
@@ -372,7 +372,7 @@ class EmailController {
                 http_response_code(400);
                 echo json_encode([
                     'Status' => 'Error',
-                    'Message' => 'Parâmetro orderBy inválido. Use date ou favorite',
+                    'Message' => 'Parâmetro orderby inválido. Use date ou favorite',
                     'Data' => null
                 ]);
                 return;
