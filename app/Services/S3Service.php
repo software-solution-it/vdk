@@ -14,7 +14,7 @@ class S3Service {
         $accessKey = getenv('AWS_ACCESS_KEY_ID');
         $secretKey = getenv('AWS_SECRET_ACCESS_KEY');
         $region = getenv('AWS_DEFAULT_REGION') ?: 'sa-east-1';
-        $this->bucketName = getenv('AWS_BUCKET_NAME') ?: 'vdkmail';
+        $this->bucketName = getenv('AWS_BUCKET') ?: 'vdkmail';
 
         // Valida as credenciais antes de criar o cliente
         if (empty($accessKey) || empty($secretKey)) {
