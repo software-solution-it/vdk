@@ -257,20 +257,13 @@ switch ($request_uri[0]) {
             $offset = ($page - 1) * $limit;
             $result = $emailController->listEmails($folder_id, $folder_name, $limit, $offset, $order);
             
-            if ($result) {
-                echo json_encode([
-                    'Status' => 'Success',
-                    'Message' => 'Emails retrieved successfully',
-                    'Data' => $result
-                ], JSON_UNESCAPED_UNICODE);
-            } else {
-                http_response_code(500);
-                echo json_encode([
-                    'Status' => 'Error',
-                    'Message' => 'Failed to retrieve emails',
-                    'Data' => null
-                ]);
-            }
+            http_response_code($result['status'] === 'Success' ? 200 : 500);
+            echo json_encode([
+                'Status' => $result['status'],
+                'Message' => $result['message'],
+                'Data' => $result['data']
+            ], JSON_UNESCAPED_UNICODE);
+            
         } catch (Exception $e) {
             http_response_code(500);
             echo json_encode([
