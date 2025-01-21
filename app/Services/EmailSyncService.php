@@ -51,38 +51,55 @@ class EmailSyncService
         $this->emailFolderModel = new EmailFolder($db);
         $this->folderAssociationModel = new FolderAssociation($db);
 
+        // Debug das credenciais
+        $aws_key = getenv('AWS_ACCESS_KEY_ID');
+        $aws_secret = getenv('AWS_SECRET_ACCESS_KEY');
+        $aws_region = getenv('AWS_DEFAULT_REGION') ?: 'sa-east-1';
+        $aws_endpoint = getenv('AWS_ENDPOINT');
+
+        error_log("Debug AWS Credentials:");
+        error_log("Key: " . ($aws_key ? substr($aws_key, 0, 5) . '...' : 'não definida'));
+        error_log("Secret: " . ($aws_secret ? 'definida (' . strlen($aws_secret) . ' caracteres)' : 'não definida'));
+        error_log("Region: " . $aws_region);
+        error_log("Endpoint: " . $aws_endpoint);
+
+        if (!$aws_key || !$aws_secret) {
+            throw new Exception("Credenciais AWS não encontradas");
+        }
+
         $s3Config = [
             'version' => 'latest',
-            'region'  => 'sa-east-1',
+            'region'  => $aws_region,
             'credentials' => [
-                'key'    => getenv('AWS_ACCESS_KEY_ID'),
-                'secret' => getenv('AWS_SECRET_ACCESS_KEY'),
+                'key'    => $aws_key,
+                'secret' => $aws_secret,
             ]
         ];
 
-        $endpoint = getenv('AWS_ENDPOINT');
-        if ($endpoint && is_string($endpoint) && !empty(trim($endpoint))) {
-            error_log("Using custom S3 endpoint: " . $endpoint);
-            $s3Config['endpoint'] = $endpoint;
-        } else {
-            error_log("No custom S3 endpoint configured, using default AWS endpoints");
+        if ($aws_endpoint) {
+            $s3Config['endpoint'] = $aws_endpoint;
         }
 
-        error_log("Configuração S3:");
-        error_log("Region: " . (getenv('AWS_DEFAULT_REGION') ?: 'não definido'));
-        error_log("Endpoint: " . (getenv('AWS_ENDPOINT') ?: 'não definido'));
-        error_log("Access Key definida: " . (getenv('AWS_ACCESS_KEY_ID') ? 'sim' : 'não'));
-        error_log("Secret Key definida: " . (getenv('AWS_SECRET_ACCESS_KEY') ? 'sim' : 'não'));
-
         try {
+            error_log("Iniciando cliente S3 com config: " . json_encode(array_merge(
+                $s3Config,
+                ['credentials' => ['key' => '***', 'secret' => '***']]
+            )));
+
             $this->s3Client = new S3Client($s3Config);
-            error_log("Cliente S3 inicializado com sucesso");
-            
-            // Testa a conexão
-            $this->s3Client->listBuckets();
-            error_log("Conexão S3 testada com sucesso");
+            error_log("Cliente S3 inicializado");
+
+            // Teste de conexão
+            $result = $this->s3Client->listBuckets();
+            error_log("Buckets disponíveis: " . json_encode($result['Buckets']));
+        } catch (AwsException $e) {
+            error_log("Erro AWS: " . $e->getMessage());
+            error_log("AWS Error Code: " . $e->getAwsErrorCode());
+            error_log("AWS Error Type: " . $e->getAwsErrorType());
+            error_log("AWS Request ID: " . $e->getAwsRequestId());
+            throw $e;
         } catch (Exception $e) {
-            error_log("Erro ao inicializar S3: " . $e->getMessage());
+            error_log("Erro geral ao inicializar S3: " . $e->getMessage());
             throw $e;
         }
     }
