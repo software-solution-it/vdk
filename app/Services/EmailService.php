@@ -521,7 +521,7 @@ class EmailService {
                 $query = "
                     SELECT 
                         id, 
-                        content_type as mime_type, 
+                        mime_type,
                         filename,
                         s3_key,
                         content_hash,
@@ -588,7 +588,7 @@ class EmailService {
             $query = "
                 SELECT 
                     id, 
-                    content_type as mime_type, 
+                    mime_type,
                     filename, 
                     content,
                     s3_key,
