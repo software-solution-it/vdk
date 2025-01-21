@@ -786,9 +786,9 @@ class Email {
         }
     }
 
-    public function getEmailsByFolderId($folder_id, $limit = 10, $page = 1, $order = 'DESC') {
+    public function getEmailsByFolder($folder_id, $page = 1, $per_page = 10) {
         try {
-            $offset = ($page - 1) * $limit;
+            $offset = ($page - 1) * $per_page;
             
             $query = "
                 SELECT 
@@ -809,13 +809,13 @@ class Email {
                     ) as attachments
                 FROM " . $this->table . " e
                 WHERE e.folder_id = :folder_id
-                ORDER BY e.date_received " . $order . "
-                LIMIT :limit OFFSET :offset
+                ORDER BY e.date_received DESC
+                LIMIT :per_page OFFSET :offset
             ";
 
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':folder_id', $folder_id, PDO::PARAM_INT);
-            $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
+            $stmt->bindParam(':per_page', $per_page, PDO::PARAM_INT);
             $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
             $stmt->execute();
 
@@ -881,6 +881,19 @@ class Email {
             $countStmt->bindParam(':folder_id', $folder_id, PDO::PARAM_INT);
             $countStmt->execute();
             $totalCount = $countStmt->fetch(PDO::FETCH_ASSOC)['total'];
+
+            // Sanitize and decode HTML entities in the results
+            foreach ($emails as &$email) {
+                if (isset($email['body_html'])) {
+                    $email['body_html'] = html_entity_decode($email['body_html'], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                }
+                if (isset($email['body_text'])) {
+                    $email['body_text'] = html_entity_decode($email['body_text'], ENT_QUOTES | ENT_HTML5, 'UTF-8'); 
+                }
+                if (isset($email['subject'])) {
+                    $email['subject'] = html_entity_decode($email['subject'], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                }
+            }
 
             return [
                 'total' => (int)$totalCount,
