@@ -348,26 +348,32 @@ class EmailController {
         try {
             $result = $this->emailService->listEmails($folder_id, $folder_name, $limit, $offset, $order);
             
-            if ($result) {
+            if ($result && isset($result['data'])) {
                 // Sanitize HTML content before returning
                 if (!empty($result['data']['emails'])) {
                     foreach ($result['data']['emails'] as &$email) {
                         // Convert HTML entities and strip unnecessary whitespace
                         $email['body_html'] = htmlspecialchars($email['body_html'], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                        
+                        // Optional: Strip excessive whitespace while preserving structure
+                        $email['body_html'] = preg_replace('/\s+/', ' ', $email['body_html']);
                     }
                 }
                 
                 return [
-                    'status' => 'Success',
-                    'message' => 'Emails retrieved successfully',
-                    'data' => $result['data']
+                    'Status' => 'Success',
+                    'Message' => 'Emails retrieved successfully',
+                    'Data' => $result['data']
                 ];
             }
             
             return [
-                'status' => 'Error',
-                'message' => 'No emails found',
-                'data' => null
+                'Status' => 'Success',
+                'Message' => 'No emails found',
+                'Data' => [
+                    'total' => 0,
+                    'emails' => []
+                ]
             ];
             
         } catch (Exception $e) {
