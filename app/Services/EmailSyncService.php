@@ -77,9 +77,6 @@ class EmailSyncService
             $this->s3Client = new S3Client($s3Config);
             error_log("Cliente S3 inicializado com sucesso");
             
-            // Teste de conexão
-            $result = $this->s3Client->listBuckets();
-            error_log("Buckets disponíveis: " . json_encode($result['Buckets']));
         } catch (AwsException $e) {
             error_log("Erro AWS: " . $e->getMessage());
             error_log("AWS Error Code: " . $e->getAwsErrorCode());
