@@ -10,11 +10,11 @@ class S3Service {
     private $bucketName;
 
     public function __construct() {
-        // Carrega as credenciais
-        $accessKey = getenv('AWS_ACCESS_KEY_ID');
-        $secretKey = getenv('AWS_SECRET_ACCESS_KEY');
-        $region = getenv('AWS_DEFAULT_REGION') ?: 'sa-east-1';
-        $this->bucketName = getenv('AWS_BUCKET') ?: 'vdkmail';
+        // Carrega as credenciais usando $_ENV
+        $accessKey = $_ENV['AWS_ACCESS_KEY_ID'] ?? null;
+        $secretKey = $_ENV['AWS_SECRET_ACCESS_KEY'] ?? null;
+        $region = $_ENV['AWS_DEFAULT_REGION'] ?? 'sa-east-1';
+        $this->bucketName = $_ENV['AWS_BUCKET'] ?? 'vdkmail';
 
         // Debug
         error_log("AWS Access Key: " . ($accessKey ? 'set' : 'not set'));
@@ -22,7 +22,7 @@ class S3Service {
         error_log("AWS Region: " . $region);
         error_log("AWS Bucket: " . $this->bucketName);
 
-        // Valida as credenciais antes de criar o cliente
+        // Valida as credenciais
         if (empty($accessKey) || empty($secretKey)) {
             throw new Exception("AWS credentials are not properly configured");
         }
