@@ -765,16 +765,20 @@ class EmailService {
 
     private function processAttachments($attachments) {
         try {
+            if (!$this->s3Service || !$this->s3Service->getBucketName()) {
+                throw new Exception("S3 service not properly configured");
+            }
+
             foreach ($attachments as &$attachment) {
-                if ($attachment['s3_key']) {
+                if (!empty($attachment['s3_key'])) {
                     try {
-                        // Generate presigned URL
-                        $attachment['presigned_url'] = $this->s3Service->generatePresignedUrl($attachment['s3_key']);
+                        $presignedUrl = $this->s3Service->generatePresignedUrl($attachment['s3_key']);
                         
-                        // Verify the presigned URL was generated
-                        if (!$attachment['presigned_url']) {
+                        if (!$presignedUrl) {
                             throw new Exception("Failed to generate presigned URL for " . $attachment['s3_key']);
                         }
+                        
+                        $attachment['presigned_url'] = $presignedUrl;
                     } catch (Exception $e) {
                         $this->errorLogController->logError(
                             "Error generating presigned URL: " . $e->getMessage(),

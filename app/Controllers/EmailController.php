@@ -344,12 +344,16 @@ class EmailController {
 
 
     public function listEmails($folder_id = null, $folder_name = null, $limit = 10, $offset = 0) {
+        // Define o cabeçalho como JSON logo no início
+        header('Content-Type: application/json; charset=utf-8');
+
         try {
             if ($limit <= 0) {
                 http_response_code(400);
                 echo json_encode([
                     'Status' => 'Error',
-                    'Message' => 'O parâmetro "limit" deve ser um número inteiro positivo.'
+                    'Message' => 'O parâmetro "limit" deve ser um número inteiro positivo.',
+                    'Data' => null
                 ]);
                 return;
             }
@@ -364,14 +368,16 @@ class EmailController {
                     'total' => $result['total'],
                     'emails' => $result['emails']
                 ]
-            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRESERVE_ZERO_FRACTION);
 
         } catch (Exception $e) {
+            $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
             http_response_code(500);
             echo json_encode([
                 'Status' => 'Error',
-                'Message' => $e->getMessage()
-            ]);
+                'Message' => $e->getMessage(),
+                'Data' => null
+            ], JSON_UNESCAPED_UNICODE);
         }
     }
     
@@ -552,7 +558,8 @@ class EmailController {
     
 
     public function viewEmail($email_id) {
-        header('Content-Type: application/json');
+        // Define o cabeçalho como JSON logo no início
+        header('Content-Type: application/json; charset=utf-8');
         
         $order = isset($_GET['order']) ? $_GET['order'] : 'DESC';
     
@@ -581,7 +588,7 @@ class EmailController {
                     'Status' => 'Success',
                     'Message' => 'Email retrieved successfully.',
                     'Data' => $email
-                ]);
+                ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             } else {
                 http_response_code(404);
                 echo json_encode([
