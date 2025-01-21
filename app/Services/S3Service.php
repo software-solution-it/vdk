@@ -55,10 +55,18 @@ class S3Service {
                 return null;
             }
 
-            // Verifica se o objeto existe antes de gerar a URL
+            // Primeiro, tenta o caminho original
             if (!$this->s3Client->doesObjectExist($this->bucketName, $key)) {
-                error_log("S3 object does not exist: {$key}");
-                return null;
+                // Se não encontrar, tenta o caminho alternativo
+                $alternativePath = 'attachments/' . basename(dirname($key)) . '/' . basename($key);
+                
+                if (!$this->s3Client->doesObjectExist($this->bucketName, $alternativePath)) {
+                    error_log("S3 object does not exist in either path: {$key} or {$alternativePath}");
+                    return null;
+                }
+                
+                // Se encontrou no caminho alternativo, usa ele
+                $key = $alternativePath;
             }
 
             $cmd = $this->s3Client->getCommand('GetObject', [

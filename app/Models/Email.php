@@ -816,33 +816,68 @@ class Email {
                         foreach ($attachments as &$attachment) {
                             if (!empty($attachment['s3_key'])) {
                                 try {
-                                    // Definindo a região padrão caso não esteja configurada
-                                    $region = getenv('AWS_REGION');
-                                    if (!$region) {
-                                        $region = 'us-east-1'; // Região padrão
+                                    // Verificar se o objeto existe no S3 antes de gerar a URL
+                                    $awsCredential = new AwsCredential($this->conn);
+                                    $credentials = $awsCredential->getCredentials();
+                                    
+                                    if (!$credentials) {
+                                        throw new Exception("Credenciais AWS não encontradas");
                                     }
 
                                     $s3Client = new \Aws\S3\S3Client([
                                         'version' => 'latest',
-                                        'region'  => $region,
+                                        'region'  => $credentials['region'],
                                         'credentials' => [
-                                            'key'    => getenv('AWS_ACCESS_KEY_ID'),
-                                            'secret' => getenv('AWS_SECRET_ACCESS_KEY'),
+                                            'key'    => $credentials['access_key_id'],
+                                            'secret' => $credentials['secret_access_key'],
                                         ]
                                     ]);
 
-                                    $bucket = getenv('AWS_BUCKET');
-                                    if (!$bucket) {
-                                        $bucket = 'vdkmail'; // Bucket padrão
+                                    // Verificar se o objeto existe
+                                    try {
+                                        $s3Client->headObject([
+                                            'Bucket' => $credentials['bucket'],
+                                            'Key'    => $attachment['s3_key']
+                                        ]);
+
+                                        // Se chegou aqui, o objeto existe
+                                        $command = $s3Client->getCommand('GetObject', [
+                                            'Bucket' => $credentials['bucket'],
+                                            'Key'    => $attachment['s3_key']
+                                        ]);
+
+                                        $request = $s3Client->createPresignedRequest($command, '+1 hour');
+                                        $attachment['presigned_url'] = (string) $request->getUri();
+                                    } catch (\Aws\S3\Exception\S3Exception $e) {
+                                        // Se o objeto não existe, tenta um caminho alternativo
+                                        $alternativePath = 'attachments/' . basename(dirname($attachment['s3_key'])) . '/' . basename($attachment['s3_key']);
+                                        
+                                        try {
+                                            $s3Client->headObject([
+                                                'Bucket' => $credentials['bucket'],
+                                                'Key'    => $alternativePath
+                                            ]);
+
+                                            // Se chegou aqui, o objeto existe no caminho alternativo
+                                            $command = $s3Client->getCommand('GetObject', [
+                                                'Bucket' => $credentials['bucket'],
+                                                'Key'    => $alternativePath
+                                            ]);
+
+                                            $request = $s3Client->createPresignedRequest($command, '+1 hour');
+                                            $attachment['presigned_url'] = (string) $request->getUri();
+                                            
+                                            // Atualizar o s3_key no banco de dados
+                                            $this->updateAttachmentS3Key($attachment['id'], $alternativePath);
+                                        } catch (\Aws\S3\Exception\S3Exception $e2) {
+                                            $this->errorLogController->logError(
+                                                "Arquivo não encontrado no S3: " . $attachment['s3_key'] . " nem em " . $alternativePath,
+                                                __FILE__,
+                                                __LINE__
+                                            );
+                                            $attachment['presigned_url'] = null;
+                                        }
                                     }
-
-                                    $command = $s3Client->getCommand('GetObject', [
-                                        'Bucket' => $bucket,
-                                        'Key'    => $attachment['s3_key']
-                                    ]);
-
-                                    $request = $s3Client->createPresignedRequest($command, '+1 hour');
-                                    $attachment['presigned_url'] = (string) $request->getUri();
                                 } catch (Exception $e) {
                                     $this->errorLogController->logError(
                                         "Erro ao gerar URL pré-assinada: " . $e->getMessage(),
@@ -894,6 +929,26 @@ class Email {
                 __LINE__
             );
             throw new Exception("Erro ao buscar e-mails por pasta: " . $e->getMessage());
+        }
+    }
+
+    // Adicionar este novo método para atualizar o s3_key
+    private function updateAttachmentS3Key($attachment_id, $new_s3_key) {
+        try {
+            $query = "UPDATE " . $this->attachmentsTable . " 
+                     SET s3_key = :s3_key 
+                     WHERE id = :id";
+            
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':s3_key', $new_s3_key);
+            $stmt->bindParam(':id', $attachment_id);
+            $stmt->execute();
+        } catch (Exception $e) {
+            $this->errorLogController->logError(
+                "Erro ao atualizar s3_key do anexo: " . $e->getMessage(),
+                __FILE__,
+                __LINE__
+            );
         }
     }
 
