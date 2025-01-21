@@ -409,27 +409,7 @@ class EmailService {
             foreach ($emails as &$email) {
                 // Processar HTML
                 if (isset($email['body_html'])) {
-                    // Remove scripts e styles
-                    $html = preg_replace('/<script\b[^>]*>(.*?)<\/script>/is', '', $email['body_html']);
-                    $html = preg_replace('/<style\b[^>]*>(.*?)<\/style>/is', '', $html);
-                    
-                    // Cria um DOMDocument para manipular o HTML corretamente
-                    $dom = new \DOMDocument();
-                    @$dom->loadHTML(mb_convert_encoding($html, 'HTML-ENTITIES', 'UTF-8'), LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
-                    
-                    // Obtém o texto para verificar o tamanho
-                    $textContent = $dom->textContent;
-                    $textContent = preg_replace('/\s+/', ' ', $textContent);
-                    $textContent = trim($textContent);
-                    
-                    // Se precisar truncar
-                    if (mb_strlen($textContent) > 300) {
-                        // Mantém o HTML original, mas adiciona um comentário indicando que foi truncado
-                        $html = preg_replace('/>\s+</', '><', $html); // Remove espaços entre tags
-                        $html = mb_substr($html, 0, 1000) . '<!-- truncated -->';
-                    }
-                    
-                    $email['body_html'] = $html;
+                    $email['body_html'] = null;
                 }
 
                 // Processar texto plano
