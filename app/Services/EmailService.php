@@ -201,7 +201,6 @@ class EmailService {
     
     
     
-    
 
 
     public function deleteEmail($email_id) {
@@ -404,15 +403,24 @@ class EmailService {
 
             // Processar cada email
             foreach ($emails as &$email) {
-                // Decodificar HTML entities
+                // Limpar e sanitizar o HTML
                 if (isset($email['body_html'])) {
-                    $email['body_html'] = base64_encode($email['body_html']);
+                    // Remove quebras de linha extras e espaços
+                    $html = preg_replace('/\s+/', ' ', $email['body_html']);
+                    $html = preg_replace('/>\s+</', '><', $html);
+                    $html = trim($html);
+                    
+                    // Garantir que caracteres especiais sejam tratados corretamente
+                    $html = html_entity_decode($html, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                    
+                    // Escapar caracteres especiais para JSON
+                    $email['body_html'] = json_encode($html, JSON_HEX_QUOT | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_UNESCAPED_UNICODE);
+                    $email['body_html'] = substr($email['body_html'], 1, -1); // Remove as aspas extras do json_encode
                 }
+
+                // Limpar texto plano
                 if (isset($email['body_text'])) {
-                    $email['body_text'] = html_entity_decode($email['body_text'], ENT_QUOTES | ENT_HTML5, 'UTF-8');
-                }
-                if (isset($email['subject'])) {
-                    $email['subject'] = html_entity_decode($email['subject'], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                    $email['body_text'] = trim(preg_replace('/\s+/', ' ', $email['body_text']));
                 }
 
                 // Processar anexos
@@ -433,7 +441,7 @@ class EmailService {
                 }
             }
 
-            // Obter contagem total
+            // Contagem total
             $countQuery = "SELECT COUNT(*) as total FROM emails WHERE folder_id = :folder_id";
             $countStmt = $this->db->prepare($countQuery);
             $countStmt->bindParam(':folder_id', $folder_id, PDO::PARAM_INT);
