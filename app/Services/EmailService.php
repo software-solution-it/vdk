@@ -404,22 +404,27 @@ class EmailService {
             foreach ($emails as &$email) {
                 // Limpar e sanitizar o HTML
                 if (isset($email['body_html'])) {
-                    // Remove quebras de linha extras e espaços
-                    $html = preg_replace('/\s+/', ' ', $email['body_html']);
-                    $html = preg_replace('/>\s+</', '><', $html);
-                    $html = trim($html);
+                    // Remove tags de script e style completamente
+                    $html = preg_replace('/<script\b[^>]*>(.*?)<\/script>/is', '', $email['body_html']);
+                    $html = preg_replace('/<style\b[^>]*>(.*?)<\/style>/is', '', $html);
                     
-                    // Garantir que caracteres especiais sejam tratados corretamente
+                    // Converte entidades HTML
                     $html = html_entity_decode($html, ENT_QUOTES | ENT_HTML5, 'UTF-8');
                     
-                    // Limitar a 300 caracteres e adicionar reticências se necessário
-                    if (mb_strlen($html) > 300) {
-                        $html = mb_substr($html, 0, 300) . '...';
+                    // Remove tags HTML mantendo apenas o texto
+                    $text = strip_tags($html);
+                    
+                    // Remove quebras de linha extras e espaços
+                    $text = preg_replace('/\s+/', ' ', $text);
+                    $text = trim($text);
+                    
+                    // Limita a 300 caracteres
+                    if (mb_strlen($text) > 300) {
+                        $text = mb_substr($text, 0, 300) . '...';
                     }
                     
-                    // Escapar caracteres especiais para JSON
-                    $email['body_html'] = json_encode($html, JSON_HEX_QUOT | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_UNESCAPED_UNICODE);
-                    $email['body_html'] = substr($email['body_html'], 1, -1); // Remove as aspas extras do json_encode
+                    // Atribui o texto limpo sem escapar
+                    $email['body_html'] = $text;
                 }
 
                 // Limpar texto plano
