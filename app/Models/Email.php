@@ -660,7 +660,7 @@ class Email {
     public function toggleFavorite($email_id, $email_account_id) {
         try {
             // First, check if email exists
-            $query = "SELECT is_favorite FROM " . $this->table . " 
+            $query = "SELECT is_favorite, user_id FROM " . $this->table . " 
                      WHERE email_id = :email_id AND email_account_id = :email_account_id";
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':email_id', $email_id);
@@ -687,6 +687,7 @@ class Email {
             if ($stmt->execute()) {
                 return ['status' => true, 'is_favorite' => $newValue];
             }
+
             return ['status' => false, 'message' => 'Falha ao atualizar favorito'];
 
         } catch (Exception $e) {
@@ -694,7 +695,7 @@ class Email {
                 "Erro ao alternar favorito: " . $e->getMessage(),
                 __FILE__,
                 __LINE__,
-                $email_account_id
+                $current['user_id'] ?? null // Usando o user_id do email ou null se não existir
             );
             throw $e;
         }
