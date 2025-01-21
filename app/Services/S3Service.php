@@ -56,7 +56,8 @@ class S3Service {
     public function generatePresignedUrl($key) {
         try {
             if (empty($key)) {
-                throw new Exception("S3 key cannot be empty");
+                error_log("S3 Error: Empty key provided");
+                return null;
             }
 
             // Verifica se o objeto existe antes de gerar a URL
