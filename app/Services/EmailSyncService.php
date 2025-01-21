@@ -258,9 +258,20 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
 
     private function syncEmails($user_id, $email_account_id, $provider_id, $email, $imap_host, $imap_port, $password)
     {
-        error_log("Sincronizando e-mails para o usuário $user_id e provedor $provider_id");
-    
         try {
+            $this->errorLogController->logError(
+                "Iniciando sincronização de emails",
+                __FILE__,
+                __LINE__,
+                $user_id,
+                [
+                    'email_account_id' => $email_account_id,
+                    'provider_id' => $provider_id,
+                    'imap_host' => $imap_host,
+                    'imap_port' => $imap_port
+                ]
+            );
+
             $server = new Server($imap_host, $imap_port);
             $connection = $server->authenticate($email, $password);
 
@@ -446,6 +457,17 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
 
                         if ($message->hasAttachments()) {
                             $attachments = $message->getAttachments();
+                            $this->errorLogController->logError(
+                                "Processando anexos",
+                                __FILE__,
+                                __LINE__,
+                                $user_id,
+                                [
+                                    'message_id' => $message->getId(),
+                                    'num_attachments' => count($attachments)
+                                ]
+                            );
+
                             $cidMap = [];
                             
                             error_log("Processando " . count($attachments) . " anexos");
@@ -498,13 +520,75 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                                 }
 
                                 try {
-                                    $result = $this->processAttachment($attachment, $email_account_id);
-                                    $this->logDebug("Anexo processado com sucesso: " . $filename);
+                                    $content = $attachment->getDecodedContent();
+                                    $contentType = $attachment->getType() . '/' . $attachment->getSubtype();
+                                    $contentHash = hash('sha256', $content);
+                                    $s3Key = "attachments/{$contentHash}/{$filename}";
+
+                                    $this->errorLogController->logError(
+                                        "Tentando upload para S3",
+                                        __FILE__,
+                                        __LINE__,
+                                        $user_id,
+                                        [
+                                            'filename' => $filename,
+                                            'content_type' => $contentType,
+                                            'content_hash' => $contentHash,
+                                            's3_key' => $s3Key,
+                                            'size' => strlen($content)
+                                        ]
+                                    );
+
+                                    try {
+                                        $result = $this->s3Client->putObject([
+                                            'Bucket' => $this->bucketName,
+                                            'Key'    => $s3Key,
+                                            'Body'   => $content,
+                                            'ContentType' => $contentType,
+                                            'Metadata' => [
+                                                'content_hash' => $contentHash,
+                                                'original_filename' => $filename
+                                            ]
+                                        ]);
+
+                                        $this->errorLogController->logError(
+                                            "Upload S3 bem sucedido",
+                                            __FILE__,
+                                            __LINE__,
+                                            $user_id,
+                                            [
+                                                's3_key' => $s3Key,
+                                                'result' => json_encode($result)
+                                            ]
+                                        );
+
+                                    } catch (Exception $e) {
+                                        $this->errorLogController->logError(
+                                            "Erro no upload S3",
+                                            __FILE__,
+                                            __LINE__,
+                                            $user_id,
+                                            [
+                                                'error' => $e->getMessage(),
+                                                'filename' => $filename,
+                                                's3_key' => $s3Key,
+                                                'stack_trace' => $e->getTraceAsString()
+                                            ]
+                                        );
+                                        throw $e;
+                                    }
+
                                 } catch (Exception $e) {
                                     $this->errorLogController->logError(
-                                        "Erro ao processar anexo {$filename}: " . $e->getMessage(),
+                                        "Erro ao processar anexo",
                                         __FILE__,
-                                        __LINE__
+                                        __LINE__,
+                                        $user_id,
+                                        [
+                                            'error' => $e->getMessage(),
+                                            'filename' => $attachment->getFilename(),
+                                            'stack_trace' => $e->getTraceAsString()
+                                        ]
                                     );
                                 }
                             }
@@ -602,20 +686,17 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
             }
             
         } catch (Exception $e) {
-            $event = [
-                'type' => 'email_processing_failed',
-                'Status' => 'Failed',
-                'Message' => 'Failed to process email',
-                'Data' => [
-                    'email_account_id' => $email_account_id,
-                    'message_id' => $messageId ?? null,
+            $this->errorLogController->logError(
+                "Erro fatal na sincronização",
+                __FILE__,
+                __LINE__,
+                $user_id,
+                [
                     'error' => $e->getMessage(),
-                    'user_id' => $user_id,
-                    'uuid' => uniqid(),
+                    'stack_trace' => $e->getTraceAsString()
                 ]
-            ];
-            $this->webhookService->triggerEvent($event, $user_id);
-            error_log("Erro durante a sincronização de e-mails: " . $e->getMessage());
+            );
+            throw $e;
         }
         return;
     }
