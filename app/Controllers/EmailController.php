@@ -651,21 +651,24 @@ class EmailController {
         try {
             $attachments = $this->emailService->getAttachmentsByEmailId($emailId);
             
-            // Only return success status if attachments were actually retrieved
             if ($attachments !== null) {
-                http_response_code(200);
-                echo json_encode([
+                return json_encode([
                     'status' => 'Success',
                     'message' => 'Attachments retrieved successfully',
                     'data' => $attachments
                 ]);
             }
             
+            return json_encode([
+                'status' => 'Error',
+                'message' => 'No attachments found',
+                'data' => null
+            ]);
+            
         } catch (Exception $e) {
             $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
             
-            http_response_code(500);
-            echo json_encode([
+            return json_encode([
                 'status' => 'Error',
                 'message' => 'Error retrieving attachments: ' . $e->getMessage(),
                 'data' => null

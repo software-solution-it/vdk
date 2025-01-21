@@ -16,8 +16,7 @@ class S3Service {
             'credentials' => [
                 'key'    => 'AKIAU72LGEZVJUF3CXXE',
                 'secret' => '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',
-            ],
-            'endpoint'    => 'https://s3.sa-east-1.amazonaws.com'
+            ]
         ];
 
         try {
@@ -30,15 +29,15 @@ class S3Service {
 
     public function generatePresignedUrl($key) {
         try {
-            $command = $this->s3Client->getCommand('GetObject', [
+            $cmd = $this->s3Client->getCommand('GetObject', [
                 'Bucket' => $this->bucketName,
                 'Key'    => $key
             ]);
-
-            $request = $this->s3Client->createPresignedRequest($command, '+1 hour');
-            return (string) $request->getUri();
+            
+            return (string) $this->s3Client->createPresignedRequest($cmd, '+1 hour')->getUri();
         } catch (Exception $e) {
-            throw new Exception("Error generating presigned URL: " . $e->getMessage());
+            error_log("S3 Error: " . $e->getMessage());
+            return null;
         }
     }
 } 
