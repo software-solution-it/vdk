@@ -412,6 +412,11 @@ class EmailService {
                     // Garantir que caracteres especiais sejam tratados corretamente
                     $html = html_entity_decode($html, ENT_QUOTES | ENT_HTML5, 'UTF-8');
                     
+                    // Limitar a 300 caracteres e adicionar reticências se necessário
+                    if (mb_strlen($html) > 300) {
+                        $html = mb_substr($html, 0, 300) . '...';
+                    }
+                    
                     // Escapar caracteres especiais para JSON
                     $email['body_html'] = json_encode($html, JSON_HEX_QUOT | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_UNESCAPED_UNICODE);
                     $email['body_html'] = substr($email['body_html'], 1, -1); // Remove as aspas extras do json_encode
