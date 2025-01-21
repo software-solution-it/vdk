@@ -367,7 +367,6 @@ class EmailService {
     
     public function listEmails($folder_id = null, $folder_name = null, $limit = 10, $offset = 0, $order = 'DESC') {
         try {
-            // Query base para emails
             $query = "
                 SELECT 
                     e.*,

@@ -4,48 +4,43 @@ namespace App\Services;
 
 use Aws\S3\S3Client;
 use Exception;
+use App\Models\AwsCredential;
 
 class S3Service {
     private $s3Client;
     private $bucketName;
 
-    public function __construct() {
-        // Carrega as credenciais usando $_ENV
-        $accessKey = $_ENV['AWS_ACCESS_KEY_ID'] ?? null;
-        $secretKey = $_ENV['AWS_SECRET_ACCESS_KEY'] ?? null;
-        $region = $_ENV['AWS_DEFAULT_REGION'] ?? 'sa-east-1';
-        $this->bucketName = $_ENV['AWS_BUCKET'] ?? 'vdkmail';
-
-        // Debug
-        error_log("AWS Access Key: " . ($accessKey ? 'set' : 'not set'));
-        error_log("AWS Secret Key: " . ($secretKey ? 'set' : 'not set'));
-        error_log("AWS Region: " . $region);
-        error_log("AWS Bucket: " . $this->bucketName);
-
-        // Valida as credenciais
-        if (empty($accessKey) || empty($secretKey)) {
-            throw new Exception("AWS credentials are not properly configured");
-        }
-
-        if (empty($this->bucketName)) {
-            throw new Exception("AWS bucket name is not configured");
-        }
-
+    public function __construct($db) {
         try {
+            $awsCredential = new AwsCredential($db);
+            $credentials = $awsCredential->getCredentials();
+            
+            if (!$credentials) {
+                throw new Exception("Credenciais AWS não encontradas no banco de dados");
+            }
+
+            $this->bucketName = $credentials['bucket'];
+            
             $config = [
                 'version'     => 'latest',
-                'region'      => $region,
+                'region'      => $credentials['region'],
                 'credentials' => [
-                    'key'    => $accessKey,
-                    'secret' => $secretKey,
+                    'key'    => $credentials['access_key_id'],
+                    'secret' => $credentials['secret_access_key'],
                 ],
                 'signature_version' => 'v4'
             ];
 
+            if (!empty($credentials['endpoint'])) {
+                $config['endpoint'] = $credentials['endpoint'];
+            }
+
             $this->s3Client = new S3Client($config);
+            error_log("Cliente S3 inicializado com sucesso");
 
         } catch (Exception $e) {
-            throw new Exception("Error initializing S3 client: " . $e->getMessage());
+            error_log("Erro ao inicializar S3 client: " . $e->getMessage());
+            throw new Exception("Erro ao inicializar S3 client: " . $e->getMessage());
         }
     }
 
@@ -77,6 +72,33 @@ class S3Service {
         } catch (Exception $e) {
             error_log("S3 Error: " . $e->getMessage());
             return null;
+        }
+    }
+
+    public function putObject($key, $content, $contentType, $metadata = []) {
+        try {
+            return $this->s3Client->putObject([
+                'Bucket' => $this->bucketName,
+                'Key'    => $key,
+                'Body'   => $content,
+                'ContentType' => $contentType,
+                'Metadata' => $metadata
+            ]);
+        } catch (Exception $e) {
+            error_log("S3 Error ao fazer upload: " . $e->getMessage());
+            throw new Exception("Erro ao fazer upload para S3: " . $e->getMessage());
+        }
+    }
+
+    public function deleteObject($key) {
+        try {
+            return $this->s3Client->deleteObject([
+                'Bucket' => $this->bucketName,
+                'Key'    => $key
+            ]);
+        } catch (Exception $e) {
+            error_log("S3 Error ao deletar objeto: " . $e->getMessage());
+            throw new Exception("Erro ao deletar objeto do S3: " . $e->getMessage());
         }
     }
 } 
