@@ -350,45 +350,49 @@ class EmailController {
             
             // Garantir que temos um resultado válido
             if (!$result) {
-                return [
+                http_response_code(200);
+                echo json_encode([
                     'Status' => 'Success',
                     'Message' => 'No emails found',
                     'Data' => [
                         'total' => 0,
                         'emails' => []
                     ]
-                ];
+                ]);
+                return;
             }
             
             // Sanitize HTML content before returning
             if (!empty($result['emails'])) {
                 foreach ($result['emails'] as &$email) {
-                    // Remove apenas espaços em branco excessivos
+                    // Remover espaços em branco excessivos
                     $email['body_html'] = preg_replace('/\s+/', ' ', $email['body_html']);
                     
-                    // Opcional: Limitar tamanho do conteúdo se necessário
+                    // Limitar tamanho se necessário
                     if (strlen($email['body_html']) > 10000) {
                         $email['body_html'] = substr($email['body_html'], 0, 10000) . '...';
                     }
                 }
             }
             
-            return [
+            http_response_code(200);
+            echo json_encode([
                 'Status' => 'Success',
                 'Message' => 'Emails retrieved successfully',
                 'Data' => [
                     'total' => $result['total'] ?? 0,
                     'emails' => $result['emails'] ?? []
                 ]
-            ];
+            ]);
             
         } catch (Exception $e) {
             error_log("Error in listEmails: " . $e->getMessage());
-            return [
+            http_response_code(500);
+            echo json_encode([
                 'Status' => 'Error',
                 'Message' => 'Error retrieving emails: ' . $e->getMessage(),
                 'Data' => null
-            ];
+            ]);
         }
     }
     

@@ -236,31 +236,13 @@ switch ($request_uri[0]) {
         break;
 
     case '/api/email/list':
-        try {
-            $emailController = new EmailController();
-            $folder_id = $_GET['folder_id'] ?? null;
-            $limit = (int)($_GET['limit'] ?? 10);
-            $page = (int)($_GET['page'] ?? 1);
-            $offset = ($page - 1) * $limit;
-            
-            $result = $emailController->listEmails($folder_id, null, $limit, $offset);
-            
-            if ($result['Status'] === 'Success') {
-                http_response_code(200);
-            } else {
-                http_response_code(500);
-            }
-            
-            echo json_encode($result);
-            
-        } catch (Exception $e) {
-            http_response_code(500);
-            echo json_encode([
-                'Status' => 'Error',
-                'Message' => $e->getMessage(),
-                'Data' => null
-            ]);
-        }
+        $emailController = new EmailController();
+        $folder_id = $_GET['folder_id'] ?? null;
+        $limit = (int)($_GET['limit'] ?? 10);
+        $page = (int)($_GET['page'] ?? 1);
+        $offset = ($page - 1) * $limit;
+        
+        $emailController->listEmails($folder_id, null, $limit, $offset);
         break;
 
     case '/api/folders/associate':
