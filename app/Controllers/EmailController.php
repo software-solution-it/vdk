@@ -7,7 +7,6 @@ use App\Config\Database;
 use App\Controllers\ErrorLogController;
 use Exception;
 use App\Models\EmailFolder;
-use App\Models\Email;
 
 class EmailController {
     private $emailService;
@@ -344,56 +343,35 @@ class EmailController {
     }
 
 
-    public function listEmails($folder_id = null, $folder_name = null, $limit = 10, $offset = 0, $order = 'DESC') {
+    public function listEmails($folder_id = null, $folder_name = null, $limit = 10, $offset = 0) {
         try {
-            $result = $this->emailService->listEmails($folder_id, $folder_name, $limit, $offset, $order);
-            
-            // Garantir que temos um resultado válido
-            if (!$result) {
-                http_response_code(200);
+            if ($limit <= 0) {
+                http_response_code(400);
                 echo json_encode([
-                    'Status' => 'Success',
-                    'Message' => 'No emails found',
-                    'Data' => [
-                        'total' => 0,
-                        'emails' => []
-                    ]
-                ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+                    'Status' => 'Error',
+                    'Message' => 'O parâmetro "limit" deve ser um número inteiro positivo.'
+                ]);
                 return;
             }
-            
-            // Sanitize HTML content before returning
-            if (!empty($result['emails'])) {
-                foreach ($result['emails'] as &$email) {
-                    // Converter HTML para base64 para evitar problemas de escape
-                    if (isset($email['body_html'])) {
-                        $email['body_html'] = base64_encode($email['body_html']);
-                    }
-                    
-                    if (isset($email['body_text'])) {
-                        $email['body_text'] = trim(preg_replace('/\s+/', ' ', $email['body_text']));
-                    }
-                }
-            }
+
+            $result = $this->emailService->listEmails($folder_id, $folder_name, $limit, $offset);
             
             http_response_code(200);
             echo json_encode([
                 'Status' => 'Success',
                 'Message' => 'Emails retrieved successfully',
                 'Data' => [
-                    'total' => $result['total'] ?? 0,
-                    'emails' => $result['emails'] ?? []
+                    'total' => $result['total'],
+                    'emails' => $result['emails']
                 ]
-            ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-            
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
         } catch (Exception $e) {
-            error_log("Error in listEmails: " . $e->getMessage());
             http_response_code(500);
             echo json_encode([
                 'Status' => 'Error',
-                'Message' => 'Error retrieving emails: ' . $e->getMessage(),
-                'Data' => null
-            ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+                'Message' => $e->getMessage()
+            ]);
         }
     }
     
@@ -654,30 +632,30 @@ class EmailController {
         }
     }
 
-    public function getAttachmentsByEmailId($emailId) {
+    public function getAttachmentsByEmailId($email_id) {
         try {
-            $attachments = $this->emailService->getAttachmentsByEmailId($emailId);
+            $attachments = $this->emailService->getAttachmentsByEmailId($email_id);
             
-            if ($attachments !== null) {
-                return json_encode([
-                    'status' => 'Success',
-                    'message' => 'Attachments retrieved successfully',
-                    'data' => $attachments
-                ]);
-            }
+            // Define o cabeçalho como JSON
+            header('Content-Type: application/json');
             
-            return json_encode([
-                'status' => 'Error',
-                'message' => 'No attachments found',
-                'data' => null
-            ]);
+            http_response_code(200);
+            echo json_encode([
+                'status' => true,
+                'message' => 'Anexos recuperados com sucesso',
+                'data' => [
+                    'total' => count($attachments),
+                    'attachments' => $attachments
+                ]
+            ], JSON_UNESCAPED_UNICODE);
             
         } catch (Exception $e) {
             $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
             
-            return json_encode([
-                'status' => 'Error',
-                'message' => 'Error retrieving attachments: ' . $e->getMessage(),
+            http_response_code(500);
+            echo json_encode([
+                'status' => false,
+                'message' => 'Erro ao buscar anexos: ' . $e->getMessage(),
                 'data' => null
             ], JSON_UNESCAPED_UNICODE);
         }

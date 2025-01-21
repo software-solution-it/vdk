@@ -368,13 +368,11 @@ class EmailService {
     
     public function listEmails($folder_id = null, $folder_name = null, $limit = 10, $offset = 0, $order = 'DESC') {
         try {
-            if (!in_array(strtoupper($order), ['ASC', 'DESC'])) {
-                throw new Exception('Invalid order value. Must be ASC or DESC.');
-            }
-
+            // Query base para emails
             $query = "
                 SELECT 
                     e.*,
+                    ef.folder_name,
                     (
                         SELECT JSON_ARRAYAGG(
                             JSON_OBJECT(
@@ -390,6 +388,7 @@ class EmailService {
                         WHERE a.email_id = e.id
                     ) as attachments
                 FROM emails e
+                LEFT JOIN email_folders ef ON e.folder_id = ef.id
                 WHERE e.folder_id = :folder_id
                 ORDER BY e.date_received " . $order . "
                 LIMIT :limit OFFSET :offset
@@ -403,58 +402,34 @@ class EmailService {
 
             $emails = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            // Processar anexos e adicionar URLs pré-assinadas
+            // Processar cada email
             foreach ($emails as &$email) {
+                // Decodificar HTML entities
+                if (isset($email['body_html'])) {
+                    $email['body_html'] = base64_encode($email['body_html']);
+                }
+                if (isset($email['body_text'])) {
+                    $email['body_text'] = html_entity_decode($email['body_text'], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                }
+                if (isset($email['subject'])) {
+                    $email['subject'] = html_entity_decode($email['subject'], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                }
+
+                // Processar anexos
                 if (!empty($email['attachments'])) {
                     $attachments = json_decode($email['attachments'], true);
                     if (is_array($attachments)) {
                         foreach ($attachments as &$attachment) {
                             if (!empty($attachment['s3_key'])) {
-                                try {
-                                    // Definir região padrão se não estiver configurada
-                                    $region = getenv('AWS_DEFAULT_REGION');
-                                    if (!$region) {
-                                        $region = 'us-east-1'; // Região padrão
-                                    }
-
-                                    // Verificar credenciais AWS
-                                    $awsKey = getenv('AWS_ACCESS_KEY_ID');
-                                    $awsSecret = getenv('AWS_SECRET_ACCESS_KEY');
-                                    $bucket = getenv('AWS_BUCKET') ?: 'vdkmail';
-
-                                    if (!$awsKey || !$awsSecret) {
-                                        $attachment['presigned_url'] = null;
-                                        continue;
-                                    }
-
-                                    $s3Client = new \Aws\S3\S3Client([
-                                        'version' => 'latest',
-                                        'region'  => $region,
-                                        'credentials' => [
-                                            'key'    => $awsKey,
-                                            'secret' => $awsSecret,
-                                        ]
-                                    ]);
-
-                                    $command = $s3Client->getCommand('GetObject', [
-                                        'Bucket' => $bucket,
-                                        'Key'    => $attachment['s3_key']
-                                    ]);
-
-                                    $request = $s3Client->createPresignedRequest($command, '+1 hour');
-                                    $attachment['presigned_url'] = (string) $request->getUri();
-                                } catch (Exception $e) {
-                                    $this->errorLogController->logError(
-                                        "Erro ao gerar URL pré-assinada: " . $e->getMessage(),
-                                        __FILE__,
-                                        __LINE__
-                                    );
-                                    $attachment['presigned_url'] = null;
-                                }
+                                $attachment['presigned_url'] = $this->s3Service->generatePresignedUrl($attachment['s3_key']);
                             }
                         }
                         $email['attachments'] = $attachments;
+                    } else {
+                        $email['attachments'] = [];
                     }
+                } else {
+                    $email['attachments'] = [];
                 }
             }
 
