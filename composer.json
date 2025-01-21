@@ -12,7 +12,8 @@
         "spatie/async": "^1.6",
         "php-amqplib/php-amqplib": "^3.7",
         "league/oauth2-client": "^2.7",
-        "aws/aws-sdk-php": "^3.337"
+        "aws/aws-sdk-php": "^3.337",
+        "vlucas/phpdotenv": "^5.6"
     },
     "autoload": {
         "psr-4": {

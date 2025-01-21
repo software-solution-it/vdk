@@ -2,6 +2,14 @@
 
 require __DIR__ . '/vendor/autoload.php';
 
+// Carregar variáveis de ambiente do arquivo .env
+$dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
+try {
+    $dotenv->load();
+} catch (Exception $e) {
+    error_log("Erro ao carregar arquivo .env: " . $e->getMessage());
+}
+
 set_exception_handler(function ($exception) {
     $errorMessage = "Exceção não capturada: " . $exception->getMessage() .
                     " em " . $exception->getFile() .
@@ -11,7 +19,7 @@ set_exception_handler(function ($exception) {
 
     if (ini_get('display_errors')) {
         echo json_encode([
-            'status' => false,
+            'status' => false, 
             'error' => $exception->getMessage(),
             'file' => $exception->getFile(),
             'line' => $exception->getLine()
