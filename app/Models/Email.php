@@ -829,17 +829,28 @@ class Email {
                         foreach ($attachments as &$attachment) {
                             if (!empty($attachment['s3_key'])) {
                                 try {
+                                    // Definindo a região padrão caso não esteja configurada
+                                    $region = getenv('AWS_REGION');
+                                    if (!$region) {
+                                        $region = 'us-east-1'; // Região padrão
+                                    }
+
                                     $s3Client = new \Aws\S3\S3Client([
                                         'version' => 'latest',
-                                        'region'  => getenv('AWS_REGION') ?: 'us-east-1',
+                                        'region'  => $region,
                                         'credentials' => [
                                             'key'    => getenv('AWS_ACCESS_KEY_ID'),
                                             'secret' => getenv('AWS_SECRET_ACCESS_KEY'),
                                         ]
                                     ]);
 
+                                    $bucket = getenv('AWS_BUCKET');
+                                    if (!$bucket) {
+                                        $bucket = 'vdkmail'; // Bucket padrão
+                                    }
+
                                     $command = $s3Client->getCommand('GetObject', [
-                                        'Bucket' => getenv('AWS_BUCKET') ?: 'vdkmail',
+                                        'Bucket' => $bucket,
                                         'Key'    => $attachment['s3_key']
                                     ]);
 
@@ -851,6 +862,7 @@ class Email {
                                         __FILE__,
                                         __LINE__
                                     );
+                                    $attachment['presigned_url'] = null;
                                 }
                             }
                         }
