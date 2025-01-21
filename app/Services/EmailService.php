@@ -592,7 +592,6 @@ class EmailService {
                     id, 
                     mime_type,
                     filename, 
-                    content,
                     s3_key,
                     content_hash,
                     size
@@ -628,7 +627,6 @@ class EmailService {
 
                     $request = $s3Client->createPresignedRequest($command, '+1 hour');
                     $attachment['presigned_url'] = (string) $request->getUri();
-                    unset($attachment['content']);
                 } catch (Exception $e) {
                     $this->errorLogController->logError(
                         "Erro ao gerar URL pré-assinada: " . $e->getMessage(),
@@ -637,9 +635,6 @@ class EmailService {
                     );
                     throw new Exception("Erro ao gerar URL pré-assinada: " . $e->getMessage());
                 }
-            } else if ($attachment['content']) {
-                $attachment['content_base64'] = base64_encode($attachment['content']);
-                unset($attachment['content']);
             }
 
             return $attachment;
