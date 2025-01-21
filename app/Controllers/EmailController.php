@@ -348,37 +348,43 @@ class EmailController {
         try {
             $result = $this->emailService->listEmails($folder_id, $folder_name, $limit, $offset, $order);
             
-            if ($result && isset($result['data'])) {
-                // Sanitize HTML content before returning
-                if (!empty($result['data']['emails'])) {
-                    foreach ($result['data']['emails'] as &$email) {
-                        // Convert HTML entities and strip unnecessary whitespace
-                        $email['body_html'] = htmlspecialchars($email['body_html'], ENT_QUOTES | ENT_HTML5, 'UTF-8');
-                        
-                        // Optional: Strip excessive whitespace while preserving structure
-                        $email['body_html'] = preg_replace('/\s+/', ' ', $email['body_html']);
-                    }
-                }
-                
+            // Garantir que temos um resultado válido
+            if (!$result) {
                 return [
-                    'Status' => 'Success',
-                    'Message' => 'Emails retrieved successfully',
-                    'Data' => $result['data']
+                    'status' => 'success',
+                    'message' => 'No emails found',
+                    'data' => [
+                        'total' => 0,
+                        'emails' => []
+                    ]
                 ];
             }
             
+            // Sanitize HTML content before returning
+            if (!empty($result['emails'])) {
+                foreach ($result['emails'] as &$email) {
+                    // Convert HTML entities and strip unnecessary whitespace
+                    $email['body_html'] = htmlspecialchars($email['body_html'], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                    $email['body_html'] = preg_replace('/\s+/', ' ', $email['body_html']);
+                }
+            }
+            
             return [
-                'Status' => 'Success',
-                'Message' => 'No emails found',
-                'Data' => [
-                    'total' => 0,
-                    'emails' => []
+                'status' => 'success',
+                'message' => 'Emails retrieved successfully',
+                'data' => [
+                    'total' => $result['total'] ?? 0,
+                    'emails' => $result['emails'] ?? []
                 ]
             ];
             
         } catch (Exception $e) {
             error_log("Error in listEmails: " . $e->getMessage());
-            throw $e;
+            return [
+                'status' => 'error',
+                'message' => 'Error retrieving emails: ' . $e->getMessage(),
+                'data' => null
+            ];
         }
     }
     
