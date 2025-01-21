@@ -14,14 +14,14 @@ class S3Service {
             'version'     => 'latest',
             'region'      => 'sa-east-1',
             'credentials' => [
-                'key'    => 'AKIAU72LGEZVJUF3CXXE',
-                'secret' => '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',
+                'key'    => getenv('AWS_ACCESS_KEY_ID'),
+                'secret' => getenv('AWS_SECRET_ACCESS_KEY'),
             ]
         ];
 
         try {
             $this->s3Client = new S3Client($config);
-            $this->bucketName = 'vdkmail';
+            $this->bucketName = getenv('AWS_BUCKET_NAME');
         } catch (Exception $e) {
             throw new Exception("Error initializing S3 client: " . $e->getMessage());
         }

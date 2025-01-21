@@ -349,16 +349,24 @@ class EmailController {
             $result = $this->emailService->listEmails($folder_id, $folder_name, $limit, $offset, $order);
             
             if ($result) {
+                // Sanitize HTML content before returning
+                if (!empty($result['data']['emails'])) {
+                    foreach ($result['data']['emails'] as &$email) {
+                        // Convert HTML entities and strip unnecessary whitespace
+                        $email['body_html'] = htmlspecialchars($email['body_html'], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                    }
+                }
+                
                 return [
                     'status' => 'Success',
                     'message' => 'Emails retrieved successfully',
-                    'data' => $result
+                    'data' => $result['data']
                 ];
             }
             
             return [
                 'status' => 'Error',
-                'message' => 'Failed to retrieve emails',
+                'message' => 'No emails found',
                 'data' => null
             ];
             
