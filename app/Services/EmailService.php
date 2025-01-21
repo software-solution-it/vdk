@@ -413,28 +413,30 @@ class EmailService {
                     $html = preg_replace('/<script\b[^>]*>(.*?)<\/script>/is', '', $email['body_html']);
                     $html = preg_replace('/<style\b[^>]*>(.*?)<\/style>/is', '', $html);
                     
-                    // Primeiro obtém o texto puro para contar caracteres
-                    $textOnly = strip_tags($html);
-                    $textOnly = html_entity_decode($textOnly, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-                    $textOnly = preg_replace('/\s+/', ' ', $textOnly);
-                    $textOnly = trim($textOnly);
+                    // Cria um DOMDocument para manipular o HTML corretamente
+                    $dom = new \DOMDocument();
+                    @$dom->loadHTML(mb_convert_encoding($html, 'HTML-ENTITIES', 'UTF-8'), LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
                     
-                    // Limita a 300 caracteres
-                    if (mb_strlen($textOnly) > 300) {
-                        $textOnly = mb_substr($textOnly, 0, 300) . '...';
+                    // Obtém o texto para verificar o tamanho
+                    $textContent = $dom->textContent;
+                    $textContent = preg_replace('/\s+/', ' ', $textContent);
+                    $textContent = trim($textContent);
+                    
+                    // Se precisar truncar
+                    if (mb_strlen($textContent) > 300) {
+                        // Mantém o HTML original, mas adiciona um comentário indicando que foi truncado
+                        $html = preg_replace('/>\s+</', '><', $html); // Remove espaços entre tags
+                        $html = mb_substr($html, 0, 1000) . '<!-- truncated -->';
                     }
                     
-                    // Reaplica tags HTML básicas de formatação
-                    $email['body_html'] = nl2br(htmlspecialchars($textOnly, ENT_QUOTES, 'UTF-8'));
+                    $email['body_html'] = $html;
                 }
 
                 // Processar texto plano
                 if (isset($email['body_text'])) {
-                    // Remove quebras de linha e espaços extras
                     $text = preg_replace('/\s+/', ' ', $email['body_text']);
                     $text = trim($text);
                     
-                    // Limita a exatamente 300 caracteres
                     if (mb_strlen($text) > 300) {
                         $text = mb_substr($text, 0, 300) . '...';
                     }
