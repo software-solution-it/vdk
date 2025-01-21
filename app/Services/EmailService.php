@@ -46,7 +46,7 @@ class EmailService {
         $this->masterHostModel = new MasterHost($this->db);
         $this->emailAttachmentModel = new EmailAttachment($db);
         $this->errorLogController = new ErrorLogController();
-        $this->s3Service = new S3Service();
+        $this->s3Service = new S3Service($this->db);
     }
 
     public function sendEmail($user_id, $email_account_id, $recipientEmails, $subject, $htmlBody, $plainBody = '', $priority = null, $attachments = [], $ccEmails = [], $bccEmails = [], $inReplyTo = null) {
