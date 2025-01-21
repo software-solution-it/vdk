@@ -55,6 +55,7 @@ class S3Service {
                 return null;
             }
 
+            // Limpa e normaliza o caminho
             $cleanKey = $this->normalizeS3Key($key);
             error_log("Tentando gerar URL pré-assinada para chave: " . $cleanKey);
 
@@ -75,17 +76,14 @@ class S3Service {
                     ]
                 ]);
                 
-                // Gera a URL pré-assinada
+                // Gera a URL pré-assinada com 7 dias de validade
                 $url = $presignedRequest->createPresignedRequest(
                     $cmd,
                     '+7 days'
                 )->getUri()->__toString();
                 
-                // Customiza a URL
-                $customUrl = $this->customizeUrl($url);
-                
-                error_log("URL pré-assinada customizada gerada com sucesso: " . $customUrl);
-                return $customUrl;
+                error_log("URL pré-assinada gerada com sucesso: " . $url);
+                return $url;
 
             } catch (Exception $e) {
                 error_log("Erro ao gerar URL pré-assinada: " . $e->getMessage());
@@ -96,36 +94,6 @@ class S3Service {
             error_log("S3 Error: " . $e->getMessage());
             return null;
         }
-    }
-
-    private function customizeUrl($originalUrl) {
-        // Parse a URL original
-        $parsedUrl = parse_url($originalUrl);
-        
-        // Extrai os parâmetros da query
-        parse_str($parsedUrl['query'] ?? '', $queryParams);
-        
-        // Seu domínio customizado
-        $customDomain = 'https://arquivos.seudominio.com.br';
-        
-        // Monta a nova URL mantendo apenas os parâmetros necessários
-        $customUrl = $customDomain;
-        $customUrl .= $parsedUrl['path'];
-        
-        // Adiciona os parâmetros de autenticação necessários
-        $essentialParams = [
-            'X-Amz-Algorithm' => $queryParams['X-Amz-Algorithm'] ?? '',
-            'X-Amz-Credential' => $queryParams['X-Amz-Credential'] ?? '',
-            'X-Amz-Date' => $queryParams['X-Amz-Date'] ?? '',
-            'X-Amz-Expires' => $queryParams['X-Amz-Expires'] ?? '',
-            'X-Amz-SignedHeaders' => $queryParams['X-Amz-SignedHeaders'] ?? '',
-            'X-Amz-Signature' => $queryParams['X-Amz-Signature'] ?? ''
-        ];
-        
-        // Adiciona os parâmetros à URL
-        $customUrl .= '?' . http_build_query($essentialParams);
-        
-        return $customUrl;
     }
 
     private function normalizeS3Key($key) {
