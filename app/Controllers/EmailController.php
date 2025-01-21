@@ -343,20 +343,15 @@ class EmailController {
     }
 
 
-    public function listEmails($folder_id = null, $folder_name = null, $limit = 10, $offset = 0) {
-        try {
-            if (!$folder_id && !$folder_name) {
-                http_response_code(400);
-                echo json_encode([
-                    'Status' => 'Error',
-                    'Message' => 'folder_id ou folder_name são obrigatórios',
-                    'Data' => null
-                ]);
-                return;
-            }
+    public function listEmails($folder_id = null, $folder_name = null) {
+        // Define o cabeçalho como JSON logo no início
+        header('Content-Type: application/json; charset=utf-8');
 
-            $order = strtoupper($_GET['order'] ?? 'DESC');
-            $orderBy = strtolower($_GET['orderby'] ?? 'date');
+        try {
+            $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 10;
+            $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+            $order = isset($_GET['order']) ? strtoupper($_GET['order']) : 'DESC';
+            $orderBy = isset($_GET['orderby']) ? strtolower($_GET['orderby']) : 'date';
 
             if (!in_array($order, ['ASC', 'DESC'])) {
                 http_response_code(400);
@@ -378,26 +373,24 @@ class EmailController {
                 return;
             }
 
-            $result = $this->emailService->listEmails($folder_id, $folder_name, $limit, $offset, $order, $orderBy);
+            $offset = ($page - 1) * $limit;
             
+            $result = $this->emailService->listEmails($folder_id, $folder_name, $limit, $offset, $order, $orderBy);
+
             http_response_code(200);
             echo json_encode([
                 'Status' => 'Success',
                 'Message' => 'Emails retrieved successfully',
-                'Data' => [
-                    'total' => $result['total'],
-                    'emails' => $result['emails']
-                ]
-            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRESERVE_ZERO_FRACTION);
+                'Data' => $result
+            ], JSON_UNESCAPED_UNICODE);
 
         } catch (Exception $e) {
-            $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
             http_response_code(500);
             echo json_encode([
                 'Status' => 'Error',
                 'Message' => $e->getMessage(),
                 'Data' => null
-            ], JSON_UNESCAPED_UNICODE);
+            ]);
         }
     }
     
