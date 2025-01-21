@@ -344,21 +344,41 @@ class EmailController {
 
 
     public function listEmails($folder_id = null, $folder_name = null, $limit = 10, $offset = 0) {
-        // Define o cabeçalho como JSON logo no início
-        header('Content-Type: application/json; charset=utf-8');
-
         try {
-            if ($limit <= 0) {
+            if (!$folder_id && !$folder_name) {
                 http_response_code(400);
                 echo json_encode([
                     'Status' => 'Error',
-                    'Message' => 'O parâmetro "limit" deve ser um número inteiro positivo.',
+                    'Message' => 'folder_id ou folder_name são obrigatórios',
                     'Data' => null
                 ]);
                 return;
             }
 
-            $result = $this->emailService->listEmails($folder_id, $folder_name, $limit, $offset);
+            $order = strtoupper($_GET['order'] ?? 'DESC');
+            $orderBy = strtolower($_GET['orderBy'] ?? 'date');
+
+            if (!in_array($order, ['ASC', 'DESC'])) {
+                http_response_code(400);
+                echo json_encode([
+                    'Status' => 'Error',
+                    'Message' => 'Parâmetro order inválido. Use ASC ou DESC',
+                    'Data' => null
+                ]);
+                return;
+            }
+
+            if (!in_array($orderBy, ['date', 'favorite'])) {
+                http_response_code(400);
+                echo json_encode([
+                    'Status' => 'Error',
+                    'Message' => 'Parâmetro orderBy inválido. Use date ou favorite',
+                    'Data' => null
+                ]);
+                return;
+            }
+
+            $result = $this->emailService->listEmails($folder_id, $folder_name, $limit, $offset, $order, $orderBy);
             
             http_response_code(200);
             echo json_encode([

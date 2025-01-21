@@ -365,17 +365,24 @@ class EmailService {
 }
     
     
-    public function listEmails($folder_id = null, $folder_name = null, $limit = 10, $offset = 0, $order = 'DESC') {
+    public function listEmails($folder_id = null, $folder_name = null, $limit = 10, $offset = 0, $order = 'DESC', $orderBy = 'date') {
         try {
             $query = "
                 SELECT 
-                    e.*,
+                    e.id,
+                    e.email_id,
+                    e.subject,
+                    e.sender,
+                    e.recipient,
+                    e.body_html,
+                    e.body_text,
+                    e.date_received,
+                    e.in_reply_to,
+                    e.`references`,
+                    e.folder_id,
+                    e.conversation_id,
+                    e.is_favorite,
                     ef.folder_name,
-                    (
-                        SELECT COUNT(*) 
-                        FROM email_attachments 
-                        WHERE email_id = e.id
-                    ) as attachment_count,
                     (
                         SELECT JSON_ARRAYAGG(
                             JSON_OBJECT(
@@ -392,17 +399,39 @@ class EmailService {
                     ) as attachments
                 FROM emails e
                 LEFT JOIN email_folders ef ON e.folder_id = ef.id
-                WHERE e.folder_id = :folder_id
-                ORDER BY e.date_received " . $order . "
-                LIMIT :limit OFFSET :offset
+                WHERE 1=1
             ";
 
-            $stmt = $this->db->prepare($query);
-            $stmt->bindParam(':folder_id', $folder_id, PDO::PARAM_INT);
-            $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
-            $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
-            $stmt->execute();
+            $params = [];
 
+            // Adiciona condição baseada em folder_id ou folder_name
+            if ($folder_id) {
+                $query .= " AND e.folder_id = :folder_id";
+                $params[':folder_id'] = $folder_id;
+            } elseif ($folder_name) {
+                $query .= " AND ef.folder_name = :folder_name";
+                $params[':folder_name'] = $folder_name;
+            }
+
+            // Adiciona ordenação baseada no parâmetro orderBy
+            if ($orderBy === 'favorite') {
+                $query .= " ORDER BY e.is_favorite DESC, e.date_received " . $order;
+            } else {
+                $query .= " ORDER BY e.date_received " . $order;
+            }
+
+            $query .= " LIMIT :limit OFFSET :offset";
+
+            $stmt = $this->db->prepare($query);
+
+            // Bind todos os parâmetros
+            foreach ($params as $key => $value) {
+                $stmt->bindValue($key, $value);
+            }
+            $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+            $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+
+            $stmt->execute();
             $emails = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             // Processar cada email
@@ -442,10 +471,25 @@ class EmailService {
                 }
             }
 
-            // Contagem total de emails na pasta
-            $countQuery = "SELECT COUNT(*) as total FROM emails WHERE folder_id = :folder_id";
+            // Atualiza a contagem total para considerar folder_name
+            $countQuery = "SELECT COUNT(*) as total FROM emails e 
+                          LEFT JOIN email_folders ef ON e.folder_id = ef.id 
+                          WHERE 1=1";
+            
+            if ($folder_id) {
+                $countQuery .= " AND e.folder_id = :folder_id";
+            } elseif ($folder_name) {
+                $countQuery .= " AND ef.folder_name = :folder_name";
+            }
+
             $countStmt = $this->db->prepare($countQuery);
-            $countStmt->bindParam(':folder_id', $folder_id, PDO::PARAM_INT);
+            
+            if ($folder_id) {
+                $countStmt->bindParam(':folder_id', $folder_id, PDO::PARAM_INT);
+            } elseif ($folder_name) {
+                $countStmt->bindParam(':folder_name', $folder_name);
+            }
+            
             $countStmt->execute();
             $total = $countStmt->fetch(PDO::FETCH_ASSOC)['total'];
 

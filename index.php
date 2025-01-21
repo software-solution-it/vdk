@@ -246,11 +246,24 @@ switch ($request_uri[0]) {
     case '/api/email/list':
         $emailController = new EmailController();
         $folder_id = $_GET['folder_id'] ?? null;
+        $folder_name = $_GET['folder_name'] ?? null;
         $limit = (int)($_GET['limit'] ?? 10);
         $page = (int)($_GET['page'] ?? 1);
         $offset = ($page - 1) * $limit;
+        $order = $_GET['order'] ?? 'DESC';
+        $orderBy = $_GET['orderBy'] ?? 'date';
         
-        $emailController->listEmails($folder_id, null, $limit, $offset);
+        if (!$folder_id && !$folder_name) {
+            http_response_code(400);
+            echo json_encode([
+                'Status' => 'Error',
+                'Message' => 'folder_id ou folder_name é obrigatório',
+                'Data' => null
+            ]);
+            break;
+        }
+        
+        $emailController->listEmails($folder_id, $folder_name, $limit, $offset);
         break;
 
     case '/api/folders/associate':
