@@ -413,55 +413,32 @@ class EmailService {
                     $html = preg_replace('/<script\b[^>]*>(.*?)<\/script>/is', '', $email['body_html']);
                     $html = preg_replace('/<style\b[^>]*>(.*?)<\/style>/is', '', $html);
                     
-                    // Converte entidades HTML
-                    $html = html_entity_decode($html, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                    // Primeiro obtém o texto puro para contar caracteres
+                    $textOnly = strip_tags($html);
+                    $textOnly = html_entity_decode($textOnly, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                    $textOnly = preg_replace('/\s+/', ' ', $textOnly);
+                    $textOnly = trim($textOnly);
                     
-                    // Limita o HTML a 300 caracteres preservando tags
-                    if (mb_strlen(strip_tags($html)) > 300) {
-                        $truncated = '';
-                        $length = 0;
-                        $tags = array();
-                        
-                        preg_match_all('/(<[^>]+>)|([^<>])/i', $html, $matches, PREG_SET_ORDER);
-                        
-                        foreach ($matches as $match) {
-                            if (!empty($match[1])) {
-                                // Tag HTML
-                                if (preg_match('/<(\/?)([\w\-]+)/', $match[1], $tagMatch)) {
-                                    $tag = strtolower($tagMatch[2]);
-                                    if ($tagMatch[1] == '') { // Tag de abertura
-                                        array_push($tags, $tag);
-                                    } else { // Tag de fechamento
-                                        array_pop($tags);
-                                    }
-                                }
-                                $truncated .= $match[1];
-                            } else {
-                                // Texto
-                                if ($length >= 300) break;
-                                $truncated .= $match[2];
-                                $length++;
-                            }
-                        }
-                        
-                        // Fecha todas as tags abertas
-                        while (!empty($tags)) {
-                            $truncated .= '</' . array_pop($tags) . '>';
-                        }
-                        
-                        $html = $truncated . '...';
+                    // Limita a 300 caracteres
+                    if (mb_strlen($textOnly) > 300) {
+                        $textOnly = mb_substr($textOnly, 0, 300) . '...';
                     }
                     
-                    $email['body_html'] = $html;
+                    // Reaplica tags HTML básicas de formatação
+                    $email['body_html'] = nl2br(htmlspecialchars($textOnly, ENT_QUOTES, 'UTF-8'));
                 }
 
                 // Processar texto plano
                 if (isset($email['body_text'])) {
+                    // Remove quebras de linha e espaços extras
                     $text = preg_replace('/\s+/', ' ', $email['body_text']);
                     $text = trim($text);
+                    
+                    // Limita a exatamente 300 caracteres
                     if (mb_strlen($text) > 300) {
                         $text = mb_substr($text, 0, 300) . '...';
                     }
+                    
                     $email['body_text'] = $text;
                 }
 
