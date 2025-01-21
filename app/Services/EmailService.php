@@ -797,5 +797,35 @@ class EmailService {
             throw new Exception("Erro ao buscar anexos: " . $e->getMessage());
         }
     }
+
+    private function processAttachments($attachments) {
+        try {
+            foreach ($attachments as &$attachment) {
+                if ($attachment['s3_key']) {
+                    try {
+                        // Generate presigned URL
+                        $attachment['presigned_url'] = $this->s3Service->generatePresignedUrl($attachment['s3_key']);
+                        
+                        // Verify the presigned URL was generated
+                        if (!$attachment['presigned_url']) {
+                            throw new Exception("Failed to generate presigned URL for " . $attachment['s3_key']);
+                        }
+                    } catch (Exception $e) {
+                        $this->errorLogController->logError(
+                            "Error generating presigned URL: " . $e->getMessage(),
+                            __FILE__,
+                            __LINE__
+                        );
+                        $attachment['presigned_url'] = null;
+                    }
+                }
+            }
+            
+            return $attachments;
+        } catch (Exception $e) {
+            $this->errorLogController->logError("Error processing attachments: " . $e->getMessage(), __FILE__, __LINE__);
+            throw $e;
+        }
+    }
 }
  
