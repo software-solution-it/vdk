@@ -372,6 +372,11 @@ class EmailService {
                     e.*,
                     ef.folder_name,
                     (
+                        SELECT COUNT(*) 
+                        FROM email_attachments 
+                        WHERE email_id = e.id
+                    ) as attachment_count,
+                    (
                         SELECT JSON_ARRAYAGG(
                             JSON_OBJECT(
                                 'id', a.id,
@@ -402,42 +407,61 @@ class EmailService {
 
             // Processar cada email
             foreach ($emails as &$email) {
-                // Limpar e sanitizar o HTML
+                // Processar HTML
                 if (isset($email['body_html'])) {
-                    // Remove tags de script e style completamente
+                    // Remove scripts e styles
                     $html = preg_replace('/<script\b[^>]*>(.*?)<\/script>/is', '', $email['body_html']);
                     $html = preg_replace('/<style\b[^>]*>(.*?)<\/style>/is', '', $html);
                     
                     // Converte entidades HTML
                     $html = html_entity_decode($html, ENT_QUOTES | ENT_HTML5, 'UTF-8');
                     
-                    // Remove tags HTML mantendo apenas o texto
-                    $text = strip_tags($html);
-                    
-                    // Remove quebras de linha extras e espaços
-                    $text = preg_replace('/\s+/', ' ', $text);
-                    $text = trim($text);
-                    
-                    // Limita a 300 caracteres
-                    if (mb_strlen($text) > 300) {
-                        $text = mb_substr($text, 0, 300) . '...';
+                    // Limita o HTML a 300 caracteres preservando tags
+                    if (mb_strlen(strip_tags($html)) > 300) {
+                        $truncated = '';
+                        $length = 0;
+                        $tags = array();
+                        
+                        preg_match_all('/(<[^>]+>)|([^<>])/i', $html, $matches, PREG_SET_ORDER);
+                        
+                        foreach ($matches as $match) {
+                            if (!empty($match[1])) {
+                                // Tag HTML
+                                if (preg_match('/<(\/?)([\w\-]+)/', $match[1], $tagMatch)) {
+                                    $tag = strtolower($tagMatch[2]);
+                                    if ($tagMatch[1] == '') { // Tag de abertura
+                                        array_push($tags, $tag);
+                                    } else { // Tag de fechamento
+                                        array_pop($tags);
+                                    }
+                                }
+                                $truncated .= $match[1];
+                            } else {
+                                // Texto
+                                if ($length >= 300) break;
+                                $truncated .= $match[2];
+                                $length++;
+                            }
+                        }
+                        
+                        // Fecha todas as tags abertas
+                        while (!empty($tags)) {
+                            $truncated .= '</' . array_pop($tags) . '>';
+                        }
+                        
+                        $html = $truncated . '...';
                     }
                     
-                    // Atribui o texto limpo sem escapar
-                    $email['body_html'] = $text;
+                    $email['body_html'] = $html;
                 }
 
-                // Limpar texto plano
+                // Processar texto plano
                 if (isset($email['body_text'])) {
-                    // Remove quebras de linha extras e espaços
                     $text = preg_replace('/\s+/', ' ', $email['body_text']);
                     $text = trim($text);
-                    
-                    // Limita a 300 caracteres
                     if (mb_strlen($text) > 300) {
                         $text = mb_substr($text, 0, 300) . '...';
                     }
-                    
                     $email['body_text'] = $text;
                 }
 
@@ -459,7 +483,7 @@ class EmailService {
                 }
             }
 
-            // Contagem total
+            // Contagem total de emails na pasta
             $countQuery = "SELECT COUNT(*) as total FROM emails WHERE folder_id = :folder_id";
             $countStmt = $this->db->prepare($countQuery);
             $countStmt->bindParam(':folder_id', $folder_id, PDO::PARAM_INT);
