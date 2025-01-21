@@ -348,16 +348,23 @@ class EmailController {
         try {
             $database = new Database();
             $db = $database->getConnection();
-            $emailModel = new Email($db);
+            $emailService = new EmailService($db);
 
             if (!$folder_id && !$folder_name) {
                 throw new Exception("folder_id or folder_name is required");
             }
 
-            return $emailModel->getEmailsByFolderId($folder_id, $limit, $offset, $order);
+            $result = $emailService->listEmails($folder_id, $folder_name, $limit, $offset, $order);
+
+            if (!$result) {
+                throw new Exception("No emails found"); 
+            }
+
+            return $result;
 
         } catch (Exception $e) {
-            throw new Exception($e->getMessage());
+            error_log("Error in listEmails: " . $e->getMessage());
+            throw $e;
         }
     }
     

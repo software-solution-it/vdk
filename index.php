@@ -236,24 +236,49 @@ switch ($request_uri[0]) {
         break;
 
     case '/api/email/list':
-        $emailController = new EmailController();
-        $folder_id = $_GET['folder_id'] ?? null;
-        $limit = $_GET['limit'] ?? 10;
-        $page = $_GET['page'] ?? 1;
-        $folder_name = $_GET['folder_name'] ?? null;
-        $order = $_GET['order'] ?? 'DESC'; 
+        try {
+            $emailController = new EmailController();
+            $folder_id = $_GET['folder_id'] ?? null;
+            $limit = (int)($_GET['limit'] ?? 10);
+            $page = (int)($_GET['page'] ?? 1);
+            $folder_name = $_GET['folder_name'] ?? null;
+            $order = $_GET['order'] ?? 'DESC';
 
-        if (!$folder_id) {
-            http_response_code(400);
+            if (!$folder_id) {
+                http_response_code(400);
+                echo json_encode([
+                    'Status' => 'Error',
+                    'Message' => 'folder_id is required',
+                    'Data' => null
+                ]);
+                break;
+            }
+
+            $offset = ($page - 1) * $limit;
+            $result = $emailController->listEmails($folder_id, $folder_name, $limit, $offset, $order);
+            
+            if ($result) {
+                echo json_encode([
+                    'Status' => 'Success',
+                    'Message' => 'Emails retrieved successfully',
+                    'Data' => $result
+                ], JSON_UNESCAPED_UNICODE);
+            } else {
+                http_response_code(500);
+                echo json_encode([
+                    'Status' => 'Error',
+                    'Message' => 'Failed to retrieve emails',
+                    'Data' => null
+                ]);
+            }
+        } catch (Exception $e) {
+            http_response_code(500);
             echo json_encode([
                 'Status' => 'Error',
-                'Message' => 'folder_id is required',
+                'Message' => $e->getMessage(),
                 'Data' => null
             ]);
-            break;
         }
-
-        $emailController->listEmails($folder_id, $limit, $page, $order);
         break;
 
     case '/api/folders/associate':

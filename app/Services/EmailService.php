@@ -363,71 +363,103 @@ class EmailService {
 }
     
     
-    public function listEmails($folder_id = null, $folder_name = null, $limit, $offset, $order = 'DESC')
-{
-    if (!in_array(strtoupper($order), ['ASC', 'DESC'])) {
-        throw new Exception('Invalid order value. It must be ASC or DESC.');
-    }
+    public function listEmails($folder_id = null, $folder_name = null, $limit = 10, $offset = 0, $order = 'DESC') {
+        try {
+            if (!in_array(strtoupper($order), ['ASC', 'DESC'])) {
+                throw new Exception('Invalid order value. Must be ASC or DESC.');
+            }
 
-    $baseQuery = "
-        SELECT 
-            e.id,
-            e.body_text,
-            e.from,
-            e.subject,
-            e.date_received,
-            COUNT(a.id) AS attachment_count
-        FROM 
-            emails e
-        LEFT JOIN 
-            email_attachments a
-        ON 
-            e.id = a.email_id
-    ";
+            $query = "
+                SELECT 
+                    e.*,
+                    (
+                        SELECT JSON_ARRAYAGG(
+                            JSON_OBJECT(
+                                'id', a.id,
+                                'filename', a.filename,
+                                'content_type', a.content_type,
+                                'size', a.size,
+                                's3_key', a.s3_key,
+                                'content_hash', a.content_hash
+                            )
+                        )
+                        FROM email_attachments a 
+                        WHERE a.email_id = e.id
+                    ) as attachments
+                FROM emails e
+                WHERE e.folder_id = :folder_id
+                ORDER BY e.date_received " . $order . "
+                LIMIT :limit OFFSET :offset
+            ";
 
-    $filterQuery = "";
-    $params = [
-        ':limit' => $limit,
-        ':offset' => $offset,
-    ];
+            $stmt = $this->db->prepare($query);
+            $stmt->bindParam(':folder_id', $folder_id, PDO::PARAM_INT);
+            $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
+            $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
+            $stmt->execute();
 
-    if (!is_null($folder_id)) {
-        $filterQuery = "WHERE e.folder_id = :folder_id";
-        $params[':folder_id'] = $folder_id;
-    } else if (!is_null($folder_name)) {
-        $baseQuery .= "INNER JOIN email_folders ef ON e.folder_id = ef.id ";
-        $filterQuery = "WHERE UPPER(ef.folder_name) LIKE UPPER(:folder_name)";
-        $params[':folder_name'] = '%' . $folder_name . '%'; 
-    }
+            $emails = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    $query = $baseQuery . $filterQuery . "
-        GROUP BY 
-            e.id, e.body_text, e.from, e.subject, e.date_received
-        ORDER BY 
-            e.date_received " . strtoupper($order) . "
-        LIMIT 
-            :limit OFFSET :offset";
+            // Processar anexos e adicionar URLs pré-assinadas
+            foreach ($emails as &$email) {
+                if (!empty($email['attachments'])) {
+                    $attachments = json_decode($email['attachments'], true);
+                    if (is_array($attachments)) {
+                        foreach ($attachments as &$attachment) {
+                            if (!empty($attachment['s3_key'])) {
+                                try {
+                                    $s3Client = new \Aws\S3\S3Client([
+                                        'version' => 'latest',
+                                        'region'  => getenv('AWS_REGION'),
+                                        'credentials' => [
+                                            'key'    => getenv('AWS_ACCESS_KEY_ID'),
+                                            'secret' => getenv('AWS_SECRET_ACCESS_KEY'),
+                                        ]
+                                    ]);
 
-    $stmt = $this->db->prepare($query);
+                                    $command = $s3Client->getCommand('GetObject', [
+                                        'Bucket' => getenv('AWS_BUCKET'),
+                                        'Key'    => $attachment['s3_key']
+                                    ]);
 
-    foreach ($params as $param => $value) {
-        if ($param === ':limit' || $param === ':offset') {
-            $stmt->bindValue($param, (int)$value, PDO::PARAM_INT); 
-        } else {
-            $stmt->bindValue($param, $value);
+                                    $request = $s3Client->createPresignedRequest($command, '+1 hour');
+                                    $attachment['presigned_url'] = (string) $request->getUri();
+                                } catch (Exception $e) {
+                                    $this->errorLogController->logError(
+                                        "Erro ao gerar URL pré-assinada: " . $e->getMessage(),
+                                        __FILE__,
+                                        __LINE__
+                                    );
+                                    $attachment['presigned_url'] = null;
+                                }
+                            }
+                        }
+                        $email['attachments'] = $attachments;
+                    }
+                }
+            }
+
+            // Obter contagem total
+            $countQuery = "SELECT COUNT(*) as total FROM emails WHERE folder_id = :folder_id";
+            $countStmt = $this->db->prepare($countQuery);
+            $countStmt->bindParam(':folder_id', $folder_id, PDO::PARAM_INT);
+            $countStmt->execute();
+            $total = $countStmt->fetch(PDO::FETCH_ASSOC)['total'];
+
+            return [
+                'total' => (int)$total,
+                'emails' => $emails
+            ];
+
+        } catch (Exception $e) {
+            $this->errorLogController->logError(
+                "Erro ao listar emails: " . $e->getMessage(),
+                __FILE__,
+                __LINE__
+            );
+            throw new Exception("Erro ao listar emails: " . $e->getMessage());
         }
     }
-
-    $stmt->execute();
-    $emails = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    $countStmt = count($emails);
-
-    return [
-        'total' => $countStmt,
-        'emails' => $emails
-    ];
-}
 
     
 
