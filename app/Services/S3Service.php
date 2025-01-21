@@ -55,37 +55,74 @@ class S3Service {
                 return null;
             }
 
-            // Limpa o caminho removendo espaços em branco e quebras de linha
-            $key = trim($key);
+            // Limpa e normaliza o caminho
+            $cleanKey = $this->normalizeS3Key($key);
             
-            // Primeiro, tenta o caminho original limpo
-            $cleanKey = str_replace(["\n", "\r", " "], "", $key);
+            // Extrai o hash e o nome do arquivo
+            $parts = explode('/', $cleanKey);
+            $filename = end($parts);
+            $hash = '';
             
-            if (!$this->s3Client->doesObjectExist($this->bucketName, $cleanKey)) {
-                // Se não encontrar, tenta o caminho alternativo
-                $hash = basename(dirname($cleanKey));
-                $filename = basename($cleanKey);
-                $alternativePath = "attachments/{$hash}/{$filename}";
-                
-                if (!$this->s3Client->doesObjectExist($this->bucketName, $alternativePath)) {
-                    error_log("S3 object does not exist in either path: {$cleanKey} or {$alternativePath}");
-                    return null;
+            // Procura pelo hash no caminho (geralmente é uma string longa hexadecimal)
+            foreach ($parts as $part) {
+                if (strlen($part) >= 64) { // Hash SHA-256 tem 64 caracteres
+                    $hash = $part;
+                    break;
                 }
-                
-                // Se encontrou no caminho alternativo, usa ele
-                $cleanKey = $alternativePath;
             }
 
+            // Se encontrou um hash, constrói o caminho correto
+            if ($hash) {
+                $correctPath = "attachments/{$hash}/{$filename}";
+                error_log("Tentando acessar com caminho correto: " . $correctPath);
+
+                if ($this->s3Client->doesObjectExist($this->bucketName, $correctPath)) {
+                    return $this->createPresignedUrl($correctPath);
+                }
+            }
+
+            // Se não funcionou com o hash encontrado, tenta o caminho original limpo
+            if ($this->s3Client->doesObjectExist($this->bucketName, $cleanKey)) {
+                return $this->createPresignedUrl($cleanKey);
+            }
+
+            error_log("S3 object does not exist in attempted paths: " . 
+                     "\nOriginal: " . $key .
+                     "\nCleaned: " . $cleanKey .
+                     ($hash ? "\nConstructed: " . $correctPath : ""));
+            return null;
+
+        } catch (Exception $e) {
+            error_log("S3 Error: " . $e->getMessage());
+            return null;
+        }
+    }
+
+    private function normalizeS3Key($key) {
+        // Remove espaços em branco, quebras de linha e caracteres especiais
+        $clean = trim($key);
+        $clean = str_replace(["\n", "\r", " "], "", $clean);
+        
+        // Remove barras duplicadas
+        $clean = preg_replace('#/+#', '/', $clean);
+        
+        // Remove barra inicial se existir
+        $clean = ltrim($clean, '/');
+        
+        return $clean;
+    }
+
+    private function createPresignedUrl($key) {
+        try {
             $cmd = $this->s3Client->getCommand('GetObject', [
                 'Bucket' => $this->bucketName,
-                'Key'    => $cleanKey
+                'Key'    => $key
             ]);
             
             $request = $this->s3Client->createPresignedRequest($cmd, '+1 hour');
             return (string) $request->getUri();
-
         } catch (Exception $e) {
-            error_log("S3 Error: " . $e->getMessage());
+            error_log("Error creating presigned URL for key {$key}: " . $e->getMessage());
             return null;
         }
     }
