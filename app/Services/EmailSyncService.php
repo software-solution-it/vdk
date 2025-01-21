@@ -138,37 +138,64 @@ class EmailSyncService
 
     public function consumeEmailSyncQueue($user_id, $provider_id, $queue_name)
     {
-        error_log("Iniciando o consumidor RabbitMQ para sincronização de e-mails...");
+        $this->errorLogController->logError(
+            "Iniciando consumeEmailSyncQueue",
+            __FILE__,
+            __LINE__,
+            $user_id,
+            [
+                'provider_id' => $provider_id,
+                'queue_name' => $queue_name
+            ]
+        );
 
         $callback = function ($msg) use ($user_id, $provider_id, $queue_name) {
-            error_log("Recebida tarefa de sincronização: " . $msg->body);
-            $task = json_decode($msg->body, true);
+            $this->errorLogController->logError(
+                "Recebida mensagem do RabbitMQ",
+                __FILE__,
+                __LINE__,
+                $user_id,
+                ['message' => $msg->body]
+            );
 
+            $task = json_decode($msg->body, true);
             if (!$task) {
-                error_log("Erro ao decodificar a mensagem da fila.");
+                $this->errorLogController->logError(
+                    "Erro ao decodificar mensagem",
+                    __FILE__,
+                    __LINE__,
+                    $user_id,
+                    ['raw_message' => $msg->body]
+                );
                 $msg->nack(false, true);
                 return;
             }
 
             try {
+                if($task['is_basic'] == 1) {
+                    $this->errorLogController->logError(
+                        "Iniciando sincronização básica",
+                        __FILE__,
+                        __LINE__,
+                        $user_id,
+                        $task
+                    );
+                    
+                    $this->syncEmails(
+                        $task['user_id'],
+                        $task['email_account_id'],
+                        $task['provider_id'],
+                        $task['email'],
+                        $task['imap_host'],
+                        $task['imap_port'],
+                        $task['password']
+                    );
+                }   else if($task['provider_id'] == 1){ 
+                    $this->outlookOAuth2Service->syncEmailsOutlook($task['user_id'],$task['email_account_id']);
 
-                if($task['is_basic'] == 1){
-
-                $this->syncEmails(
-                    $task['user_id'],
-                    $task['email_account_id'],
-                    $task['provider_id'],
-                    $task['email'],
-                    $task['imap_host'],
-                    $task['imap_port'],
-                    $task['password']
-                );
-            }   else if($task['provider_id'] == 1){ 
-                $this->outlookOAuth2Service->syncEmailsOutlook($task['user_id'],$task['email_account_id']);
-
-            }   else if ($task['provider_id'] == 2){
-                $this->gmailOauth2Service->syncEmailsGmail($task['user_id'],$task['email_account_id'], $task['provider_id']);
-            }
+                }   else if ($task['provider_id'] == 2){
+                    $this->gmailOauth2Service->syncEmailsGmail($task['user_id'],$task['email_account_id'], $task['provider_id']);
+                }
 
                 $msg->ack();
                 error_log("Sincronização concluída para a mensagem na fila.");
@@ -182,19 +209,41 @@ class EmailSyncService
                 $this->syncEmailsByUserIdAndProviderId($task['user_id'], $task['email_account_id']);
 
             } catch (Exception $e) {
-                error_log("Erro ao sincronizar e-mails: " . $e->getMessage());
-                $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__, $user_id);
-                $msg->nack(false, true);
+                $this->errorLogController->logError(
+                    "Erro no processamento da mensagem",
+                    __FILE__,
+                    __LINE__,
+                    $user_id,
+                    [
+                        'error' => $e->getMessage(),
+                        'stack_trace' => $e->getTraceAsString()
+                    ]
+                );
                 throw $e;
             }
         };
 
         try {
-            error_log("Aguardando nova mensagem na fila: " . $queue_name);
+            $this->errorLogController->logError(
+                "Aguardando mensagens na fila",
+                __FILE__,
+                __LINE__,
+                $user_id,
+                ['queue_name' => $queue_name]
+            );
+            
             $this->rabbitMQService->consumeQueue($queue_name, $callback);
         } catch (Exception $e) {
-            error_log("Erro ao consumir a fila RabbitMQ: " . $e->getMessage());
-            $this->errorLogController->logError($e->getMessage(), __FILE__, __LINE__);
+            $this->errorLogController->logError(
+                "Erro ao consumir fila",
+                __FILE__,
+                __LINE__,
+                $user_id,
+                [
+                    'error' => $e->getMessage(),
+                    'stack_trace' => $e->getTraceAsString()
+                ]
+            );
             throw $e;
         }
     }
