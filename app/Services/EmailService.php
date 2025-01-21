@@ -367,9 +367,6 @@ class EmailService {
     
     public function listEmails($folder_id = null, $folder_name = null, $limit = 10, $offset = 0, $order = 'DESC', $orderBy = 'date') {
         try {
-            // Normaliza o parâmetro orderBy para minúsculo
-            $orderBy = strtolower($orderBy);
-            
             $query = "
                 SELECT 
                     e.id,
@@ -417,7 +414,7 @@ class EmailService {
             }
 
             // Adiciona ordenação baseada no parâmetro orderBy
-            if ($orderBy === 'favorite') {
+            if (strtolower($orderBy) == 'favorite') {
                 $query .= " ORDER BY e.is_favorite DESC, e.date_received " . $order;
             } else {
                 $query .= " ORDER BY e.date_received " . $order;

@@ -781,7 +781,7 @@ class Email {
         }
     }
 
-    public function getEmailsByFolder($folder_id, $page = 1, $per_page = 10) {
+    public function getEmailsByFolder($folder_id, $page = 1, $per_page = 10, $order = 'DESC', $orderBy = 'date') {
         try {
             $offset = ($page - 1) * $per_page;
             
@@ -803,10 +803,16 @@ class Email {
                         WHERE a.email_id = e.id
                     ) as attachments
                 FROM " . $this->table . " e
-                WHERE e.folder_id = :folder_id
-                ORDER BY e.date_received DESC
-                LIMIT :per_page OFFSET :offset
-            ";
+                WHERE e.folder_id = :folder_id";
+
+            // Adiciona ordenação baseada no parâmetro orderBy
+            if (strtolower($orderBy) === 'favorite') {
+                $query .= " ORDER BY e.is_favorite " . $order . ", e.date_received " . $order;
+            } else {
+                $query .= " ORDER BY e.date_received " . $order;
+            }
+
+            $query .= " LIMIT :per_page OFFSET :offset";
 
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':folder_id', $folder_id, PDO::PARAM_INT);
