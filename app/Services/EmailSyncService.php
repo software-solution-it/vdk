@@ -467,7 +467,7 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                                     $existingEmail['id'],
                                     $existingEmail['is_read'],
                                     $folderId,
-                                    $existingEmail['is_favorite'] ?? false
+                                    $existingEmail['is_favorite'] ?? false 
                                 );
                             }
                             
