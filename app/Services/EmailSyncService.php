@@ -458,14 +458,21 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                     
                     foreach ($messages as $key => $message) {
                         try {
-
                             $message->move($associatedMailbox);
-            
-
-                            $this->emailModel->deleteEmail($message->getId());
-            
+                            
+                            $existingEmail = $this->emailModel->getEmailByMessageId($message->getId(), $email_account_id);
+                            if ($existingEmail) {
+                                $folderId = $this->emailFolderModel->getFolderIdByName($email_account_id, $associatedFolderName);
+                                $this->emailModel->updateEmailSync(
+                                    $existingEmail['id'],
+                                    $existingEmail['is_read'],
+                                    $folderId,
+                                    $existingEmail['is_favorite'] ?? false
+                                );
+                            }
+                            
                             unset($messages[$key]);
-            
+                            
                             error_log("E-mail {$message->getId()} movido da pasta $originalFolderName para $associatedFolderName.");
                         } catch (Exception $e) {
                             $this->errorLogController->logError(

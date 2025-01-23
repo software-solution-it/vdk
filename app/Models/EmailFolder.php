@@ -155,6 +155,10 @@ class EmailFolder {
         }
     }
     
-    
-    
+    public function getFolderIdByName($email_id, $folderName) {
+        $query = "SELECT id FROM " . $this->table . " WHERE email_id = ? AND folder_name = ?";
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute([$email_id, $folderName]);
+        return $stmt->fetchColumn();
+    }
 }
