@@ -7,11 +7,13 @@ use App\Models\FolderAssociation;
 
 class FolderAssociationController {
     private $folderAssociationService;
+    private $errorLogController;
 
     public function __construct() {
         $database = new Database();
         $db = $database->getConnection();
         $this->folderAssociationService = new FolderAssociationService(new FolderAssociation($db));
+        $this->errorLogController = new ErrorLogController();
     }
 
     public function associateFolder() {
@@ -22,6 +24,20 @@ class FolderAssociationController {
         $emailAccountId = $data['email_account_id'] ?? null;
         $folderId = $data['folder_id'] ?? null;
         $folderType = $data['folder_type'] ?? null; // INBOX, SPAM, TRASH
+    
+        // Log da requisição
+        $this->errorLogController->logError(
+            "Requisição de associação de pasta",
+            __FILE__,
+            __LINE__,
+            $emailAccountId,
+            [
+                'request_data' => $data,
+                'email_account_id' => $emailAccountId,
+                'folder_id' => $folderId,
+                'folder_type' => $folderType
+            ]
+        );
     
         if (empty($emailAccountId) || empty($folderId) || empty($folderType)) {
             http_response_code(400);
