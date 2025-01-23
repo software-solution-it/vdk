@@ -29,15 +29,16 @@ class FolderAssociationController {
     
             // Log inicial
             $this->errorLogController->logError(
-                "Iniciando associação de pasta",
+                "Requisição de associação de pasta",
                 __FILE__,
                 __LINE__,
-                $emailAccountId,
+                null,
                 [
-                    'request_data' => $data,
+                    'request_data' => json_encode($data, JSON_PRETTY_PRINT),
                     'email_account_id' => $emailAccountId,
                     'folder_id' => $folderId,
-                    'folder_type' => $folderType
+                    'folder_type' => $folderType,
+                    'raw_request' => file_get_contents('php://input')
                 ]
             );
     
