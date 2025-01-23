@@ -20,6 +20,15 @@ class FolderAssociationController {
     public function associateFolder() {
         header('Content-Type: application/json');
     
+        // Log imediato para teste
+        $this->errorLogController->logError(
+            "Teste de log",
+            __FILE__,
+            __LINE__,
+            null,
+            ['timestamp' => date('Y-m-d H:i:s')]
+        );
+    
         try {
             $data = json_decode(file_get_contents('php://input'), true);
     
