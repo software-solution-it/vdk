@@ -510,13 +510,9 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                 $folderId = $folders[$folderName];
                 $messages = $mailbox->getMessages();
     
-                $storedMessageIds = $this->emailModel->getEmailIdsByFolderId($user_id, $folderId);
-                $processedMessageIds = []; 
-    
                 foreach ($messages as $message) {
                     try {
                         $messageId = $message->getId();
-                        $processedMessageIds[] = $messageId;
                         $fromAddress = $message->getFrom()->getAddress() ?? 'unknown@example.com';
                         $fromName = $message->getFrom()->getName() ?? 'Unknown Sender';
                         $subject = $message->getSubject() ?? 'Sem Assunto';
@@ -556,7 +552,7 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                         }
 
                         $bcc = $message->getBcc();
-                        if ($bcc && count($bcc) > 0) {
+                        if ($bcc && count($bcc) > 0) { 
                             error_log("E-mail contém CCO (BCC). Ignorando o processamento.");
                             continue;
                         }
@@ -566,9 +562,15 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                             continue;
                         }
     
-                        $existingEmail = $this->emailModel->emailExistsByMessageId($messageId, $email_account_id);
+                        $existingEmail = $this->emailModel->getEmailByMessageId($messageId, $email_account_id);
                         if ($existingEmail) {
-                            error_log("E-mail com Message-ID $messageId já foi processado. Ignorando...");
+                            $this->emailModel->updateEmailSync(
+                                $existingEmail['id'],
+                                $isRead,
+                                $folderId,
+                                $existingEmail['is_favorite'] ?? false
+                            );
+                            error_log("E-mail com Message-ID $messageId atualizado.");
                             continue;
                         }
     
@@ -816,13 +818,7 @@ public function syncEmailsByUserIdAndProviderId($user_id, $email_id)
                         $this->errorLogController->logError("Erro ao processar e-mail: " . $e->getMessage(), __FILE__, __LINE__, $user_id);
                     }
                 }
-    
-                $deletedMessageIds = array_diff($storedMessageIds, $processedMessageIds);
-                foreach ($deletedMessageIds as $deletedMessageId) {
-                    $this->emailModel->deleteEmailByMessageId($deletedMessageId, $user_id);
-                    error_log("E-mail com Message-ID $deletedMessageId foi deletado no servidor e removido do banco de dados.");
-                }
-    
+            
                 error_log("Sincronização de e-mails concluída para a pasta " . $folderName);
             }
             

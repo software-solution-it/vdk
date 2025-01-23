@@ -255,18 +255,18 @@ class Email {
     }
 
     // Método para obter um e-mail pelo messageId e user_id
-    public function getEmailByMessageId($messageId, $user_id) {
+    public function getEmailByMessageId($messageId, $email_account_id) {
         try {
-            $query = "SELECT * FROM " . $this->table . " WHERE email_id = :conversation_Id AND user_id = :user_id LIMIT 1";
+            $query = "SELECT * FROM " . $this->table . " WHERE email_id = :conversation_Id AND email_account_id = :email_account_id LIMIT 1";
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':conversation_Id', $messageId);
-            $stmt->bindParam(':user_id', $user_id);
+            $stmt->bindParam(':email_account_id', $email_account_id);
             $stmt->execute();
     
             return $stmt->fetch(PDO::FETCH_ASSOC);
     
         } catch (Exception $e) {
-            $this->errorLogController->logError('Erro ao buscar e-mail por message ID: ' . $e->getMessage(), __FILE__, __LINE__, $user_id);
+            $this->errorLogController->logError('Erro ao buscar e-mail por message ID: ' . $e->getMessage(), __FILE__, __LINE__, null);
             throw new Exception('Erro ao buscar e-mail por message ID: ' . $e->getMessage());
         }
     }
@@ -328,6 +328,28 @@ class Email {
         }
     }
 
+    // Add this new method for sync updates
+    public function updateEmailSync($id, $isRead, $folderId, $isFavorite) {
+        try {
+            $query = "UPDATE " . $this->table . " SET
+                        is_read = :is_read,
+                        folder_id = :folder_id,
+                        is_favorite = :is_favorite,
+                        updated_at = NOW()
+                      WHERE id = :id";
+                      
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':id', $id);
+            $stmt->bindParam(':is_read', $isRead);
+            $stmt->bindParam(':folder_id', $folderId);
+            $stmt->bindParam(':is_favorite', $isFavorite);
+
+            return $stmt->execute();
+        } catch (Exception $e) {
+            $this->errorLogController->logError('Erro ao atualizar e-mail: ' . $e->getMessage(), __FILE__, __LINE__);
+            throw new Exception('Erro ao atualizar e-mail: ' . $e->getMessage());
+        }
+    }
 
     public function updateEmailOrder($messageId, $user_id, $order)
     {
