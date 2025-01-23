@@ -4,6 +4,7 @@ namespace App\Controllers;
 use App\Services\FolderAssociationService;
 use App\Config\Database;
 use App\Models\FolderAssociation;
+use Exception;
 
 class FolderAssociationController {
     private $folderAssociationService;
@@ -19,54 +20,97 @@ class FolderAssociationController {
     public function associateFolder() {
         header('Content-Type: application/json');
     
-        $data = json_decode(file_get_contents('php://input'), true);
+        try {
+            $data = json_decode(file_get_contents('php://input'), true);
     
-        $emailAccountId = $data['email_account_id'] ?? null;
-        $folderId = $data['folder_id'] ?? null;
-        $folderType = $data['folder_type'] ?? null; // INBOX, SPAM, TRASH
+            $emailAccountId = $data['email_account_id'] ?? null;
+            $folderId = $data['folder_id'] ?? null;
+            $folderType = $data['folder_type'] ?? null; // INBOX, SPAM, TRASH
     
-        // Log da requisição
-        $this->errorLogController->logError(
-            "Requisição de associação de pasta",
-            __FILE__,
-            __LINE__,
-            $emailAccountId,
-            [
-                'request_data' => $data,
-                'email_account_id' => $emailAccountId,
-                'folder_id' => $folderId,
-                'folder_type' => $folderType
-            ]
-        );
+            // Log inicial
+            $this->errorLogController->logError(
+                "Iniciando associação de pasta",
+                __FILE__,
+                __LINE__,
+                $emailAccountId,
+                [
+                    'request_data' => $data,
+                    'email_account_id' => $emailAccountId,
+                    'folder_id' => $folderId,
+                    'folder_type' => $folderType
+                ]
+            );
     
-        if (empty($emailAccountId) || empty($folderId) || empty($folderType)) {
-            http_response_code(400);
-            echo json_encode([
-                'Status' => 'Error',
-                'Message' => 'Missing required parameters.',
-                'Data' => null
-            ]);
-            return;
-        }
+            if (empty($emailAccountId) || empty($folderId) || empty($folderType)) {
+                $this->errorLogController->logError(
+                    "Parâmetros inválidos",
+                    __FILE__,
+                    __LINE__,
+                    $emailAccountId,
+                    ['data' => $data]
+                );
+                
+                http_response_code(400);
+                echo json_encode([
+                    'Status' => 'Error',
+                    'Message' => 'Missing required parameters.',
+                    'Data' => null
+                ]);
+                return;
+            }
     
-        $result = $this->folderAssociationService->createOrUpdateAssociation(
-            $emailAccountId,
-            $folderId,
-            $folderType
-        );
+            // Log antes de chamar o service
+            $this->errorLogController->logError(
+                "Chamando service",
+                __FILE__,
+                __LINE__,
+                $emailAccountId,
+                ['params' => [$emailAccountId, $folderId, $folderType]]
+            );
     
-        if ($result['success']) {
-            http_response_code(200);
-            echo json_encode([
-                'Status' => 'Success',
-                'Message' => $result['message'],
-                'Data' => $result['data']
-            ]);
-        } else {
+            $result = $this->folderAssociationService->createOrUpdateAssociation(
+                $emailAccountId,
+                $folderId,
+                $folderType
+            );
+    
+            // Log do resultado
+            $this->errorLogController->logError(
+                "Resultado do service",
+                __FILE__,
+                __LINE__,
+                $emailAccountId,
+                ['result' => $result]
+            );
+    
+            if ($result['Status'] === 'Success') {
+                http_response_code(200);
+                echo json_encode([
+                    'Status' => 'Success',
+                    'Message' => $result['Message'],
+                    'Data' => $result['Data']
+                ]);
+            } else {
+                http_response_code(500);
+                echo json_encode([
+                    'Status' => 'Error',
+                    'Message' => $result['Message'] ?? 'Unknown error',
+                    'Data' => null
+                ]);
+            }
+        } catch (Exception $e) {
+            $this->errorLogController->logError(
+                "Erro na associação de pasta: " . $e->getMessage(),
+                __FILE__,
+                __LINE__,
+                $emailAccountId ?? null,
+                ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]
+            );
+    
             http_response_code(500);
             echo json_encode([
                 'Status' => 'Error',
-                'Message' => $result['message'],
+                'Message' => 'Internal server error: ' . $e->getMessage(),
                 'Data' => null
             ]);
         }
