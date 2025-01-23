@@ -33,23 +33,16 @@ class FolderAssociationController {
                 __FILE__,
                 __LINE__,
                 null,
-                [
-                    'request_data' => json_encode($data, JSON_PRETTY_PRINT),
+                json_encode([
+                    'request_data' => $data,
                     'email_account_id' => $emailAccountId,
                     'folder_id' => $folderId,
                     'folder_type' => $folderType,
                     'raw_request' => file_get_contents('php://input')
-                ]
+                ], JSON_PRETTY_PRINT)
             );
     
             if (empty($emailAccountId) || empty($folderId) || empty($folderType)) {
-                $this->errorLogController->logError(
-                    "Parâmetros inválidos",
-                    __FILE__,
-                    __LINE__,
-                    $emailAccountId,
-                    ['data' => $data]
-                );
                 
                 http_response_code(400);
                 echo json_encode([
@@ -60,28 +53,11 @@ class FolderAssociationController {
                 return;
             }
     
-            // Log antes de chamar o service
-            $this->errorLogController->logError(
-                "Chamando service",
-                __FILE__,
-                __LINE__,
-                $emailAccountId,
-                ['params' => [$emailAccountId, $folderId, $folderType]]
-            );
     
             $result = $this->folderAssociationService->createOrUpdateAssociation(
                 $emailAccountId,
                 $folderId,
                 $folderType
-            );
-    
-            // Log do resultado para debug
-            $this->errorLogController->logError(
-                "Resultado do service",
-                __FILE__,
-                __LINE__,
-                null,
-                ['result' => $result]
             );
     
             if (!is_array($result)) {
