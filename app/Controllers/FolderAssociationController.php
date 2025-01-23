@@ -87,15 +87,19 @@ class FolderAssociationController {
                 throw new Exception('Invalid service response format');
             }
     
-            if ($result['Status'] === 'Success') {
+            if ($result['success']) {
                 http_response_code(200);
-                echo json_encode($result);
+                echo json_encode([
+                    'Status' => 'Success',
+                    'Message' => $result['message'],
+                    'Data' => $result['data']
+                ]);
             } else {
                 http_response_code(500);
                 echo json_encode([
                     'Status' => 'Error',
-                    'Message' => $result['Message'] ?? 'Service error: ' . print_r($result, true),
-                    'Data' => $result
+                    'Message' => $result['message'] ?? 'Unknown error',
+                    'Data' => null
                 ]);
             }
         } catch (Exception $e) {
