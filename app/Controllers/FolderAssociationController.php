@@ -20,15 +20,6 @@ class FolderAssociationController {
     public function associateFolder() {
         header('Content-Type: application/json');
     
-        // Log imediato para teste
-        $this->errorLogController->logError(
-            "Teste de log",
-            __FILE__,
-            __LINE__,
-            null,
-            ['timestamp' => date('Y-m-d H:i:s')]
-        );
-    
         try {
             $data = json_decode(file_get_contents('php://input'), true);
     
@@ -83,28 +74,28 @@ class FolderAssociationController {
                 $folderType
             );
     
-            // Log do resultado
+            // Log do resultado para debug
             $this->errorLogController->logError(
                 "Resultado do service",
                 __FILE__,
                 __LINE__,
-                $emailAccountId,
+                null,
                 ['result' => $result]
             );
     
+            if (!is_array($result)) {
+                throw new Exception('Invalid service response format');
+            }
+    
             if ($result['Status'] === 'Success') {
                 http_response_code(200);
-                echo json_encode([
-                    'Status' => 'Success',
-                    'Message' => $result['Message'],
-                    'Data' => $result['Data']
-                ]);
+                echo json_encode($result);
             } else {
                 http_response_code(500);
                 echo json_encode([
                     'Status' => 'Error',
-                    'Message' => $result['Message'] ?? 'Unknown error',
-                    'Data' => null
+                    'Message' => $result['Message'] ?? 'Service error: ' . print_r($result, true),
+                    'Data' => $result
                 ]);
             }
         } catch (Exception $e) {
@@ -112,7 +103,7 @@ class FolderAssociationController {
                 "Erro na associação de pasta: " . $e->getMessage(),
                 __FILE__,
                 __LINE__,
-                $emailAccountId ?? null,
+                null,
                 ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]
             );
     
