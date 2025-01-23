@@ -334,8 +334,7 @@ class Email {
             $query = "UPDATE " . $this->table . " SET
                         is_read = :is_read,
                         folder_id = :folder_id,
-                        is_favorite = :is_favorite,
-                        updated_at = NOW()
+                        is_favorite = :is_favorite
                       WHERE id = :id";
                       
             $stmt = $this->conn->prepare($query);
